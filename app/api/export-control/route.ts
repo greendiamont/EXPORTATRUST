@@ -176,7 +176,7 @@ async function snapshot(operationId: number, organizationId: number, controlSeed
     db.select().from(clientNotifications).where(and(eq(clientNotifications.operationId, operationId), eq(clientNotifications.organizationId, organizationId))).orderBy(desc(clientNotifications.id)).limit(100),
     db.select().from(shipmentTrackingEvents).where(and(eq(shipmentTrackingEvents.operationId, operationId), eq(shipmentTrackingEvents.organizationId, organizationId))).orderBy(desc(shipmentTrackingEvents.id)).limit(100),
     db.select().from(countryComplianceChecks).where(and(eq(countryComplianceChecks.operationId, operationId), eq(countryComplianceChecks.organizationId, organizationId))).orderBy(desc(countryComplianceChecks.id)).limit(1),
-    db.select({ category: operationDocuments.category, fileName: operationDocuments.fileName }).from(operationDocuments).where(and(eq(operationDocuments.operationId, operationId), eq(operationDocuments.organizationId, organizationId))).limit(5000),
+    db.select({ category: operationDocuments.category, fileName: operationDocuments.fileName, shipmentSetStatus: operationDocuments.shipmentSetStatus, clientShareStatus: operationDocuments.clientShareStatus }).from(operationDocuments).where(and(eq(operationDocuments.operationId, operationId), eq(operationDocuments.organizationId, organizationId))).limit(5000),
   ]);
   const documentTexts = documents.flatMap((document) => [document.category, document.fileName]);
   const eudrRequired = isEudrRequired(operation.destinationCountry, operation.hsCode, operation.product);
@@ -188,6 +188,17 @@ async function snapshot(operationId: number, organizationId: number, controlSeed
   const activeMilestones = milestones.filter((milestone) => !["Concluído", "Suspenso"].includes(milestone.status));
   const incompletePlans = activeMilestones.filter((milestone) => !milestone.responsibleName || !milestone.dueDate || !milestone.nextAction);
   const overdueMilestones = activeMilestones.filter((milestone) => milestone.dueDate && milestone.dueDate < today);
+  const stageRows = milestones.map((milestone) => {
+    const applicable = milestone.status !== "Suspenso";
+    const stageDocuments = documents.filter((document) => document.category === milestone.category);
+    const passed = !applicable || milestone.status === "Concluído";
+    return { code: milestone.code, sequence: milestone.sequence, title: milestone.title, status: milestone.status, applicable, passed, documentCount: stageDocuments.length, issue: !applicable ? "Não aplicável" : passed ? "Etapa concluída" : `Etapa ${milestone.status.toLowerCase()}` };
+  });
+  const applicableStages = stageRows.filter((stage) => stage.applicable);
+  const stageScore = applicableStages.length ? Math.round(applicableStages.filter((stage) => stage.passed).length / applicableStages.length * 100) : 100;
+  const approvedSetDocuments = documents.filter((document) => document.category === "Export Control · Set documental" && document.shipmentSetStatus === "Incluído" && document.clientShareStatus === "Aprovado").length;
+  const verdict = score === 100 && stageScore === 100 ? "Aprovado para revisão humana" : "Pendências identificadas";
+  const opinion = `${verdict}: ${applicableStages.filter((stage) => stage.passed).length}/${applicableStages.length} etapas aplicáveis concluídas, exigências do destino em ${score}% e ${approvedSetDocuments} documento(s) aprovado(s) na Etapa 09.${eudrRequired ? ` Prontidão EUDR: ${operation.readiness}%.` : " EUDR não aplicável ao destino."}`;
   return {
     operation,
     settings: settings[0],
@@ -211,7 +222,7 @@ async function snapshot(operationId: number, organizationId: number, controlSeed
         overdue: Boolean(milestone.dueDate && milestone.dueDate < today),
       })),
     },
-    compliance: { score, status: score === 100 ? "Aprovado" : "Pendente", eudrRequired, requirements: requirementRows, lastCheck: checks[0] ?? null },
+    compliance: { score, stageScore, status: score === 100 && stageScore === 100 ? "Aprovado" : "Pendente", verdict, opinion, approvedSetDocuments, eudrRequired, requirements: requirementRows, stages: stageRows, lastCheck: checks[0] ?? null },
   };
 }
 
@@ -305,8 +316,8 @@ export async function POST(request: Request) {
 
     if (action === "country-check") {
       const current = await snapshot(operationId, context.organizationId, true);
-      await db.insert(countryComplianceChecks).values({ organizationId: context.organizationId, operationId, country: operation.destinationCountry, hsCode: operation.hsCode, score: current.compliance.score, status: current.compliance.status, resultJson: JSON.stringify(current.compliance.requirements), checkedAt: now.toISOString() });
-      await audit(context, "COUNTRY_COMPLIANCE_CHECKED", "operation", String(operationId), { country: operation.destinationCountry, score: current.compliance.score });
+      await db.insert(countryComplianceChecks).values({ organizationId: context.organizationId, operationId, country: operation.destinationCountry, hsCode: operation.hsCode, score: Math.round((current.compliance.score + current.compliance.stageScore) / 2), status: current.compliance.status, resultJson: JSON.stringify({ requirements: current.compliance.requirements, stages: current.compliance.stages, verdict: current.compliance.verdict, opinion: current.compliance.opinion }), checkedAt: now.toISOString() });
+      await audit(context, "COUNTRY_COMPLIANCE_CHECKED", "operation", String(operationId), { country: operation.destinationCountry, documentScore: current.compliance.score, stageScore: current.compliance.stageScore, verdict: current.compliance.verdict });
       return Response.json(await snapshot(operationId, context.organizationId, true));
     }
 
