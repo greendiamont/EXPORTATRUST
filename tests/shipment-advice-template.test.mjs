@@ -12,7 +12,13 @@ test("shipment advice uses Hub operational email model", async () => {
   assert.match(template, /We need the balanced payment/);
   assert.match(template, /PAYMENT TERM: 30% ADV 70% TT AGAINST COPY OF DOCUMENTS/);
   assert.match(template, /supplierBankDetails/);
-  assert.match(template, /Supplier bank details pending in ExportaTrust supplier master data/);
+  assert.match(template, /supplierBankDetails\?\.trim\(\) \|\| ""/);
+  assert.match(template, /invoiceFinancials\.totalInvoice/);
+  assert.doesNotMatch(template, /Number\(operation\.commercialValue/);
+  assert.match(template, /operation\.exporterName \|\| operation\.supplierName/);
+  assert.match(template, /operation\.billOfLadingNumber \|\| operation\.bookingNumber/);
+  assert.match(template, /operation\.euImporter \|\| customer\.name/);
+  assert.match(template, /operation\.destinationCountry, operation\.portOfDischarge/);
   assert.doesNotMatch(template, /SCBLUS33XXX/);
   assert.doesNotMatch(template, /BR2978632767000010004870301C1/);
   assert.match(client, /Shipment Advice \/ Set of Documents/);
