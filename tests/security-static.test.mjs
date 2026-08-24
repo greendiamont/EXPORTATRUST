@@ -21,6 +21,20 @@ test("temporary document links are hashed, expiring and single-use", async () =>
   assert.match(source, /usedAt: new Date\(\)\.toISOString\(\)/);
 });
 
+test("signed-in document access remains durable while metadata and bytes stay private", async () => {
+  const client = await read("app/client-app.tsx");
+  const operationRoute = await read("app/api/documents/route.ts");
+  const forestRoute = await read("app/api/forest-documents/route.ts");
+  assert.match(client, /documentType === "forest" \? "\/api\/forest-documents" : "\/api\/documents"/);
+  assert.match(client, /new URLSearchParams\(\{ documentId: String\(documentId\) \}\)/);
+  for (const route of [operationRoute, forestRoute]) {
+    assert.match(route, /requireSecurityContext\("read"\)/);
+    assert.match(route, /eq\([^\n]+organizationId, context\.organizationId\)/);
+    assert.match(route, /get\(record\.objectKey\)/);
+    assert.match(route, /"cache-control": "private, no-store"/);
+  }
+});
+
 test("PDF outputs receive SHA-256 integrity records", async () => {
   for (const path of ["app/api/eudr-report/route.ts", "app/api/forest-dossier/route.ts"]) {
     const source = await read(path);
