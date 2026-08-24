@@ -1,0 +1,9 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+import { normalizeMasterName, similarity } from "../lib/master-data.ts";
+const root=new URL("../",import.meta.url);const read=(path)=>readFile(new URL(path,root),"utf8");
+test("company aliases normalize without deleting history",()=>{assert.equal(normalizeMasterName("VJ RAUBER E CIA LTDA."),"vj rauber");assert.ok(similarity("VJ","VJ RAUBER E CIA LTDA")>=.5);});
+test("master clients and products are durable and linked to operations",async()=>{const schema=await read("db/schema.ts");const migration=await read("drizzle/0021_master_clients_products_dedup.sql");const operations=await read("app/api/operations/route.ts");assert.match(schema,/importerClients/);assert.match(schema,/masterProducts/);assert.match(schema,/deduplicationQueue/);assert.match(migration,/UPDATE `operations` SET `importer_client_id`/);assert.match(migration,/UPDATE `operations` SET `master_product_id`/);assert.match(operations,/ensureMasterLinks/);});
+test("deduplication is review-only and never deletes history",async()=>{const route=await read("app/api/deduplication/route.ts");assert.doesNotMatch(route,/db\.delete|DELETE FROM/);assert.match(route,/Possível duplicidade/);assert.match(route,/Não duplicado/);});
+test("client and product updates avoid self-duplicate failures and live under Cadastros",async()=>{const client=await read("app/api/importer-clients/route.ts");const product=await read("app/api/master-products/route.ts");const ui=await read("app/client-app.tsx");const css=await read("app/globals.css");assert.doesNotMatch(client,/\bne\(/);assert.doesNotMatch(product,/\bne\(/);assert.match(client,/duplicate\[0\]\.id !== id/);assert.match(product,/duplicate\[0\]\.id!==id/);assert.match(ui,/\["Clientes", "◎"\]/);assert.match(ui,/\["Produtos", "▦"\]/);assert.match(css,/\.master-form input,.master-form select,.master-form textarea/);});

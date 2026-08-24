@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" role="img" aria-labelledby="title desc">
+  <title id="title">ExportaTrust EUDR</title>
+  <desc id="desc">Escudo de conformidade com folha, verificação e sete pontos representando as commodities EUDR.</desc>
+  <defs><linearGradient id="shield" x1="12" y1="8" x2="60" y2="64" gradientUnits="userSpaceOnUse"><stop stop-color="#E9FFF5"/><stop offset="1" stop-color="#9EDFC3"/></linearGradient></defs>
+  <circle cx="36" cy="36" r="32.25" fill="#075E49" stroke="#B7E5D0" stroke-width="1.5"/>
+  <g fill="#DDF6EA"><circle cx="36" cy="7.5" r="1.7"/><circle cx="58.3" cy="18.2" r="1.7"/><circle cx="63.8" cy="42.8" r="1.7"/><circle cx="48.4" cy="62" r="1.7"/><circle cx="23.6" cy="62" r="1.7"/><circle cx="8.2" cy="42.8" r="1.7"/><circle cx="13.7" cy="18.2" r="1.7"/></g>
+  <path d="M36 14.5 54 22v13.4c0 11.5-7.6 19.1-18 23.5-10.4-4.4-18-12-18-23.5V22l18-7.5Z" fill="url(#shield)"/>
+  <path d="M27.2 42.7c.8-10.4 7.2-17.2 19.3-18.4-1.1 11.8-7.6 18.4-19.3 18.4Z" fill="#08785C"/>
+  <path d="M27.2 42.7c5.4-5.7 10.8-9.4 17.5-13.1" fill="none" stroke="#E9FFF5" stroke-linecap="round" stroke-width="1.8"/>
+  <path d="m28 46.8 4.7 4.6 11-12" fill="none" stroke="#08785C" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+</svg>

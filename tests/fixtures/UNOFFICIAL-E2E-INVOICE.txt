@@ -1,0 +1,10 @@
+EXPORTATRUST EUDR - UNOFFICIAL TEST DOCUMENT
+FOR SOFTWARE VALIDATION ONLY - NOT A COMMERCIAL INVOICE
+
+Stage: 03 - Forest Invoice
+Supplier: E2E Agent Test Supplier
+Product: Test wood pellets
+Lot: E2E-LOT-001
+Quantity: 1 MT
+
+This file contains synthetic data only and must never be used for an official EUDR submission.

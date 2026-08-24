@@ -1,0 +1,1 @@
+ALTER TABLE `operations` ADD `property_ids` text DEFAULT '[]' NOT NULL;

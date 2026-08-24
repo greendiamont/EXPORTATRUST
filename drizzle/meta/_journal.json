@@ -1,0 +1,167 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1785302742193,
+      "tag": "0000_majestic_liz_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1785331932830,
+      "tag": "0001_amused_power_pack",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785334656664,
+      "tag": "0002_premium_inertia",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1785336808522,
+      "tag": "0003_cloudy_morlocks",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1785339032244,
+      "tag": "0004_optimal_micromacro",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1785346469270,
+      "tag": "0005_flawless_aaron_stack",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1785347486653,
+      "tag": "0006_outgoing_typhoid_mary",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1785427997309,
+      "tag": "0007_polite_microbe",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1785428021079,
+      "tag": "0008_serious_killmonger",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1786011171556,
+      "tag": "0009_loud_epoch",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1786077111640,
+      "tag": "0010_wide_microbe",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1786109527162,
+      "tag": "0011_secret_hobgoblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1786650694832,
+      "tag": "0012_opposite_goliath",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1786653042676,
+      "tag": "0013_natural_ben_parker",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1786717307458,
+      "tag": "0014_bitter_jocasta",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1786751921234,
+      "tag": "0015_eager_joshua_kane",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1786752262741,
+      "tag": "0016_smooth_frog_thor",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1786752611819,
+      "tag": "0017_tranquil_runaways",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1786787989230,
+      "tag": "0018_first_jamie_braddock",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1787066400000,
+      "tag": "0019_homologate_registered_suppliers",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1787067600000,
+      "tag": "0020_supplier_master_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1787071200000,
+      "tag": "0021_master_clients_products_dedup",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1787314344716,
+      "tag": "0022_private_agent_api",
+      "breakpoints": true
+    }
+  ]
+}

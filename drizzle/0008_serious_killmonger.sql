@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `operation_stage_settings_operation_stage_idx` ON `operation_stage_settings` (`operation_id`,`stage_category`);
