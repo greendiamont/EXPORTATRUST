@@ -29,6 +29,7 @@ test("stage 09 is the authoritative shipment folder with human document approval
   assert.match(route, /action === "approve-send"/);
   assert.match(route, /attachments/);
   assert.match(client, /Aprovar e enviar e-mail com anexos/);
+  assert.match(client, /approved \? "Reabrir" : "Aprovar"/);
 });
 
 test("AI country check evaluates requirements and every operational stage", async () => {
