@@ -304,6 +304,7 @@ type OperationRecord = {
   portOfDischarge: string;
   carrier: string;
   bookingNumber: string;
+  billOfLadingNumber: string;
   containerNumbers: string;
   vesselVoyage: string;
   euOperatorEori: string;
@@ -335,7 +336,7 @@ const emptyOperationForm = {
   exporterName: "", exporterTaxId: "", internalResponsible: "", responsibleEmail: "", contractNumber: "", incoterm: "FOB", currency: "USD",
   commercialValue: "", quantity: "", quantityUnit: "MT", grossWeightKg: "", netWeightKg: "", volumeM3: "", lotCodes: "",
   rawMaterial: "", species: "", forestOriginType: "Reflorestamento", productionUnit: "", productionLocation: "", propertyIds: [] as string[], transportMode: "Marítimo",
-  portOfLoading: "", portOfDischarge: "", carrier: "", bookingNumber: "", containerNumbers: "", vesselVoyage: "",
+  portOfLoading: "", portOfDischarge: "", carrier: "", bookingNumber: "", billOfLadingNumber: "", containerNumbers: "", vesselVoyage: "",
   euOperatorEori: "", eudrReference: "", supplyChainNotes: "",
 };
 
@@ -1510,6 +1511,7 @@ export default function Home({ initialData }: { initialData: InitialAppData }) {
               <label>País de destino<input data-operation-field="destinationCountry" aria-invalid={!!operationErrors.destinationCountry} list="history-destination-countries" value={operationForm.destinationCountry} onChange={(event) => setOperationForm({ ...operationForm, destinationCountry: event.target.value })} placeholder="Livre; pode preencher depois" /></label>
               <label>Armador / transportadora<input list="history-carriers" value={operationForm.carrier} onChange={(event) => setOperationForm({ ...operationForm, carrier: event.target.value })} placeholder="Histórico de parceiros e operações" /></label>
               <label>Booking<input value={operationForm.bookingNumber} onChange={(event) => setOperationForm({ ...operationForm, bookingNumber: event.target.value })} /></label>
+              <label>BL / Bill of Lading<input value={operationForm.billOfLadingNumber} onChange={(event) => setOperationForm({ ...operationForm, billOfLadingNumber: event.target.value })} placeholder="Ex.: SA0600284400" /></label>
               <label>Contêiner(es)<input value={operationForm.containerNumbers} onChange={(event) => setOperationForm({ ...operationForm, containerNumbers: event.target.value })} placeholder="Separar por vírgula" /></label>
               <label className="form-span">Navio / viagem<input value={operationForm.vesselVoyage} onChange={(event) => setOperationForm({ ...operationForm, vesselVoyage: event.target.value })} /></label>
             </div></fieldset>

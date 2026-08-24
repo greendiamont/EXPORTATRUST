@@ -85,6 +85,7 @@ export async function ensureBaseTables() {
       port_of_discharge text DEFAULT '' NOT NULL,
       carrier text DEFAULT '' NOT NULL,
       booking_number text DEFAULT '' NOT NULL,
+      bill_of_lading_number text DEFAULT '' NOT NULL,
       container_numbers text DEFAULT '' NOT NULL,
       vessel_voyage text DEFAULT '' NOT NULL,
       eu_operator_eori text DEFAULT '' NOT NULL,

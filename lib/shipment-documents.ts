@@ -103,6 +103,31 @@ export function shipmentChecklist(documents: Array<{ fileName?: string; document
 
 export const SHIPMENT_SET_CATEGORY = "Export Control · Set documental";
 
+export type ShipmentInvoiceFinancials = {
+  invoiceNumber?: string;
+  currency?: string;
+  totalInvoice?: number;
+  amountPaid?: number;
+  balanceDue?: number;
+};
+
+function positiveNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value;
+  const parsed = Number(String(value ?? "").replace(/[^0-9,.-]/g, "").replace(/,(?=\d{1,2}$)/, ".").replace(/,/g, ""));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+export function invoiceFinancialsFromStructured(structured: Record<string, unknown>): ShipmentInvoiceFinancials {
+  const identifiers = structured.identifiers && typeof structured.identifiers === "object" ? structured.identifiers as Record<string, unknown> : {};
+  return {
+    invoiceNumber: String(structured.invoice_number ?? identifiers.invoice_number ?? identifiers.invoice ?? "").trim() || undefined,
+    currency: String(structured.currency ?? "").trim().toUpperCase() || undefined,
+    totalInvoice: positiveNumber(structured.total_invoice),
+    amountPaid: positiveNumber(structured.amount_paid),
+    balanceDue: positiveNumber(structured.balance_due),
+  };
+}
+
 export function isShipmentSetDocument(document: { category?: string }) {
   return document.category === SHIPMENT_SET_CATEGORY;
 }
@@ -112,9 +137,11 @@ export function buildShipmentAdvice(
     reference: string;
     product?: string;
     supplierName?: string;
+    exporterName?: string;
     euImporter?: string;
     contractNumber?: string;
     bookingNumber: string;
+    billOfLadingNumber?: string;
     containerNumbers: string;
     vesselVoyage: string;
     portOfLoading: string;
@@ -129,29 +156,30 @@ export function buildShipmentAdvice(
   },
   documents: Array<{ id: number; fileName: string; category?: string; documentType: string; shipmentSetStatus: string; clientShareStatus?: string }>,
   customer: { name: string; email: string },
+  invoiceFinancials: ShipmentInvoiceFinancials = {},
 ) {
   const candidates = documents.filter(isShipmentSetDocument).map((document) => ({ ...document, documentType: resolvedShipmentDocumentType(document) }));
   const included = candidates.filter((document) => document.shipmentSetStatus === "Incluído" && document.clientShareStatus === "Aprovado");
   const checklist = shipmentChecklist(included);
-  const invoice = operation.contractNumber || operation.reference;
-  const destination = operation.portOfDischarge || operation.destinationCountry || "TBC";
+  const invoice = operation.contractNumber || invoiceFinancials.invoiceNumber || operation.reference;
+  const destination = [operation.destinationCountry, operation.portOfDischarge].filter(Boolean).join(" ") || "TBC";
   const containerCount = operation.containerNumbers
     ? `${operation.containerNumbers.split(/[,;\n]/).map((item) => item.trim()).filter(Boolean).length || 1}*40HC`
     : "40HC";
-  const customerName = customer.name || operation.euImporter || "customer";
-  const supplierName = operation.supplierName || "supplier";
-  const subject = `SHIPMENT - ${operation.bookingNumber || operation.reference} - INVOICE ${invoice} // ${supplierName} X ${customerName} // ${destination} // ${containerCount}`;
+  const customerName = operation.euImporter || customer.name || "CUSTOMER TBC";
+  const exporterName = operation.exporterName || operation.supplierName || "EXPORTER TBC";
+  const subject = `SHIPMENT - ${operation.billOfLadingNumber || operation.bookingNumber || operation.reference} - INVOICE ${invoice} // ${exporterName} X ${customerName} // ${destination} // ${containerCount}`;
   const attachedTypes = included.length
     ? [...new Set(included.map((document) => document.documentType))].join(", ")
     : "BL, Invoice, Packing List, CO and Phyto copy";
-  const currency = operation.currency || "USD";
-  const total = Number(operation.commercialValue || 0);
-  const advance = total > 0 ? total * 0.3 : 0;
-  const balance = total > 0 ? Math.max(0, total - advance) : 0;
+  const currency = invoiceFinancials.currency || operation.currency || "USD";
+  const total = Number(invoiceFinancials.totalInvoice || 0);
+  const advance = invoiceFinancials.amountPaid ?? (total > 0 ? total * 0.3 : 0);
+  const balance = invoiceFinancials.balanceDue ?? (total > 0 ? Math.max(0, total - advance) : 0);
   const money = (value: number) => value > 0 ? `${currency} ${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `${currency} TBC`;
   const etd = operation.shipmentDate ? new Date(operation.shipmentDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }) : "TBC";
   const greeting = customer.name ? `Dear ${customer.name}` : "Dear customer";
-  const bankDetails = operation.supplierBankDetails?.trim() || "Supplier bank details pending in ExportaTrust supplier master data.";
+  const bankDetails = operation.supplierBankDetails?.trim() || "";
   const body = `${greeting}
 
 Pls find attached the draft docs for ${subject}

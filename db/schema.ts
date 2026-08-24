@@ -196,6 +196,7 @@ export const operations = sqliteTable("operations", {
   portOfDischarge: text("port_of_discharge").notNull().default(""),
   carrier: text("carrier").notNull().default(""),
   bookingNumber: text("booking_number").notNull().default(""),
+  billOfLadingNumber: text("bill_of_lading_number").notNull().default(""),
   containerNumbers: text("container_numbers").notNull().default(""),
   vesselVoyage: text("vessel_voyage").notNull().default(""),
   euOperatorEori: text("eu_operator_eori").notNull().default(""),
