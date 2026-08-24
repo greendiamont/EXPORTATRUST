@@ -162,6 +162,13 @@
       "when": 1787314344716,
       "tag": "0022_private_agent_api",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1787606612023,
+      "tag": "0023_secret_anita_blake",
+      "breakpoints": true
     }
   ]
 }

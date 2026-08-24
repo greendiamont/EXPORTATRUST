@@ -30,7 +30,7 @@ export async function analyzeImmutableDocument(source: DocumentSource, context: 
 
   const bytes = await object.arrayBuffer();
   const model = String(runtime.OPENAI_DOCUMENT_MODEL ?? "gpt-5.6").trim() || "gpt-5.6";
-  const prompt = `You are the document-intelligence layer of an EUDR due-diligence system. Analyze this immutable source document for operation ${context.operationReference}, supply-chain stage ${context.stageCategory}, requested capability ${context.capability}. Return ONLY a JSON object in English with keys: summary (concise), document_type, issuer, parties, dates, identifiers, quantities, lot_or_traceability_references, legality_or_certificate_fields, inconsistencies (array), missing_expected_fields (array), eudr_relevance, confidence (0-100). Never invent unreadable or absent values; use null and flag uncertainty.`;
+  const prompt = `You are the document-intelligence layer of an EUDR due-diligence system. Analyze this immutable source document for operation ${context.operationReference}, supply-chain stage ${context.stageCategory}, requested capability ${context.capability}. Return ONLY a JSON object in English with keys: summary (concise), document_type, issuer, parties, dates, identifiers, invoice_number, currency, total_invoice, amount_paid, balance_due, payment_terms, quantities, lot_or_traceability_references, legality_or_certificate_fields, inconsistencies (array), missing_expected_fields (array), eudr_relevance, confidence (0-100). Monetary fields must be JSON numbers without currency symbols or thousands separators. Never calculate or invent unreadable or absent values; use null and flag uncertainty.`;
   let fileId = "";
   try {
     let content: Record<string, unknown>[];
@@ -68,4 +68,3 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
   for (let index = 0; index < bytes.length; index += 0x8000) binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
   return btoa(binary);
 }
-

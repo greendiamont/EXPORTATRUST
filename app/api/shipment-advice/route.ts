@@ -1,7 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { ensureBaseTables, getDb } from "../../../db";
 import { clientNotifications, exportControlSettings, operationDocuments, operations, shipmentAdvices, suppliers } from "../../../db/schema";
-import { buildShipmentAdvice, SHIPMENT_SET_CATEGORY } from "../../../lib/shipment-documents";
+import { buildShipmentAdvice, invoiceFinancialsFromStructured, resolvedShipmentDocumentType, SHIPMENT_SET_CATEGORY, type ShipmentInvoiceFinancials } from "../../../lib/shipment-documents";
+import { analyzeImmutableDocument } from "../../../lib/document-intelligence";
 import { audit, requireSecurityContext } from "../../../lib/security";
 
 function errorMessage(error: unknown) {
@@ -47,7 +48,32 @@ async function deliverShipmentAdvice(recipient: string, subject: string, body: s
     : { status: "Falha", provider: "resend", externalId: "", error: payload.message || `Falha HTTP ${response.status}.` };
 }
 
-async function snapshot(operationId: number, organizationId: number) {
+function storedInvoiceFinancials(document: { analysisSummary: string; notes: string }) {
+  for (const value of [document.analysisSummary, document.notes]) {
+    try {
+      const parsed = JSON.parse(value) as Record<string, unknown>;
+      const structured = parsed.documentIntelligence && typeof parsed.documentIntelligence === "object" ? parsed.documentIntelligence as Record<string, unknown> : parsed;
+      const result = invoiceFinancialsFromStructured(structured);
+      if (result.totalInvoice || result.invoiceNumber) return result;
+    } catch { /* legacy free text */ }
+  }
+  return {} as ShipmentInvoiceFinancials;
+}
+
+async function readApprovedInvoiceFinancials(operation: typeof operations.$inferSelect, documents: Array<typeof operationDocuments.$inferSelect>, refresh: boolean) {
+  const invoice = documents.find((document) => document.category === SHIPMENT_SET_CATEGORY && document.shipmentSetStatus === "Incluído" && document.clientShareStatus === "Aprovado" && resolvedShipmentDocumentType(document) === "Commercial Invoice");
+  if (!invoice) return {} as ShipmentInvoiceFinancials;
+  const stored = storedInvoiceFinancials(invoice);
+  if (!refresh || stored.totalInvoice) return stored;
+  const intelligence = await analyzeImmutableDocument(invoice, { operationReference: operation.reference, stageCategory: SHIPMENT_SET_CATEGORY, capability: "invoice_validation" });
+  if (!intelligence) return stored;
+  const financials = invoiceFinancialsFromStructured(intelligence.structured);
+  const db = await getDb();
+  await db.update(operationDocuments).set({ analysisSummary: JSON.stringify({ summary: intelligence.summary, confidence: intelligence.confidence, model: intelligence.model, documentIntelligence: intelligence.structured }) }).where(and(eq(operationDocuments.id, invoice.id), eq(operationDocuments.organizationId, operation.organizationId)));
+  return financials;
+}
+
+async function snapshot(operationId: number, organizationId: number, refreshInvoice = false) {
   await ensureSupplierBankDetails();
   const db = await getDb();
   const [operation, documents, settings, advice] = await Promise.all([
@@ -57,13 +83,15 @@ async function snapshot(operationId: number, organizationId: number) {
     db.select().from(shipmentAdvices).where(and(eq(shipmentAdvices.operationId, operationId), eq(shipmentAdvices.organizationId, organizationId))).limit(1),
   ]);
   if (!operation[0]) throw new Error("Processo não encontrado.");
+  const invoiceFinancials = await readApprovedInvoiceFinancials(operation[0], documents, refreshInvoice);
   const supplier = operation[0].supplierId ? (await db.select().from(suppliers).where(and(eq(suppliers.id, operation[0].supplierId), eq(suppliers.organizationId, organizationId))).limit(1))[0] : null;
   const generated = buildShipmentAdvice(
     { ...operation[0], supplierBankDetails: supplier?.bankDetails || "" },
     documents,
-    { name: settings[0]?.customerName || operation[0].euImporter, email: settings[0]?.customerEmail || "" }
+    { name: settings[0]?.customerName || operation[0].euImporter, email: settings[0]?.customerEmail || "" },
+    invoiceFinancials,
   );
-  return { advice: advice[0] ?? null, documents, generated, complete: generated.checklist.filter((item) => item.required).every((item) => item.present) };
+  return { advice: advice[0] ?? null, documents, generated, invoiceFinancials, complete: generated.checklist.filter((item) => item.required).every((item) => item.present) };
 }
 
 export async function GET(request: Request) {
@@ -95,7 +123,7 @@ export async function POST(request: Request) {
       return Response.json(await snapshot(operationId, context.organizationId));
     }
     if (body.action === "test-send" || body.action === "approve-send") {
-      const current = await snapshot(operationId, context.organizationId);
+      const current = await snapshot(operationId, context.organizationId, true);
       if (!current.complete) return Response.json({ error: "O set obrigatório ainda está incompleto. Aprove os documentos pendentes da Etapa 09." }, { status: 409 });
       if (!current.generated.included.length) return Response.json({ error: "Nenhum documento foi aprovado para envio." }, { status: 409 });
       const [settings] = await db.select().from(exportControlSettings).where(and(eq(exportControlSettings.operationId, operationId), eq(exportControlSettings.organizationId, context.organizationId))).limit(1);
@@ -115,7 +143,7 @@ export async function POST(request: Request) {
       return Response.json({ ...(await snapshot(operationId, context.organizationId)), delivery });
     }
     if (body.action !== "regenerate") return Response.json({ error: "Ação inválida." }, { status: 400 });
-    const current = await snapshot(operationId, context.organizationId);
+    const current = await snapshot(operationId, context.organizationId, true);
     const values = {
       organizationId: context.organizationId,
       operationId,
