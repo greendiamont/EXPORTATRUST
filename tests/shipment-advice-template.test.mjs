@@ -27,8 +27,11 @@ test("stage 09 is the authoritative shipment folder with human document approval
   assert.match(template, /candidates\.filter\(\(document\) => document\.shipmentSetStatus === "Incluído" && document\.clientShareStatus === "Aprovado"\)/);
   assert.match(route, /action === "set-document-status"/);
   assert.match(route, /action === "approve-send"/);
+  assert.match(route, /action === "test-send"/);
   assert.match(route, /attachments/);
+  assert.match(template, /resolvedShipmentDocumentType/);
   assert.match(client, /Aprovar e enviar e-mail com anexos/);
+  assert.match(client, /Enviar teste com todos os anexos/);
   assert.match(client, /approved \? "Reabrir" : "Aprovar"/);
 });
 
@@ -39,5 +42,6 @@ test("AI country check evaluates requirements and every operational stage", asyn
   assert.match(route, /stageScore/);
   assert.match(route, /verdict/);
   assert.match(client, /AI FULL OPERATION CHECK/);
-  assert.match(client, /Verificar operação completa com IA/);
+  assert.match(client, /VERIFICAR OPERAÇÃO COM IA/);
+  assert.match(client, /Status de cada etapa/);
 });
