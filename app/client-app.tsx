@@ -5,6 +5,7 @@ import { translateToEnglish, type Language } from "./i18n";
 import { parseGeographicInput } from "../lib/geo-input";
 import { SUPPLY_CHAIN_STAGES } from "../lib/supply-chain-stages";
 import { isBrazil, isValidBrazilianCnpj, normalizeTaxId } from "../lib/supplier-validation";
+import { canApproveShipment } from "../lib/export-control";
 
 const originalText = new WeakMap<Text, string>();
 const originalAttributes = new WeakMap<Element, Map<string, string>>();
@@ -3085,11 +3086,17 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   const progress = applicableMilestones.length ? Math.round(completed / applicableMilestones.length * 100) : 0;
   const selectedDocuments = selected ? documents.filter((document) => document.category === selected.category) : [];
   const latestTracking = data?.tracking[0];
-  const shippingGateReady = Boolean(
-    data?.milestones.find((milestone) => milestone.code === "QUALITY_CONTROL")?.qualityStatus === "Aprovado"
-    && data?.compliance.score === 100
-    && (!data.compliance.eudrRequired || operation.readiness === 100)
-  );
+  const qualityStatus = data?.milestones.find((milestone) => milestone.code === "QUALITY_CONTROL")?.qualityStatus || "Não iniciado";
+  const previousStagesComplete = Boolean(data?.milestones
+    .filter((milestone) => milestone.sequence < 6 && milestone.status !== "Suspenso")
+    .every((milestone) => milestone.status === "Concluído"));
+  const shippingGateReady = Boolean(data && canApproveShipment({
+    eudrRequired: data.compliance.eudrRequired,
+    eudrReadiness: operation.readiness,
+    countryComplianceScore: data.compliance.score,
+    qualityStatus,
+    previousStagesComplete,
+  }));
 
   async function post(body: Record<string, unknown>, successMessage: string) {
     setAction(String(body.action || "saving"));
@@ -3132,7 +3139,7 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
       return;
     }
     if (selected.code === "SHIPMENT_APPROVAL" && (draft.shipmentApproval === "Aprovado" || status === "Concluído") && !shippingGateReady) {
-      showNotice(data?.compliance.eudrRequired ? "A aprovação exige: qualidade aprovada, checklist do país 100% e prontidão EUDR 100%." : "A aprovação exige: qualidade aprovada e checklist do país 100%.");
+      showNotice(data?.compliance.eudrRequired ? "A aprovação exige: etapas anteriores concluídas, qualidade aprovada, checklist do país 100% e prontidão EUDR 100%." : qualityStatus === "Reprovado" ? "A aprovação foi bloqueada porque a qualidade está reprovada." : "Conclua as etapas anteriores para liberar a aprovação. EUDR e checklist documental não bloqueiam destinos fora da União Europeia.");
       return;
     }
     await post({ action: "milestone", code: selected.code, ...draft, status }, status === "Concluído" ? "Etapa concluída; atualização do cliente registrada automaticamente." : "Status operacional atualizado.");
@@ -3169,7 +3176,7 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
 
     <div className="export-control-metrics">
       <article><span>Etapa atual</span><strong>{data.milestones.find((milestone) => ["Em andamento", "Aguardando aprovação"].includes(milestone.status))?.title || selected.title}</strong><small>{selected.status}</small></article>
-      <article><span>Liberação de embarque</span><strong>{shippingGateReady ? "Liberável" : "Bloqueada"}</strong><small>{shippingGateReady ? (data.compliance.eudrRequired ? "Três gates atendidos" : "EUDR suspenso · gates operacionais atendidos") : data.compliance.eudrRequired ? "Qualidade + país + EUDR" : "Qualidade + país"}</small></article>
+      <article><span>Liberação de embarque</span><strong>{shippingGateReady ? "Liberável" : "Bloqueada"}</strong><small>{shippingGateReady ? (data.compliance.eudrRequired ? "Etapas + qualidade + país + EUDR" : "EUDR não aplicável · etapas e qualidade liberadas") : data.compliance.eudrRequired ? "Etapas + qualidade + país + EUDR" : qualityStatus === "Reprovado" ? "Qualidade reprovada" : "Etapas anteriores pendentes"}</small></article>
       <article className={data.operationalAlerts.missingPlan || data.operationalAlerts.overdue ? "attention" : ""}><span>Pendências operacionais</span><strong>{data.operationalAlerts.missingPlan + data.operationalAlerts.overdue}</strong><small>{data.operationalAlerts.missingPlan} sem plano · {data.operationalAlerts.overdue} atrasada(s)</small></article>
       <article><span>Próximo tracking</span><strong>{data.settings.nextTrackingAt ? formatDate(data.settings.nextTrackingAt) : "A programar"}</strong><small>A cada {data.settings.trackingIntervalDays} dias</small></article>
     </div>
@@ -3201,7 +3208,7 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
           <div><span>{data.eudrBridge.required ? "SUPPLY CHAIN + DDS EUDR" : "EUDR SUSPENSO"}</span><strong>{data.eudrBridge.required ? `${data.eudrBridge.readiness}%` : "N/A"}</strong><p>{data.eudrBridge.status}{data.eudrBridge.reference ? ` · ${data.eudrBridge.reference}` : ""}</p></div>
           {data.eudrBridge.required ? <button onClick={onOpenSupplyChain}>Abrir Supply Chain e inspeção EUDR →</button> : <button onClick={onOpenSupplyChain}>Abrir supply chain operacional →</button>}
         </section>}
-        {selected.code === "SHIPMENT_APPROVAL" && <div className={`shipment-gate ${shippingGateReady ? "ready" : "blocked"}`}><b>{shippingGateReady ? "✓ Pedido pronto para aprovação humana" : "! Aprovação ainda bloqueada"}</b><span>{data.compliance.eudrRequired ? `EUDR ${operation.readiness}% · ` : "EUDR suspenso · "}país {data.compliance.score}% · qualidade {data.milestones.find((milestone) => milestone.code === "QUALITY_CONTROL")?.qualityStatus || "Não iniciada"}</span></div>}
+        {selected.code === "SHIPMENT_APPROVAL" && <div className={`shipment-gate ${shippingGateReady ? "ready" : "blocked"}`}><b>{shippingGateReady ? "✓ Pedido pronto para aprovação humana" : "! Aprovação ainda bloqueada"}</b><span>{data.compliance.eudrRequired ? `EUDR ${operation.readiness}% · país ${data.compliance.score}% · ` : "EUDR não aplicável ao destino · "}etapas anteriores {previousStagesComplete ? "concluídas" : "pendentes"} · qualidade {qualityStatus}</span></div>}
         <div className="export-editor-actions"><button disabled={Boolean(action)} onClick={() => saveMilestone()}>Salvar atualização</button><button className="primary" disabled={Boolean(action) || selected.status === "Concluído"} onClick={() => saveMilestone("Concluído")}>Concluir etapa e notificar cliente ✓</button></div>
 
         <div className="export-stage-files">

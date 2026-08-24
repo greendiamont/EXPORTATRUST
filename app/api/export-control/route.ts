@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { ensureBaseTables, getDb } from "../../../db";
 import { clientNotifications, countryComplianceChecks, exportControlSettings, exportMilestones, operationDocuments, operations, shipmentTrackingEvents } from "../../../db/schema";
-import { addDays, countryRequirements, EXPORT_ORDER_MILESTONES, isEudrRequired, milestoneEmail, requirementMatches } from "../../../lib/export-control";
+import { addDays, canApproveShipment, countryRequirements, EXPORT_ORDER_MILESTONES, isEudrRequired, milestoneEmail, requirementMatches } from "../../../lib/export-control";
 import { audit, requireSecurityContext } from "../../../lib/security";
 
 function errorMessage(error: unknown) {
@@ -269,6 +269,28 @@ export async function POST(request: Request) {
       const nextAction = String(body.nextAction ?? "").trim();
       const note = String(body.note ?? "").trim();
       if (responsibleEmail && !validEmail(responsibleEmail)) return Response.json({ error: "Informe um e-mail válido para o responsável da etapa." }, { status: 400 });
+      if (code === "SHIPMENT_APPROVAL" && (shipmentApproval === "Aprovado" || status === "Concluído")) {
+        const currentControl = await snapshot(operationId, context.organizationId, true);
+        const qualityStatusCurrent = currentControl.milestones.find((item) => item.code === "QUALITY_CONTROL")?.qualityStatus || "Não iniciado";
+        const previousStagesComplete = currentControl.milestones
+          .filter((item) => item.sequence < 6 && item.status !== "Suspenso")
+          .every((item) => item.status === "Concluído");
+        const allowed = canApproveShipment({
+          eudrRequired: currentControl.compliance.eudrRequired,
+          eudrReadiness: currentControl.operation.readiness,
+          countryComplianceScore: currentControl.compliance.score,
+          qualityStatus: qualityStatusCurrent,
+          previousStagesComplete,
+        });
+        if (!allowed) {
+          const error = currentControl.compliance.eudrRequired
+            ? "A aprovação exige etapas anteriores concluídas, qualidade aprovada, checklist do país 100% e prontidão EUDR 100%."
+            : qualityStatusCurrent === "Reprovado"
+              ? "A aprovação foi bloqueada porque a qualidade está reprovada."
+              : "Conclua as etapas anteriores. EUDR e checklist documental não bloqueiam destinos fora da União Europeia.";
+          return Response.json({ error }, { status: 409 });
+        }
+      }
       const completedAt = status === "Concluído" ? now.toISOString() : null;
       await db.update(exportMilestones).set({ status, qualityStatus, shipmentApproval, responsibleName, responsibleEmail, dueDate, nextAction, note, completedAt, updatedAt: now.toISOString() }).where(and(eq(exportMilestones.id, milestone.id), eq(exportMilestones.organizationId, context.organizationId)));
       if (status === "Concluído") {

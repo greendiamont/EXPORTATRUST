@@ -4,7 +4,7 @@ export const EXPORT_ORDER_MILESTONES = [
   { code: "PRODUCTION_PLAN", sequence: 3, title: "Programação da produção", titleEn: "Production scheduled", category: "Export Control · Programação da produção", description: "Ordem de produção, matéria-prima, lotes e data prometida programados." },
   { code: "PRODUCTION", sequence: 4, title: "Produção", titleEn: "Production", category: "Export Control · Produção", description: "Acompanhamento do volume produzido, lotes e eventuais desvios." },
   { code: "QUALITY_CONTROL", sequence: 5, title: "Controle de qualidade", titleEn: "Quality control", category: "Export Control · Controle de qualidade", description: "Inspeção dimensional, umidade, embalagem, marcação e registro de não conformidades." },
-  { code: "SHIPMENT_APPROVAL", sequence: 6, title: "Aprovação para embarque", titleEn: "Shipment approval", category: "Export Control · Aprovação de embarque", description: "Liberação humana após qualidade, quantidade, EUDR e documentos mínimos." },
+  { code: "SHIPMENT_APPROVAL", sequence: 6, title: "Aprovação para embarque", titleEn: "Shipment approval", category: "Export Control · Aprovação de embarque", description: "Liberação humana após as etapas anteriores e a qualidade; EUDR é obrigatório somente para destinos da União Europeia." },
   { code: "BOOKING", sequence: 7, title: "Booking confirmado", titleEn: "Booking confirmed", category: "Export Control · Booking", description: "Armador, booking, navio, viagem, cut-off, porto e previsão de embarque." },
   { code: "STUFFING", sequence: 8, title: "Estufagem e fotos", titleEn: "Container stuffing and photos", category: "Export Control · Estufagem e fotos", description: "Contêiner, lacre, carregamento, fotos, tally, peso e condição da carga." },
   { code: "DOCUMENT_SET", sequence: 9, title: "Set documental", titleEn: "Document set", category: "Export Control · Set documental", description: "Invoice, packing list, certificados e documentos exigidos pelo destino revisados." },
@@ -37,6 +37,22 @@ export function isEudrRequired(country: string, hsCode: string, product: string)
   const isEu = EU_COUNTRIES.some((item) => destination.includes(item));
   const isWood = goods.includes("44") || goods.includes("madeira") || goods.includes("pellet") || goods.includes("wood");
   return isEu && isWood;
+}
+
+export type ShipmentApprovalGateInput = {
+  eudrRequired: boolean;
+  eudrReadiness: number;
+  countryComplianceScore: number;
+  qualityStatus: string;
+  previousStagesComplete: boolean;
+};
+
+export function canApproveShipment(input: ShipmentApprovalGateInput) {
+  if (!input.previousStagesComplete || input.qualityStatus === "Reprovado") return false;
+  if (!input.eudrRequired) return true;
+  return input.qualityStatus === "Aprovado"
+    && input.countryComplianceScore === 100
+    && input.eudrReadiness === 100;
 }
 
 export function countryRequirements(country: string, hsCode: string, product: string): ComplianceRequirement[] {
