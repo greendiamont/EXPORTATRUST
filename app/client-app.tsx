@@ -2755,13 +2755,16 @@ function OperationCommandCenter({ operation, properties, forestDocuments, onClos
 
   async function removeDocument(document: DocumentRecord) {
     if (!window.confirm(`Excluir ${document.fileName} desta operação?`)) return;
-    const response = await fetch(`/api/documents?id=${document.id}`, { method: "DELETE" });
-    if (response.ok) {
-      const data = await response.json() as { readiness?: number };
+    try {
+      const response = await fetch(`/api/documents?id=${document.id}`, { method: "DELETE" });
+      const data = await response.json() as { readiness?: number; error?: string };
+      if (!response.ok) throw new Error(data.error || "Não foi possível remover o documento.");
       setDocuments((current) => current.filter((item) => item.id !== document.id));
       if (typeof data.readiness === "number") onReadinessChange(operation.id, data.readiness);
       showNotice("Documento removido da operação.");
-    } else showNotice("Não foi possível remover o documento.");
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : "Não foi possível remover o documento.");
+    }
   }
 
   async function addPartner() {
