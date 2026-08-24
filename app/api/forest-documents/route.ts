@@ -34,10 +34,13 @@ export async function GET(request: Request) {
       if (!record) return Response.json({ error: "Documento da floresta não encontrado." }, { status: 404 });
       const object = await (await getBucket()).get(record.objectKey);
       if (!object) return Response.json({ error: "Arquivo não encontrado no armazenamento." }, { status: 404 });
+      const inline = url.searchParams.get("inline") === "1";
       return new Response(object.body, { headers: {
         "content-type": record.contentType,
-        "content-disposition": `attachment; filename*=UTF-8''${encodeURIComponent(record.fileName)}`,
+        "content-disposition": `${inline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(record.fileName)}`,
         "content-length": String(record.sizeBytes),
+        "cache-control": "private, no-store",
+        "x-content-type-options": "nosniff",
       } });
     }
 
