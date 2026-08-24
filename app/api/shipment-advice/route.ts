@@ -82,7 +82,7 @@ export async function POST(request: Request) {
   try {
     const context = await requireSecurityContext("write");
     await ensureBaseTables();
-    const body = await request.json() as { operationId?: number; action?: string; documentId?: number; approved?: boolean };
+    const body = await request.json() as { operationId?: number; action?: string; documentId?: number; approved?: boolean; recipient?: string };
     const operationId = Number(body.operationId);
     if (!operationId) return Response.json({ error: "Processo inválido." }, { status: 400 });
     const db = await getDb();
@@ -94,16 +94,21 @@ export async function POST(request: Request) {
       await audit(context, body.approved ? "SHIPMENT_DOCUMENT_APPROVED" : "SHIPMENT_DOCUMENT_REVIEW_REOPENED", "operation_document", String(documentId), { operationId, fileName: document.fileName });
       return Response.json(await snapshot(operationId, context.organizationId));
     }
-    if (body.action === "approve-send") {
+    if (body.action === "test-send" || body.action === "approve-send") {
       const current = await snapshot(operationId, context.organizationId);
       if (!current.complete) return Response.json({ error: "O set obrigatório ainda está incompleto. Aprove os documentos pendentes da Etapa 09." }, { status: 409 });
       if (!current.generated.included.length) return Response.json({ error: "Nenhum documento foi aprovado para envio." }, { status: 409 });
       const [settings] = await db.select().from(exportControlSettings).where(and(eq(exportControlSettings.operationId, operationId), eq(exportControlSettings.organizationId, context.organizationId))).limit(1);
-      const recipient = settings?.customerEmail || current.generated.recipient;
+      const recipient = String(body.recipient || settings?.customerEmail || current.generated.recipient).trim().toLowerCase();
       const delivery = await deliverShipmentAdvice(recipient, current.generated.subject, current.generated.body, current.generated.included);
       const now = new Date().toISOString();
-      await db.insert(clientNotifications).values({ organizationId: context.organizationId, operationId, milestoneCode: "DOCUMENT_SET", recipient, subject: current.generated.subject, body: current.generated.body, status: delivery.status, provider: delivery.provider, externalId: delivery.externalId, error: delivery.error, sentAt: delivery.status === "Enviado" ? now : null });
+      const isTest = body.action === "test-send";
+      await db.insert(clientNotifications).values({ organizationId: context.organizationId, operationId, milestoneCode: isTest ? "SHIPMENT_TEST" : "DOCUMENT_SET", recipient, subject: `${isTest ? "[TESTE] " : ""}${current.generated.subject}`, body: current.generated.body, status: delivery.status, provider: delivery.provider, externalId: delivery.externalId, error: delivery.error, sentAt: delivery.status === "Enviado" ? now : null });
       if (delivery.status !== "Enviado") return Response.json({ error: delivery.error, delivery }, { status: 503 });
+      if (isTest) {
+        await audit(context, "SHIPMENT_ADVICE_TEST_SENT", "operation", String(operationId), { recipient, documentCount: current.generated.included.length, externalId: delivery.externalId });
+        return Response.json({ ...(await snapshot(operationId, context.organizationId)), delivery });
+      }
       const sentAdvice = { organizationId: context.organizationId, operationId, status: "Enviado · aprovado por responsável", recipient, subject: current.generated.subject, body: current.generated.body, paymentRequest: "Solicitar pagamento do saldo e comprovante SWIFT / MT103.", documentIdsJson: JSON.stringify(current.generated.included.map((document) => document.id)), checklistJson: JSON.stringify(current.generated.checklist), humanApproved: true, approvedBy: context.email, approvedAt: now, sentAt: now, updatedAt: now };
       await db.insert(shipmentAdvices).values(sentAdvice).onConflictDoUpdate({ target: [shipmentAdvices.organizationId, shipmentAdvices.operationId], set: sentAdvice });
       await audit(context, "SHIPMENT_ADVICE_APPROVED_AND_SENT", "operation", String(operationId), { recipient, documentCount: current.generated.included.length, externalId: delivery.externalId });

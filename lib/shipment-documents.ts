@@ -86,12 +86,18 @@ export const SHIPMENT_ADVICE_CHECKLIST = [
   { key: "photos", label: "Fotos / evidências de carregamento", types: ["Tally / conferência de carga", "Certificado de limpeza do contêiner"], required: false },
 ] as const;
 
-export function shipmentChecklist(documents: Array<{ documentType: string; shipmentSetStatus: string }>) {
+export function resolvedShipmentDocumentType(document: { fileName?: string; documentType?: string; analysisSummary?: string }) {
+  const stored = String(document.documentType || "").trim();
+  if (stored && stored !== "Outro documento" && stored !== "Documento") return stored;
+  return analyzeShipmentDocument(document.fileName || "", document.analysisSummary || "").documentType;
+}
+
+export function shipmentChecklist(documents: Array<{ fileName?: string; documentType?: string; analysisSummary?: string; shipmentSetStatus: string }>) {
   return SHIPMENT_ADVICE_CHECKLIST.map((item) => ({
     key: item.key,
     label: item.label,
     required: item.required,
-    present: documents.some((document) => document.shipmentSetStatus === "Incluído" && item.types.includes(document.documentType as never)),
+    present: documents.some((document) => document.shipmentSetStatus === "Incluído" && item.types.includes(resolvedShipmentDocumentType(document) as never)),
   }));
 }
 
@@ -124,7 +130,7 @@ export function buildShipmentAdvice(
   documents: Array<{ id: number; fileName: string; category?: string; documentType: string; shipmentSetStatus: string; clientShareStatus?: string }>,
   customer: { name: string; email: string },
 ) {
-  const candidates = documents.filter(isShipmentSetDocument);
+  const candidates = documents.filter(isShipmentSetDocument).map((document) => ({ ...document, documentType: resolvedShipmentDocumentType(document) }));
   const included = candidates.filter((document) => document.shipmentSetStatus === "Incluído" && document.clientShareStatus === "Aprovado");
   const checklist = shipmentChecklist(included);
   const invoice = operation.contractNumber || operation.reference;

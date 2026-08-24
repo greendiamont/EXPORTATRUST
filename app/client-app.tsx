@@ -467,6 +467,7 @@ type ShipmentAdviceData = {
     checklist: Array<{ key: string; label: string; required: boolean; present: boolean }>;
   };
   complete: boolean;
+  delivery?: { status: string; provider: string; externalId: string; error: string };
 };
 type AgentMetrics = { activeAgents: number; jobsExecuted: number; jobsPending: number; awaitingApproval: number; failures: number; alerts: number; cost: number; revenue: number; grossMargin: number; marginPct: number; estimatedSavings: number };
 type AgentControlData = { settings: AgentSettingsRecord; services: AgentServiceRecord[]; jobs: AgentJobRecord[]; ledger: AgentLedgerRecord[]; reputation: AgentReputationRecord[]; metrics: AgentMetrics };
@@ -3043,6 +3044,7 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   const [previewMessage, setPreviewMessage] = useState<{ subject: string; body: string } | null>(null);
   const [shipmentAdvice, setShipmentAdvice] = useState<ShipmentAdviceData | null>(null);
   const [shipmentAdviceAction, setShipmentAdviceAction] = useState(false);
+  const [aiReportVisible, setAiReportVisible] = useState(false);
 
   useEffect(() => {
     let activeRequest = true;
@@ -3193,6 +3195,25 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
     } finally { setShipmentAdviceAction(false); }
   }
 
+  async function sendShipmentAdviceTest() {
+    if (!shipmentAdvice?.complete) { showNotice("Aprove primeiro todos os documentos obrigatórios da Etapa 09."); return; }
+    setShipmentAdviceAction(true);
+    try {
+      const response = await fetch("/api/shipment-advice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ operationId: operation.id, action: "test-send", recipient: settings.customerEmail }) });
+      const payload = await response.json() as ShipmentAdviceData & { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Não foi possível enviar o teste do Shipment Advice.");
+      setShipmentAdvice(payload);
+      showNotice(`Teste do Shipment Advice enviado para ${settings.customerEmail} com ${payload.generated.included.length} anexo(s).`);
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : "Falha ao enviar o teste do Shipment Advice.");
+    } finally { setShipmentAdviceAction(false); }
+  }
+
+  async function runAiOperationCheck() {
+    const payload = await post({ action: "country-check" }, "Relatório da operação atualizado pela IA.");
+    if (payload) setAiReportVisible(true);
+  }
+
   if (loading) return <div className="command-loading">Preparando a torre de controle do pedido…</div>;
   if (!data || !selected) return <div className="empty-command">Não foi possível iniciar o acompanhamento deste pedido.</div>;
 
@@ -3258,6 +3279,7 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
           <div className="shipment-final-files">{shipmentAdvice?.generated.candidates.map((document) => { const approved = document.shipmentSetStatus === "Incluído" && document.clientShareStatus === "Aprovado"; return <article key={document.id} className={approved ? "approved" : "review"}><span className="shipment-file-icon">{approved ? "✓" : fileIcon(document.fileName)}</span><div><b>{document.documentType || "Documento da Etapa 09"}</b><small>{document.fileName}</small><em>{approved ? "OK para envio" : "Aguardando conferência"}</em></div><button className="view-document" onClick={() => openSecureDocument(document.id, "operation", true)}>Ver</button><button className={approved ? "reopen-document" : "approve-document"} disabled={shipmentAdviceAction} onClick={() => setShipmentDocumentStatus(document, !approved)}>{approved ? "Reabrir" : "Aprovar"}</button></article>; })}{shipmentAdvice && !shipmentAdvice.generated.candidates.length && <p>Nenhum documento foi incluído na Etapa 09.</p>}</div>
           <div className="shipment-advice-status"><b>{shipmentAdvice?.advice?.status || "Rascunho ainda não gerado"}</b><span>{shipmentAdvice?.advice?.humanApproved ? "Aprovado por responsável" : "Envio bloqueado até aprovação humana"}</span></div>
           <button className="primary" disabled={shipmentAdviceAction} onClick={regenerateShipmentAdvice}>{shipmentAdviceAction ? "Preparando…" : "Atualizar rascunho do Shipment Advice"}</button>
+          <button disabled={shipmentAdviceAction || !shipmentAdvice?.complete || !settings.customerEmail} onClick={sendShipmentAdviceTest}>{shipmentAdviceAction ? "Enviando…" : "Enviar teste com todos os anexos"}</button>
           <button className="send-shipment" disabled={shipmentAdviceAction || !shipmentAdvice?.complete || !settings.customerEmail} onClick={sendShipmentAdvice}>Aprovar e enviar e-mail com anexos ✓</button>
           {shipmentAdvice && <button onClick={() => setPreviewMessage({ subject: shipmentAdvice.advice?.subject || shipmentAdvice.generated.subject, body: shipmentAdvice.advice?.body || shipmentAdvice.generated.body })}>Ver prévia com cobrança e documentos</button>}
         </section>
@@ -3276,12 +3298,15 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
         </section>
 
         <section className="country-ai-card panel">
-          <header><div><p className="eyebrow">AI FULL OPERATION CHECK</p><h3>{operation.destinationCountry}</h3></div><strong>{Math.round((data.compliance.score + data.compliance.stageScore) / 2)}%</strong></header>
-          <p>Verificação completa das etapas, documentos e exigências do país para o produto e HS Code {operation.hsCode}.</p>
-          <div className={`ai-verdict ${data.compliance.status === "Aprovado" ? "ready" : "pending"}`}><b>{data.compliance.verdict}</b><span>{data.compliance.opinion}</span></div>
-          <div className="ai-check-columns"><section><h4>Exigências do destino · {data.compliance.score}%</h4>{data.compliance.requirements.map((requirement) => <article key={requirement.key} className={requirement.present ? "ready" : requirement.required ? "missing" : "conditional"}><span>{requirement.present ? "✓" : requirement.required ? "!" : "?"}</span><div><b>{requirement.label}</b><small>{requirement.reason}</small></div><em>{requirement.present ? "Localizado" : requirement.required ? "Pendente" : "Condicional"}</em></article>)}</section><section><h4>Etapas operacionais · {data.compliance.stageScore}%</h4>{data.compliance.stages.map((stage) => <article key={stage.code} className={stage.passed ? "ready" : stage.applicable ? "missing" : "conditional"}><span>{stage.passed ? "✓" : stage.applicable ? "!" : "—"}</span><div><b>{String(stage.sequence).padStart(2, "0")} · {stage.title}</b><small>{stage.issue} · {stage.documentCount} documento(s)</small></div><em>{stage.status}</em></article>)}</section></div>
-          <button disabled={Boolean(action)} onClick={() => post({ action: "country-check" }, "Todas as etapas e exigências do país foram reprocessadas e o parecer foi registrado.")}>Verificar operação completa com IA ↻</button>
-          <small>Resultado preliminar; exigências oficiais do país, produto e importador devem ser confirmadas antes do embarque.</small>
+          <header><div><p className="eyebrow">AI FULL OPERATION CHECK</p><h3>Relatório da operação</h3></div></header>
+          <p>Uma única verificação cruza as etapas, os documentos e as exigências de {operation.destinationCountry}.</p>
+          <button className="ai-run-button" disabled={Boolean(action)} onClick={runAiOperationCheck}>{action === "country-check" ? "VERIFICANDO…" : "VERIFICAR OPERAÇÃO COM IA"}</button>
+          {aiReportVisible && <div className="ai-operation-report">
+            <header><div><b>{data.compliance.verdict}</b><span>{data.compliance.opinion}</span></div><strong>{Math.round((data.compliance.score + data.compliance.stageScore) / 2)}%</strong></header>
+            <section><h4>Pendências encontradas</h4>{data.compliance.requirements.filter((item) => item.required && !item.present).map((item) => <article key={item.key} className="missing"><span>!</span><div><b>{item.label}</b><small>{item.reason}</small></div></article>)}{!data.compliance.requirements.some((item) => item.required && !item.present) && <p>✓ Nenhuma exigência documental obrigatória pendente.</p>}</section>
+            <section><h4>Status de cada etapa</h4><div className="ai-stage-report">{data.compliance.stages.map((stage) => <article key={stage.code} className={stage.passed ? "ready" : stage.applicable ? "missing" : "conditional"}><span>{stage.passed ? "✓" : stage.applicable ? "!" : "—"}</span><div><b>{String(stage.sequence).padStart(2, "0")} · {stage.title}</b><small>{stage.issue} · {stage.documentCount} documento(s)</small></div><em>{stage.status}</em></article>)}</div></section>
+            <small>Relatório preliminar; confirme exigências oficiais do país, produto e importador antes do embarque.</small>
+          </div>}
         </section>
 
         <section className="tracking-card panel">
