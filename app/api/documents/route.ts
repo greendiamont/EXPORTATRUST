@@ -81,9 +81,13 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const context = await requireSecurityContext("delete");
+    // Document lifecycle follows the same permission used to upload and manage
+    // operation evidence. Record-level tenant checks below still prevent a
+    // user from touching another organization's files.
+    const context = await requireSecurityContext("write");
     await ensureBaseTables();
     const id = Number(new URL(request.url).searchParams.get("id"));
+    if (!Number.isSafeInteger(id) || id <= 0) return Response.json({ error: "Documento inválido." }, { status: 400 });
     const db = await getDb();
     const [record] = await db.select().from(operationDocuments).where(and(eq(operationDocuments.id, id), eq(operationDocuments.organizationId, context.organizationId))).limit(1);
     if (!record) return Response.json({ error: "Documento não encontrado." }, { status: 404 });
@@ -94,6 +98,7 @@ export async function DELETE(request: Request) {
     const readiness = await refreshOperationReadiness(db, record.operationId);
     return Response.json({ ok: true, readiness });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

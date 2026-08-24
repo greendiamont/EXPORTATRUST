@@ -35,6 +35,15 @@ test("signed-in document access remains durable while metadata and bytes stay pr
   }
 });
 
+test("operation document removal follows document management permission and keeps tenant isolation", async () => {
+  const route = await read("app/api/documents/route.ts");
+  const client = await read("app/client-app.tsx");
+  assert.match(route, /export async function DELETE[\s\S]*requireSecurityContext\("write"\)/);
+  assert.match(route, /eq\(operationDocuments\.organizationId, context\.organizationId\)/);
+  assert.match(route, /if \(error instanceof Response\) return error/);
+  assert.match(client, /data\.error \|\| "Não foi possível remover o documento\."/);
+});
+
 test("PDF outputs receive SHA-256 integrity records", async () => {
   for (const path of ["app/api/eudr-report/route.ts", "app/api/forest-dossier/route.ts"]) {
     const source = await read(path);
