@@ -95,6 +95,12 @@ export function shipmentChecklist(documents: Array<{ documentType: string; shipm
   }));
 }
 
+export const SHIPMENT_SET_CATEGORY = "Export Control · Set documental";
+
+export function isShipmentSetDocument(document: { category?: string }) {
+  return document.category === SHIPMENT_SET_CATEGORY;
+}
+
 export function buildShipmentAdvice(
   operation: {
     reference: string;
@@ -115,11 +121,12 @@ export function buildShipmentAdvice(
     quantityUnit?: string;
     supplierBankDetails?: string;
   },
-  documents: Array<{ id: number; fileName: string; documentType: string; shipmentSetStatus: string }>,
+  documents: Array<{ id: number; fileName: string; category?: string; documentType: string; shipmentSetStatus: string; clientShareStatus?: string }>,
   customer: { name: string; email: string },
 ) {
-  const included = documents.filter((document) => document.shipmentSetStatus === "Incluído");
-  const checklist = shipmentChecklist(documents);
+  const candidates = documents.filter(isShipmentSetDocument);
+  const included = candidates.filter((document) => document.shipmentSetStatus === "Incluído" && document.clientShareStatus === "Aprovado");
+  const checklist = shipmentChecklist(included);
   const invoice = operation.contractNumber || operation.reference;
   const destination = operation.portOfDischarge || operation.destinationCountry || "TBC";
   const containerCount = operation.containerNumbers
@@ -192,6 +199,7 @@ ${bankDetails}`;
     recipient: customer.email,
     subject,
     body,
+    candidates,
     included,
     checklist,
   };

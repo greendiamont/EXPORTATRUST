@@ -18,3 +18,25 @@ test("shipment advice uses Hub operational email model", async () => {
   assert.match(client, /Shipment Advice \/ Set of Documents/);
   assert.doesNotMatch(template, /Order & compliance update/);
 });
+
+test("stage 09 is the authoritative shipment folder with human document approval", async () => {
+  const template = await read("lib/shipment-documents.ts");
+  const route = await read("app/api/shipment-advice/route.ts");
+  const client = await read("app/client-app.tsx");
+  assert.match(template, /SHIPMENT_SET_CATEGORY = "Export Control · Set documental"/);
+  assert.match(template, /candidates\.filter\(\(document\) => document\.shipmentSetStatus === "Incluído" && document\.clientShareStatus === "Aprovado"\)/);
+  assert.match(route, /action === "set-document-status"/);
+  assert.match(route, /action === "approve-send"/);
+  assert.match(route, /attachments/);
+  assert.match(client, /Aprovar e enviar e-mail com anexos/);
+});
+
+test("AI country check evaluates requirements and every operational stage", async () => {
+  const route = await read("app/api/export-control/route.ts");
+  const client = await read("app/client-app.tsx");
+  assert.match(route, /const stageRows = milestones\.map/);
+  assert.match(route, /stageScore/);
+  assert.match(route, /verdict/);
+  assert.match(client, /AI FULL OPERATION CHECK/);
+  assert.match(client, /Verificar operação completa com IA/);
+});

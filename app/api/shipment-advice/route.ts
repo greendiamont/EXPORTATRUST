@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { ensureBaseTables, getDb } from "../../../db";
-import { exportControlSettings, operationDocuments, operations, shipmentAdvices, suppliers } from "../../../db/schema";
-import { buildShipmentAdvice } from "../../../lib/shipment-documents";
+import { clientNotifications, exportControlSettings, operationDocuments, operations, shipmentAdvices, suppliers } from "../../../db/schema";
+import { buildShipmentAdvice, SHIPMENT_SET_CATEGORY } from "../../../lib/shipment-documents";
 import { audit, requireSecurityContext } from "../../../lib/security";
 
 function errorMessage(error: unknown) {
@@ -13,6 +13,38 @@ async function ensureSupplierBankDetails() {
   const info = await env.DB.prepare("PRAGMA table_info(suppliers)").all<{ name: string }>();
   const names = new Set((info.results ?? []).map((column) => column.name));
   if (!names.has("bank_details")) await env.DB.prepare("ALTER TABLE suppliers ADD bank_details text DEFAULT '' NOT NULL").run();
+}
+
+function validEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function bytesToBase64(bytes: Uint8Array) {
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 0x8000) binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  return btoa(binary);
+}
+
+async function deliverShipmentAdvice(recipient: string, subject: string, body: string, documents: Array<{ objectKey: string; fileName: string; sizeBytes: number }>) {
+  if (!validEmail(recipient)) return { status: "Falha", provider: "validation", externalId: "", error: "Informe um e-mail válido para o cliente." };
+  const { env } = await import("cloudflare:workers");
+  const runtime = env as unknown as Record<string, unknown>;
+  const apiKey = String(runtime.RESEND_API_KEY ?? "").trim();
+  const from = String(runtime.EMAIL_FROM ?? "").trim();
+  if (!apiKey || !from) return { status: "Não enviado", provider: "not-configured", externalId: "", error: "Configure RESEND_API_KEY e EMAIL_FROM com um domínio remetente verificado." };
+  const totalBytes = documents.reduce((sum, document) => sum + document.sizeBytes, 0);
+  if (totalBytes > 35 * 1024 * 1024) return { status: "Falha", provider: "validation", externalId: "", error: "Os anexos aprovados ultrapassam 35 MB. Reduza o set antes do envio." };
+  const attachments = [] as Array<{ filename: string; content: string }>;
+  for (const document of documents) {
+    const object = await env.BUCKET?.get(document.objectKey);
+    if (!object) return { status: "Falha", provider: "storage", externalId: "", error: `Arquivo não localizado: ${document.fileName}.` };
+    attachments.push({ filename: document.fileName, content: bytesToBase64(new Uint8Array(await object.arrayBuffer())) });
+  }
+  const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ from, to: [recipient], subject, text: body, attachments }) });
+  const payload = await response.json() as { id?: string; message?: string };
+  return response.ok
+    ? { status: "Enviado", provider: "resend", externalId: payload.id || "", error: "" }
+    : { status: "Falha", provider: "resend", externalId: "", error: payload.message || `Falha HTTP ${response.status}.` };
 }
 
 async function snapshot(operationId: number, organizationId: number) {
@@ -50,11 +82,35 @@ export async function POST(request: Request) {
   try {
     const context = await requireSecurityContext("write");
     await ensureBaseTables();
-    const body = await request.json() as { operationId?: number; action?: string };
+    const body = await request.json() as { operationId?: number; action?: string; documentId?: number; approved?: boolean };
     const operationId = Number(body.operationId);
-    if (!operationId || body.action !== "regenerate") return Response.json({ error: "Ação inválida." }, { status: 400 });
-    const current = await snapshot(operationId, context.organizationId);
+    if (!operationId) return Response.json({ error: "Processo inválido." }, { status: 400 });
     const db = await getDb();
+    if (body.action === "set-document-status") {
+      const documentId = Number(body.documentId);
+      const [document] = await db.select().from(operationDocuments).where(and(eq(operationDocuments.id, documentId), eq(operationDocuments.operationId, operationId), eq(operationDocuments.organizationId, context.organizationId))).limit(1);
+      if (!document || document.category !== SHIPMENT_SET_CATEGORY) return Response.json({ error: "Documento da Etapa 09 não encontrado." }, { status: 404 });
+      await db.update(operationDocuments).set({ shipmentSetStatus: body.approved ? "Incluído" : "Candidato", clientShareStatus: body.approved ? "Aprovado" : "Revisão pendente" }).where(and(eq(operationDocuments.id, documentId), eq(operationDocuments.organizationId, context.organizationId)));
+      await audit(context, body.approved ? "SHIPMENT_DOCUMENT_APPROVED" : "SHIPMENT_DOCUMENT_REVIEW_REOPENED", "operation_document", String(documentId), { operationId, fileName: document.fileName });
+      return Response.json(await snapshot(operationId, context.organizationId));
+    }
+    if (body.action === "approve-send") {
+      const current = await snapshot(operationId, context.organizationId);
+      if (!current.complete) return Response.json({ error: "O set obrigatório ainda está incompleto. Aprove os documentos pendentes da Etapa 09." }, { status: 409 });
+      if (!current.generated.included.length) return Response.json({ error: "Nenhum documento foi aprovado para envio." }, { status: 409 });
+      const [settings] = await db.select().from(exportControlSettings).where(and(eq(exportControlSettings.operationId, operationId), eq(exportControlSettings.organizationId, context.organizationId))).limit(1);
+      const recipient = settings?.customerEmail || current.generated.recipient;
+      const delivery = await deliverShipmentAdvice(recipient, current.generated.subject, current.generated.body, current.generated.included);
+      const now = new Date().toISOString();
+      await db.insert(clientNotifications).values({ organizationId: context.organizationId, operationId, milestoneCode: "DOCUMENT_SET", recipient, subject: current.generated.subject, body: current.generated.body, status: delivery.status, provider: delivery.provider, externalId: delivery.externalId, error: delivery.error, sentAt: delivery.status === "Enviado" ? now : null });
+      if (delivery.status !== "Enviado") return Response.json({ error: delivery.error, delivery }, { status: 503 });
+      const sentAdvice = { organizationId: context.organizationId, operationId, status: "Enviado · aprovado por responsável", recipient, subject: current.generated.subject, body: current.generated.body, paymentRequest: "Solicitar pagamento do saldo e comprovante SWIFT / MT103.", documentIdsJson: JSON.stringify(current.generated.included.map((document) => document.id)), checklistJson: JSON.stringify(current.generated.checklist), humanApproved: true, approvedBy: context.email, approvedAt: now, sentAt: now, updatedAt: now };
+      await db.insert(shipmentAdvices).values(sentAdvice).onConflictDoUpdate({ target: [shipmentAdvices.organizationId, shipmentAdvices.operationId], set: sentAdvice });
+      await audit(context, "SHIPMENT_ADVICE_APPROVED_AND_SENT", "operation", String(operationId), { recipient, documentCount: current.generated.included.length, externalId: delivery.externalId });
+      return Response.json({ ...(await snapshot(operationId, context.organizationId)), delivery });
+    }
+    if (body.action !== "regenerate") return Response.json({ error: "Ação inválida." }, { status: 400 });
+    const current = await snapshot(operationId, context.organizationId);
     const values = {
       organizationId: context.organizationId,
       operationId,
