@@ -47,10 +47,10 @@ const nav = ["Dashboard", "Processos", "Portal Cliente", "Riscos", "Relatórios"
 const brazilStates = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
 
 async function openSecureDocument(documentId: number, documentType: "operation" | "forest", inline = false) {
-  const response = await fetch("/api/secure-documents", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ documentId, documentType, inline }) });
-  const payload = await response.json() as { url?: string; error?: string };
-  if (!response.ok || !payload.url) throw new Error(payload.error || "Não foi possível criar o acesso temporário.");
-  window.open(payload.url, "_blank", "noopener,noreferrer");
+  const route = documentType === "forest" ? "/api/forest-documents" : "/api/documents";
+  const parameters = new URLSearchParams({ documentId: String(documentId) });
+  if (inline) parameters.set("inline", "1");
+  window.open(`${route}?${parameters.toString()}`, "_blank", "noopener,noreferrer");
 }
 
 type MapProperty = {
@@ -1383,7 +1383,7 @@ export default function Home({ initialData }: { initialData: InitialAppData }) {
                 <span>{forestDocUploading ? "↻" : "↑"}</span><div><b>{forestDocUploading ? "Enviando arquivos…" : "Arraste Recibo, Demonstrativo e evidências aqui"}</b><small>PDF, imagens, GeoJSON, KML/KMZ ou ZIP · até 20 MB por arquivo</small></div><label htmlFor="forest-evidence-files">Selecionar arquivos</label>
               </div>
               <div className="forest-evidence-list">
-                {selectedForestDocuments.map((document) => <article key={document.id}><span>{fileIcon(document.fileName)}</span><div><b>{document.fileName}</b><small>{document.category} · {formatBytes(document.sizeBytes)} · {formatDate(document.uploadedAt)}</small>{document.notes && <small>{document.notes}</small>}</div><em>{document.source}</em><button title="Baixar com link temporário" onClick={() => openSecureDocument(document.id, "forest").catch((error) => showNotice(error.message))}>↓</button><button title="Excluir documento" onClick={() => removeForestDocument(document)}>×</button></article>)}
+                {selectedForestDocuments.map((document) => <article key={document.id}><span>{fileIcon(document.fileName)}</span><div><b>{document.fileName}</b><small>{document.category} · {formatBytes(document.sizeBytes)} · {formatDate(document.uploadedAt)}</small>{document.notes && <small>{document.notes}</small>}</div><em>{document.source}</em><button title="Baixar documento" onClick={() => openSecureDocument(document.id, "forest").catch((error) => showNotice(error.message))}>↓</button><button title="Excluir documento" onClick={() => removeForestDocument(document)}>×</button></article>)}
                 {!selectedForestDocuments.length && <div className="empty-command">Nenhum documento anexado a este CAR. O GeoJSON cadastrado continua disponível acima.</div>}
               </div>
               <footer><span>✓ CAR cadastrado</span><span>✓ GeoJSON vinculado</span><span className={selectedForestDocuments.some((document) => document.category === "Recibo CAR") ? "complete" : "pending"}>{selectedForestDocuments.some((document) => document.category === "Recibo CAR") ? "✓ Recibo CAR" : "! Recibo CAR pendente"}</span><span className={selectedForestDocuments.some((document) => document.category === "Demonstrativo CAR") ? "complete" : "pending"}>{selectedForestDocuments.some((document) => document.category === "Demonstrativo CAR") ? "✓ Demonstrativo CAR · incorporado no ponto 8" : "! Demonstrativo pendente · ponto 8 incompleto"}</span></footer>
@@ -1771,7 +1771,7 @@ export default function Home({ initialData }: { initialData: InitialAppData }) {
               />
               <section className="forest-detail-block">
                 <div className="forest-detail-title"><div><p className="eyebrow">DOCUMENTOS CAR</p><h3>Evidências do imóvel</h3></div><strong>{propertyDocuments.length}</strong></div>
-                <div className="forest-detail-documents">{propertyDocuments.map((document) => <article key={document.id}><span>{fileIcon(document.fileName)}</span><div><b>{document.fileName}</b><small>{document.category} · {formatBytes(document.sizeBytes)} · {formatDate(document.uploadedAt)}</small></div><button onClick={() => openSecureDocument(document.id, "forest")} title="Baixar com link temporário">↓</button></article>)}{!propertyDocuments.length && <p>Nenhum documento anexado a este imóvel.</p>}</div>
+                <div className="forest-detail-documents">{propertyDocuments.map((document) => <article key={document.id}><span>{fileIcon(document.fileName)}</span><div><b>{document.fileName}</b><small>{document.category} · {formatBytes(document.sizeBytes)} · {formatDate(document.uploadedAt)}</small></div><button onClick={() => openSecureDocument(document.id, "forest")} title="Baixar documento">↓</button></article>)}{!propertyDocuments.length && <p>Nenhum documento anexado a este imóvel.</p>}</div>
               </section>
               <section className="forest-detail-block">
                 <div className="forest-detail-title"><div><p className="eyebrow">PROCESSOS EUDR</p><h3>Onde esta floresta está sendo utilizada</h3></div><strong>{linkedOperations.length}</strong></div>
@@ -3010,7 +3010,7 @@ function OperationCommandCenter({ operation, properties, forestDocuments, onClos
             </div>
             <div className="stage-document-list-title"><div><h4>Documentos da etapa</h4><p>Estes arquivos serão posicionados nesta mesma etapa no dossiê EUDR.</p></div><span>{managedStageDocuments.length}</span></div>
             <div className="stage-document-list">
-              {managedStageDocuments.map((document) => <article key={document.id}><span>{fileIcon(document.fileName)}</span><div><b>{document.fileName}</b><small>{formatBytes(document.sizeBytes)} · {formatDate(document.uploadedAt)}</small>{document.notes && <small>{document.notes}</small>}</div><em>Recebido</em><button onClick={() => openSecureDocument(document.id, "operation", true)} title="Visualizar com link temporário">Visualizar</button><button onClick={() => openSecureDocument(document.id, "operation")} title="Baixar com link temporário">↓</button><button title="Excluir documento" onClick={() => removeDocument(document)}>Excluir</button></article>)}
+              {managedStageDocuments.map((document) => <article key={document.id}><span>{fileIcon(document.fileName)}</span><div><b>{document.fileName}</b><small>{formatBytes(document.sizeBytes)} · {formatDate(document.uploadedAt)}</small>{document.notes && <small>{document.notes}</small>}</div><em>Recebido</em><button onClick={() => openSecureDocument(document.id, "operation", true)} title="Visualizar documento">Visualizar</button><button onClick={() => openSecureDocument(document.id, "operation")} title="Baixar documento">↓</button><button title="Excluir documento" onClick={() => removeDocument(document)}>Excluir</button></article>)}
               {!managedStageDocuments.length && <div className="stage-document-empty">Nenhum arquivo anexado diretamente nesta etapa.</div>}
             </div>
             {managedStageIndex === 0 && <div className="stage-inherited-evidence"><div className="stage-inherited-heading"><div><h4>Dossiês das origens CAR</h4><p>Vinculados automaticamente à STAGE 01 e ao relatório DDS completo.</p></div><button onClick={onManageForests}>{linkedProperties.length ? "Gerenciar no módulo Florestas" : "Cadastrar / vincular floresta"}</button></div>{linkedProperties.map((property) => {
