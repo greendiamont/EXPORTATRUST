@@ -48,6 +48,14 @@ async function requiredConfig(context: SecurityContext) {
   return { clientId: saved.clientId, clientSecret: await decrypt(saved.clientSecretEncrypted, encryptionKey), redirectUri: saved.redirectUri, encryptionKey };
 }
 
+function canManageGmail(context: SecurityContext, env: Record<string, unknown>) {
+  const configuredAdmins = String(env.EXPORTATRUST_ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+  return context.role === "administrador" || configuredAdmins.includes(context.email.trim().toLowerCase());
+}
+
 async function encryptionKey(raw: string) {
   const decoded = raw.match(/^[0-9a-f]{64}$/i) ? Uint8Array.from(raw.match(/.{2}/g)!.map((item) => Number.parseInt(item, 16))) : base64ToBytes(raw);
   if (decoded.byteLength !== 32) throw new Error("GOOGLE_TOKEN_ENCRYPTION_KEY deve conter exatamente 32 bytes em base64 ou 64 caracteres hexadecimais.");
@@ -122,18 +130,18 @@ export async function gmailStatus() {
   const environmentConfigured = Boolean(String(env.GOOGLE_CLIENT_ID ?? "").trim() && String(env.GOOGLE_CLIENT_SECRET ?? "").trim() && String(env.GOOGLE_REDIRECT_URI ?? "").trim());
   const configured = Boolean(String(env.GOOGLE_TOKEN_ENCRYPTION_KEY ?? "").trim() && (environmentConfigured || savedConfig));
   const [connection] = await db.select({ gmailAddress: gmailConnections.gmailAddress, status: gmailConnections.status, scopesJson: gmailConnections.scopesJson, lastSyncAt: gmailConnections.lastSyncAt, lastError: gmailConnections.lastError, connectedAt: gmailConnections.connectedAt }).from(gmailConnections).where(and(eq(gmailConnections.organizationId, context.organizationId), eq(gmailConnections.userId, context.userId))).limit(1);
-  return { configured, connected: connection?.status === "Ativo", connection: connection ?? null, config: savedConfig ? { ...savedConfig, clientIdMasked: `${savedConfig.clientId.slice(0, 8)}…${savedConfig.clientId.slice(-12)}`, secretStored: true, source: "secure_admin" } : environmentConfigured ? { clientIdMasked: "Configurado no ambiente", redirectUri: String(env.GOOGLE_REDIRECT_URI ?? ""), secretStored: true, source: "runtime" } : null, canConfigure: context.role === "administrador", scopes: GMAIL_SCOPES };
+  return { configured, connected: connection?.status === "Ativo", connection: connection ?? null, config: savedConfig ? { ...savedConfig, clientIdMasked: `${savedConfig.clientId.slice(0, 8)}…${savedConfig.clientId.slice(-12)}`, secretStored: true, source: "secure_admin" } : environmentConfigured ? { clientIdMasked: "Configurado no ambiente", redirectUri: String(env.GOOGLE_REDIRECT_URI ?? ""), secretStored: true, source: "runtime" } : null, canConfigure: canManageGmail(context, env as Record<string, unknown>), scopes: GMAIL_SCOPES };
 }
 
 export async function saveGmailConfig(request: Request) {
   const context = await requireSecurityContext("write");
-  if (context.role !== "administrador") return Response.json({ error: "Somente administradores podem alterar credenciais do Google." }, { status: 403 });
+  const env = await runtimeEnv();
+  if (!canManageGmail(context, env as Record<string, unknown>)) return Response.json({ error: "Somente administradores autorizados podem alterar credenciais do Google." }, { status: 403 });
   await ensureGmailTables();
   const body = await request.json() as { clientId?: string; clientSecret?: string };
   const clientId = String(body.clientId ?? "").trim();
   const clientSecret = String(body.clientSecret ?? "").trim();
   if (!clientId.endsWith(".apps.googleusercontent.com") || clientId.length > 300) return Response.json({ error: "Client ID do Google inválido." }, { status: 400 });
-  const env = await runtimeEnv();
   const key = String(env.GOOGLE_TOKEN_ENCRYPTION_KEY ?? "").trim();
   if (!key) return Response.json({ error: "A chave interna de criptografia ainda não está disponível." }, { status: 503 });
   const db = await getDb();
