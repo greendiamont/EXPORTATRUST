@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../db";
-import { agentEvents, gmailConnections, googleOauthStates, operationDocuments, operations, operationTimeline } from "../db/schema";
+import { agentEvents, gmailConnections, gmailOauthConfigs, googleOauthStates, operationDocuments, operations, operationTimeline } from "../db/schema";
 import { audit, requireSecurityContext, sha256Hex, type SecurityContext } from "./security";
 import { classifyDocument, ensurePrivateAgentTables, sanitize } from "./private-agent-api";
 
@@ -34,14 +34,18 @@ async function runtimeEnv() {
   return env as unknown as Record<string, unknown> & { DB: D1Database; BUCKET: R2Bucket };
 }
 
-function requiredConfig(env: Record<string, unknown>) {
+async function requiredConfig(context: SecurityContext) {
+  const env = await runtimeEnv();
   const clientId = String(env.GOOGLE_CLIENT_ID ?? "").trim();
   const clientSecret = String(env.GOOGLE_CLIENT_SECRET ?? "").trim();
   const redirectUri = String(env.GOOGLE_REDIRECT_URI ?? "").trim();
   const encryptionKey = String(env.GOOGLE_TOKEN_ENCRYPTION_KEY ?? "").trim();
-  if (!clientId || !clientSecret || !redirectUri) throw new Error("Credenciais OAuth do Google ainda não estão configuradas no ambiente do ExportaTrust.");
   if (!encryptionKey) throw new Error("GOOGLE_TOKEN_ENCRYPTION_KEY ainda não está configurada no ambiente do ExportaTrust.");
-  return { clientId, clientSecret, redirectUri, encryptionKey };
+  if (clientId && clientSecret && redirectUri) return { clientId, clientSecret, redirectUri, encryptionKey };
+  const db = await getDb();
+  const [saved] = await db.select().from(gmailOauthConfigs).where(eq(gmailOauthConfigs.organizationId, context.organizationId)).limit(1);
+  if (!saved) throw new Error("Credenciais OAuth do Google ainda não foram cadastradas no ExportaTrust.");
+  return { clientId: saved.clientId, clientSecret: await decrypt(saved.clientSecretEncrypted, encryptionKey), redirectUri: saved.redirectUri, encryptionKey };
 }
 
 async function encryptionKey(raw: string) {
@@ -105,6 +109,7 @@ async function ensureGmailTables() {
   await DB.batch([
     DB.prepare("CREATE TABLE IF NOT EXISTS gmail_connections (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, organization_id integer NOT NULL, user_id integer NOT NULL, gmail_address text DEFAULT '' NOT NULL, access_token_encrypted text DEFAULT '' NOT NULL, refresh_token_encrypted text DEFAULT '' NOT NULL, access_token_expires_at text, scopes_json text DEFAULT '[]' NOT NULL, history_id text DEFAULT '' NOT NULL, status text DEFAULT 'Ativo' NOT NULL, last_sync_at text, last_error text DEFAULT '' NOT NULL, connected_at text DEFAULT CURRENT_TIMESTAMP NOT NULL, updated_at text DEFAULT CURRENT_TIMESTAMP NOT NULL, UNIQUE(organization_id,user_id))"),
     DB.prepare("CREATE TABLE IF NOT EXISTS google_oauth_states (state_hash text PRIMARY KEY NOT NULL, organization_id integer NOT NULL, user_id integer NOT NULL, expires_at text NOT NULL, created_at text DEFAULT CURRENT_TIMESTAMP NOT NULL)"),
+    DB.prepare("CREATE TABLE IF NOT EXISTS gmail_oauth_configs (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, organization_id integer NOT NULL UNIQUE, client_id text NOT NULL, client_secret_encrypted text NOT NULL, redirect_uri text NOT NULL, updated_by text NOT NULL, created_at text DEFAULT CURRENT_TIMESTAMP NOT NULL, updated_at text DEFAULT CURRENT_TIMESTAMP NOT NULL)"),
   ]);
 }
 
@@ -112,16 +117,42 @@ export async function gmailStatus() {
   const context = await requireSecurityContext("read");
   await ensureGmailTables();
   const env = await runtimeEnv();
-  const configured = Boolean(String(env.GOOGLE_CLIENT_ID ?? "").trim() && String(env.GOOGLE_CLIENT_SECRET ?? "").trim() && String(env.GOOGLE_REDIRECT_URI ?? "").trim() && String(env.GOOGLE_TOKEN_ENCRYPTION_KEY ?? "").trim());
   const db = await getDb();
+  const [savedConfig] = await db.select({ clientId: gmailOauthConfigs.clientId, redirectUri: gmailOauthConfigs.redirectUri, updatedAt: gmailOauthConfigs.updatedAt, updatedBy: gmailOauthConfigs.updatedBy }).from(gmailOauthConfigs).where(eq(gmailOauthConfigs.organizationId, context.organizationId)).limit(1);
+  const environmentConfigured = Boolean(String(env.GOOGLE_CLIENT_ID ?? "").trim() && String(env.GOOGLE_CLIENT_SECRET ?? "").trim() && String(env.GOOGLE_REDIRECT_URI ?? "").trim());
+  const configured = Boolean(String(env.GOOGLE_TOKEN_ENCRYPTION_KEY ?? "").trim() && (environmentConfigured || savedConfig));
   const [connection] = await db.select({ gmailAddress: gmailConnections.gmailAddress, status: gmailConnections.status, scopesJson: gmailConnections.scopesJson, lastSyncAt: gmailConnections.lastSyncAt, lastError: gmailConnections.lastError, connectedAt: gmailConnections.connectedAt }).from(gmailConnections).where(and(eq(gmailConnections.organizationId, context.organizationId), eq(gmailConnections.userId, context.userId))).limit(1);
-  return { configured, connected: connection?.status === "Ativo", connection: connection ?? null, scopes: GMAIL_SCOPES };
+  return { configured, connected: connection?.status === "Ativo", connection: connection ?? null, config: savedConfig ? { ...savedConfig, clientIdMasked: `${savedConfig.clientId.slice(0, 8)}…${savedConfig.clientId.slice(-12)}`, secretStored: true, source: "secure_admin" } : environmentConfigured ? { clientIdMasked: "Configurado no ambiente", redirectUri: String(env.GOOGLE_REDIRECT_URI ?? ""), secretStored: true, source: "runtime" } : null, canConfigure: context.role === "administrador", scopes: GMAIL_SCOPES };
+}
+
+export async function saveGmailConfig(request: Request) {
+  const context = await requireSecurityContext("write");
+  if (context.role !== "administrador") return Response.json({ error: "Somente administradores podem alterar credenciais do Google." }, { status: 403 });
+  await ensureGmailTables();
+  const body = await request.json() as { clientId?: string; clientSecret?: string };
+  const clientId = String(body.clientId ?? "").trim();
+  const clientSecret = String(body.clientSecret ?? "").trim();
+  if (!clientId.endsWith(".apps.googleusercontent.com") || clientId.length > 300) return Response.json({ error: "Client ID do Google inválido." }, { status: 400 });
+  const env = await runtimeEnv();
+  const key = String(env.GOOGLE_TOKEN_ENCRYPTION_KEY ?? "").trim();
+  if (!key) return Response.json({ error: "A chave interna de criptografia ainda não está disponível." }, { status: 503 });
+  const db = await getDb();
+  const [existing] = await db.select().from(gmailOauthConfigs).where(eq(gmailOauthConfigs.organizationId, context.organizationId)).limit(1);
+  if (!clientSecret && !existing) return Response.json({ error: "Informe o Client Secret na primeira configuração." }, { status: 400 });
+  if (clientSecret && (clientSecret.length < 8 || clientSecret.length > 500)) return Response.json({ error: "Client Secret do Google inválido." }, { status: 400 });
+  const redirectUri = String(env.GOOGLE_REDIRECT_URI ?? "").trim();
+  if (!redirectUri) return Response.json({ error: "GOOGLE_REDIRECT_URI ainda não está configurada." }, { status: 503 });
+  const now = new Date().toISOString();
+  const values = { organizationId: context.organizationId, clientId, clientSecretEncrypted: clientSecret ? await encrypt(clientSecret, key) : existing!.clientSecretEncrypted, redirectUri, updatedBy: context.email, updatedAt: now };
+  await db.insert(gmailOauthConfigs).values(values).onConflictDoUpdate({ target: gmailOauthConfigs.organizationId, set: values });
+  await audit(context, "GMAIL_OAUTH_CONFIG_UPDATED", "gmail_oauth_config", String(context.organizationId), { clientIdSuffix: clientId.slice(-12), secretChanged: Boolean(clientSecret), redirectUri });
+  return Response.json({ saved: true, clientIdMasked: `${clientId.slice(0, 8)}…${clientId.slice(-12)}`, redirectUri });
 }
 
 export async function beginGoogleOauth() {
   const context = await requireSecurityContext("write");
   await ensureGmailTables();
-  const config = requiredConfig(await runtimeEnv());
+  const config = await requiredConfig(context);
   const state = bytesToBase64(crypto.getRandomValues(new Uint8Array(32))).replace(/[+/=]/g, "");
   const stateHash = await sha256Hex(state);
   const expiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
@@ -149,7 +180,7 @@ export async function completeGoogleOauth(request: Request) {
     return Response.redirect(new URL("/?module=Integrações&gmail=error&reason=estado_invalido", request.url), 302);
   }
   await db.delete(googleOauthStates).where(eq(googleOauthStates.stateHash, stateHash));
-  const config = requiredConfig(await runtimeEnv());
+  const config = await requiredConfig(context);
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ code, client_id: config.clientId, client_secret: config.clientSecret, redirect_uri: config.redirectUri, grant_type: "authorization_code" }) });
   const tokens = await tokenResponse.json() as TokenPayload;
   if (!tokenResponse.ok || !tokens.access_token || !tokens.refresh_token) throw new Error(tokens.error_description || tokens.error || "O Google não devolveu uma autorização reutilizável.");
@@ -164,7 +195,7 @@ export async function completeGoogleOauth(request: Request) {
 }
 
 async function validAccessToken(connection: typeof gmailConnections.$inferSelect, context: SecurityContext) {
-  const config = requiredConfig(await runtimeEnv());
+  const config = await requiredConfig(context);
   if (connection.accessTokenExpiresAt && Date.parse(connection.accessTokenExpiresAt) > Date.now() + 60_000) return decrypt(connection.accessTokenEncrypted, config.encryptionKey);
   const refreshToken = await decrypt(connection.refreshTokenEncrypted, config.encryptionKey);
   const response = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: config.clientId, client_secret: config.clientSecret, refresh_token: refreshToken, grant_type: "refresh_token" }) });

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { translateToEnglish, type Language } from "./i18n";
 import { parseGeographicInput } from "../lib/geo-input";
 import { SUPPLY_CHAIN_STAGES } from "../lib/supply-chain-stages";
@@ -483,7 +483,7 @@ type ShipmentAdviceData = {
 type AgentMetrics = { activeAgents: number; jobsExecuted: number; jobsPending: number; awaitingApproval: number; failures: number; alerts: number; cost: number; revenue: number; grossMargin: number; marginPct: number; estimatedSavings: number };
 type AgentControlData = { settings: AgentSettingsRecord; services: AgentServiceRecord[]; jobs: AgentJobRecord[]; ledger: AgentLedgerRecord[]; reputation: AgentReputationRecord[]; metrics: AgentMetrics };
 type IntegrationStatusRecord = { id: string; name: string; category: "data" | "intelligence" | "agents" | "eudr" | "payments"; state: "operational" | "credential_required" | "sandbox" | "disabled"; label: string; detail: string; provider: string; live: boolean };
-type GmailStatusData = { configured: boolean; connected: boolean; connection: { gmailAddress: string; status: string; scopesJson: string; lastSyncAt: string | null; lastError: string; connectedAt: string } | null; scopes: string[] };
+type GmailStatusData = { configured: boolean; connected: boolean; connection: { gmailAddress: string; status: string; scopesJson: string; lastSyncAt: string | null; lastError: string; connectedAt: string } | null; config: { clientIdMasked: string; redirectUri: string; secretStored: boolean; source: string } | null; canConfigure: boolean; scopes: string[] };
 type PrivateAgentStatus = { api: { active: boolean; mode: string; auth: string; tokenVisible: boolean }; metrics: { eventsProcessed: number; eventsWithError: number; eventsInReview: number; documentsProcessed: number; approvalsPending: number }; lastEvent: { subject?: string; source?: string; matchConfidence?: string; createdAt?: string } | null; endpoints: string[] };
 type AsanaImportData = {
   project: { id: string; name: string; url: string };
@@ -3682,6 +3682,7 @@ function IntegrationsModule() {
   const [privateAgent, setPrivateAgent] = useState<PrivateAgentStatus | null>(null);
   const [gmail, setGmail] = useState<GmailStatusData | null>(null);
   const [gmailAction, setGmailAction] = useState("");
+  const [gmailConfig, setGmailConfig] = useState({ clientId: "", clientSecret: "" });
   const [gmailNotice, setGmailNotice] = useState(() => {
     if (typeof window === "undefined") return "";
     const params = new URLSearchParams(window.location.search);
@@ -3732,6 +3733,20 @@ function IntegrationsModule() {
     } catch (reason) { setGmailNotice(reason instanceof Error ? reason.message : "Falha na integração Gmail."); }
     finally { setGmailAction(""); }
   }
+  async function saveGmailCredentials(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setGmailAction("config");
+    setGmailNotice("");
+    try {
+      const response = await fetch("/api/integrations/gmail/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(gmailConfig) });
+      const data = await response.json() as { error?: string; clientIdMasked?: string };
+      if (!response.ok) throw new Error(data.error || "Não foi possível salvar as credenciais.");
+      setGmailConfig({ clientId: "", clientSecret: "" });
+      setGmailNotice(`Credenciais protegidas e salvas${data.clientIdMasked ? ` (${data.clientIdMasked})` : ""}. Agora clique em Conectar Gmail.`);
+      setReload((value) => value + 1);
+    } catch (reason) { setGmailNotice(reason instanceof Error ? reason.message : "Falha ao salvar as credenciais."); }
+    finally { setGmailAction(""); }
+  }
   const ready = integrations.filter((item) => item.state === "operational" || item.state === "sandbox").length;
   const credentials = integrations.filter((item) => item.state === "credential_required").length;
   const groups: Array<[IntegrationStatusRecord["category"], string]> = [["data", "Dados oficiais & geoespacial"], ["intelligence", "OCR & inteligência documental"], ["agents", "Agent Discovery"], ["eudr", "EUDR Information System"], ["payments", "Pagamentos"]];
@@ -3744,6 +3759,14 @@ function IntegrationsModule() {
       <div className="gmail-integration-copy"><p className="eyebrow">GMAIL API · OAUTH 2.0</p><h3>{gmail?.connected ? "Caixa postal conectada" : "Conectar e-mail operacional"}</h3><p>{gmail?.connected ? `Conta ${gmail.connection?.gmailAddress || "Google Workspace"}. O agente lê mensagens e anexos, identifica a operação e envia correspondências incertas para revisão.` : gmail?.configured ? "As credenciais estão prontas. Autorize a conta que o ExportaTrust deverá acompanhar." : "A API está instalada, mas as credenciais ainda precisam ser disponibilizadas no ambiente do ExportaTrust."}</p>{gmail?.connection?.lastSyncAt && <small>Última sincronização: {new Date(gmail.connection.lastSyncAt).toLocaleString("pt-BR")}</small>}{gmail?.connection?.lastError && <small className="gmail-error">Última falha: {gmail.connection.lastError}</small>}{gmailNotice && <div className="gmail-notice">{gmailNotice}</div>}</div>
       <div className="gmail-integration-actions">{gmail?.connected ? <><span className="gmail-connected">✓ CONECTADO</span><button className="primary" disabled={!!gmailAction} onClick={() => runGmailAction("sync")}>{gmailAction === "sync" ? "Sincronizando…" : "Sincronizar agora"}</button><button className="secondary" disabled={!!gmailAction} onClick={() => runGmailAction("disconnect")}>{gmailAction === "disconnect" ? "Desconectando…" : "Desconectar"}</button></> : <><span className={gmail?.configured ? "gmail-ready" : "gmail-waiting"}>{gmail?.configured ? "PRONTO PARA AUTORIZAR" : "AGUARDANDO AMBIENTE"}</span><a className={`gmail-connect-button ${gmail?.configured ? "" : "disabled"}`} href={gmail?.configured ? "/api/integrations/gmail/connect" : undefined}>Conectar Gmail</a></>}</div>
     </section>
+    {!gmail?.configured && gmail?.canConfigure && <form className="panel gmail-config-panel" onSubmit={saveGmailCredentials} autoComplete="off">
+      <header><div><p className="eyebrow">CONFIGURAÇÃO SEGURA</p><h3>Credenciais do Google Cloud</h3><p>Copie os dois valores do cliente OAuth criado no Google. O Client Secret será criptografado antes de ser armazenado e nunca voltará a aparecer nesta tela.</p></div><span>SOMENTE ADMINISTRADOR</span></header>
+      <label>Google Client ID<input type="text" value={gmailConfig.clientId} onChange={(event) => setGmailConfig((current) => ({ ...current, clientId: event.target.value }))} placeholder="000000000000-xxxx.apps.googleusercontent.com" required spellCheck={false} /></label>
+      <label>Google Client Secret<input type="password" value={gmailConfig.clientSecret} onChange={(event) => setGmailConfig((current) => ({ ...current, clientSecret: event.target.value }))} placeholder="Cole o segredo diretamente aqui" required spellCheck={false} /></label>
+      <div className="gmail-config-security"><span>🔒</span><p><b>Proteção ativa</b><small>Não envie essas chaves por e-mail ou chat. Salve-as somente por este formulário.</small></p></div>
+      <button className="primary" disabled={gmailAction === "config"}>{gmailAction === "config" ? "Criptografando e salvando…" : "Salvar credenciais com segurança"}</button>
+    </form>}
+    {gmail?.config && gmail?.canConfigure && <section className="panel gmail-config-summary"><div><p className="eyebrow">CREDENCIAL PROTEGIDA</p><h3>{gmail.config.clientIdMasked}</h3><small>URI: {gmail.config.redirectUri}</small></div><span>✓ SECRET ARMAZENADO</span></section>}
     <section className="panel migration-bridge">
       <header><div><p className="eyebrow">MIGRAÇÃO CONTROLADA</p><h3>Asana · VLP EXPORTAÇÃO</h3><p>Somente este projeto é aceito. Tarefas entram primeiro em uma fila de revisão; modelos, pré-operações, concluídos e itens de FINALIZADO/CANCELADO são separados automaticamente.</p></div><span>FONTE DELIMITADA</span></header>
       <div className="migration-metrics">
