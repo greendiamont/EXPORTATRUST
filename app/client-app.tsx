@@ -459,10 +459,7 @@ type ExportControlData = {
 type AiDocumentReport = {
   document: { id: number; operationId: number; fileName: string; category: string };
   analysis?: {
-    documentType: string;
-    summary: string;
-    language: string;
-    confidence: number;
+    documentType: string; summary: string; language: string; confidence: number;
     fields: { invoiceNumber: string | null; blNumber: string | null; exporter: string | null; importer: string | null; destinationCountry: string | null; destinationPort: string | null; currency: string | null; totalAmount: string | null; balanceDue: string | null; paymentTerms: string | null; issueDate: string | null; containers: number | null };
     checks: Array<{ name: string; status: "ok" | "warning" | "missing"; details: string; evidence: string }>;
     warnings: string[];
@@ -486,6 +483,7 @@ type ShipmentAdviceData = {
 type AgentMetrics = { activeAgents: number; jobsExecuted: number; jobsPending: number; awaitingApproval: number; failures: number; alerts: number; cost: number; revenue: number; grossMargin: number; marginPct: number; estimatedSavings: number };
 type AgentControlData = { settings: AgentSettingsRecord; services: AgentServiceRecord[]; jobs: AgentJobRecord[]; ledger: AgentLedgerRecord[]; reputation: AgentReputationRecord[]; metrics: AgentMetrics };
 type IntegrationStatusRecord = { id: string; name: string; category: "data" | "intelligence" | "agents" | "eudr" | "payments"; state: "operational" | "credential_required" | "sandbox" | "disabled"; label: string; detail: string; provider: string; live: boolean };
+type GmailStatusData = { configured: boolean; connected: boolean; connection: { gmailAddress: string; status: string; scopesJson: string; lastSyncAt: string | null; lastError: string; connectedAt: string } | null; scopes: string[] };
 type PrivateAgentStatus = { api: { active: boolean; mode: string; auth: string; tokenVisible: boolean }; metrics: { eventsProcessed: number; eventsWithError: number; eventsInReview: number; documentsProcessed: number; approvalsPending: number }; lastEvent: { subject?: string; source?: string; matchConfidence?: string; createdAt?: string } | null; endpoints: string[] };
 type AsanaImportData = {
   project: { id: string; name: string; url: string };
@@ -663,7 +661,11 @@ function EnvironmentalNews({ language }: { language: Language }) {
 export default function Home({ initialData }: { initialData: InitialAppData }) {
   const initialProperties = useMemo(() => mapProperties(initialData.properties), [initialData.properties]);
   const [language, setLanguage] = useState<Language>("pt");
-  const [active, setActive] = useState("Dashboard");
+  const [active, setActive] = useState(() => {
+    if (typeof window === "undefined") return "Dashboard";
+    const requested = new URLSearchParams(window.location.search).get("module");
+    return requested && nav.includes(requested) ? requested : "Dashboard";
+  });
   const [drawer, setDrawer] = useState<"operation" | "supplier" | null>(null);
   const [notice, setNotice] = useState("");
   const [selectedProperty, setSelectedProperty] = useState<MapProperty | null>(initialProperties[0] ?? null);
@@ -3230,47 +3232,27 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
     setAiReportVisible(false);
     setAiDocumentReports([]);
     try {
-      const controlResponse = await fetch("/api/export-control", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ operationId: operation.id, action: "country-check" }),
-      });
+      const controlResponse = await fetch("/api/export-control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ operationId: operation.id, action: "country-check" }) });
       const controlPayload = await controlResponse.json() as ExportControlData & { error?: string };
       if (!controlResponse.ok) throw new Error(controlPayload.error || "Não foi possível verificar as etapas da operação.");
       setData(controlPayload);
-
       const reports: AiDocumentReport[] = [];
       for (const document of documents) {
         try {
-          const response = await fetch("/api/ai/document-analysis", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ documentId: document.id }),
-          });
+          const response = await fetch("/api/ai/document-analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ documentId: document.id }) });
           const payload = await response.json() as AiDocumentReport & { error?: string };
-          reports.push(response.ok ? payload : {
-            document: { id: document.id, operationId: operation.id, fileName: document.fileName, category: document.category },
-            error: payload.error || "Documento não analisado.",
-          });
+          reports.push(response.ok ? payload : { document: { id: document.id, operationId: operation.id, fileName: document.fileName, category: document.category }, error: payload.error || "Documento não analisado." });
         } catch (error) {
-          reports.push({
-            document: { id: document.id, operationId: operation.id, fileName: document.fileName, category: document.category },
-            error: error instanceof Error ? error.message : "Documento não analisado.",
-          });
+          reports.push({ document: { id: document.id, operationId: operation.id, fileName: document.fileName, category: document.category }, error: error instanceof Error ? error.message : "Documento não analisado." });
         }
         setAiDocumentReports([...reports]);
       }
-
       setAiReportVisible(true);
       const failures = reports.filter((report) => report.error).length;
-      showNotice(failures
-        ? `Relatório concluído com ${failures} documento(s) que exigem revisão manual.`
-        : `Operação e ${reports.length} documento(s) verificados pela IA.`);
+      showNotice(failures ? `Relatório concluído com ${failures} documento(s) que exigem revisão manual.` : `Operação e ${reports.length} documento(s) verificados pela IA.`);
     } catch (error) {
       showNotice(error instanceof Error ? error.message : "Falha ao verificar a operação com IA.");
-    } finally {
-      setAction("");
-    }
+    } finally { setAction(""); }
   }
 
   if (loading) return <div className="command-loading">Preparando a torre de controle do pedido…</div>;
@@ -3698,6 +3680,15 @@ function IntegrationsModule() {
   const [asanaImport, setAsanaImport] = useState<AsanaImportData | null>(null);
   const [agentBrief, setAgentBrief] = useState<AgentBriefData | null>(null);
   const [privateAgent, setPrivateAgent] = useState<PrivateAgentStatus | null>(null);
+  const [gmail, setGmail] = useState<GmailStatusData | null>(null);
+  const [gmailAction, setGmailAction] = useState("");
+  const [gmailNotice, setGmailNotice] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gmail") === "connected") return "Gmail conectado com sucesso. Agora você já pode sincronizar mensagens e anexos.";
+    if (params.get("gmail") === "error") return `Falha ao conectar Gmail: ${params.get("reason") || "autorização não concluída"}.`;
+    return "";
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
@@ -3719,14 +3710,28 @@ function IntegrationsModule() {
       fetch(`/api/asana-import?t=${Date.now()}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
       fetch(`/api/agent-brief?t=${Date.now()}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
       fetch(`/api/agent/status?t=${Date.now()}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
-    ]).then(([asanaData, briefData, privateAgentData]) => {
+      fetch(`/api/integrations/gmail/status?t=${Date.now()}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
+    ]).then(([asanaData, briefData, privateAgentData, gmailData]) => {
       if (!activeRequest) return;
       setAsanaImport(asanaData as AsanaImportData | null);
       setAgentBrief(briefData as AgentBriefData | null);
       setPrivateAgent(privateAgentData as PrivateAgentStatus | null);
+      setGmail(gmailData as GmailStatusData | null);
     }).catch(() => undefined);
     return () => { activeRequest = false; };
   }, [reload]);
+  async function runGmailAction(action: "sync" | "disconnect") {
+    setGmailAction(action);
+    setGmailNotice("");
+    try {
+      const response = await fetch(`/api/integrations/gmail/${action}`, { method: "POST" });
+      const data = await response.json() as { error?: string; message?: string };
+      if (!response.ok) throw new Error(data.error || "Não foi possível concluir a ação no Gmail.");
+      setGmailNotice(data.message || (action === "disconnect" ? "Gmail desconectado com segurança." : "Sincronização concluída."));
+      setReload((value) => value + 1);
+    } catch (reason) { setGmailNotice(reason instanceof Error ? reason.message : "Falha na integração Gmail."); }
+    finally { setGmailAction(""); }
+  }
   const ready = integrations.filter((item) => item.state === "operational" || item.state === "sandbox").length;
   const credentials = integrations.filter((item) => item.state === "credential_required").length;
   const groups: Array<[IntegrationStatusRecord["category"], string]> = [["data", "Dados oficiais & geoespacial"], ["intelligence", "OCR & inteligência documental"], ["agents", "Agent Discovery"], ["eudr", "EUDR Information System"], ["payments", "Pagamentos"]];
@@ -3735,6 +3740,10 @@ function IntegrationsModule() {
     <div className="module-stats integration-stats"><article className="module-stat"><strong>{integrations.length}</strong><span>conectores instalados</span></article><article className="module-stat"><strong>{ready}</strong><span>operacionais / sandbox</span></article><article className="module-stat"><strong>{credentials}</strong><span>aguardando credencial</span></article><article className="module-stat"><strong>0</strong><span>provedores demo</span></article></div>
     {loading && <div className="panel integration-loading">Verificando conectores no servidor…</div>}
     {error && <div className="panel integration-error"><b>Falha ao verificar integrações</b><span>{error}</span><button onClick={() => { setLoading(true); setReload((value) => value + 1); }}>Tentar novamente</button></div>}
+    <section className="panel gmail-integration-card">
+      <div className="gmail-integration-copy"><p className="eyebrow">GMAIL API · OAUTH 2.0</p><h3>{gmail?.connected ? "Caixa postal conectada" : "Conectar e-mail operacional"}</h3><p>{gmail?.connected ? `Conta ${gmail.connection?.gmailAddress || "Google Workspace"}. O agente lê mensagens e anexos, identifica a operação e envia correspondências incertas para revisão.` : gmail?.configured ? "As credenciais estão prontas. Autorize a conta que o ExportaTrust deverá acompanhar." : "A API está instalada, mas as credenciais ainda precisam ser disponibilizadas no ambiente do ExportaTrust."}</p>{gmail?.connection?.lastSyncAt && <small>Última sincronização: {new Date(gmail.connection.lastSyncAt).toLocaleString("pt-BR")}</small>}{gmail?.connection?.lastError && <small className="gmail-error">Última falha: {gmail.connection.lastError}</small>}{gmailNotice && <div className="gmail-notice">{gmailNotice}</div>}</div>
+      <div className="gmail-integration-actions">{gmail?.connected ? <><span className="gmail-connected">✓ CONECTADO</span><button className="primary" disabled={!!gmailAction} onClick={() => runGmailAction("sync")}>{gmailAction === "sync" ? "Sincronizando…" : "Sincronizar agora"}</button><button className="secondary" disabled={!!gmailAction} onClick={() => runGmailAction("disconnect")}>{gmailAction === "disconnect" ? "Desconectando…" : "Desconectar"}</button></> : <><span className={gmail?.configured ? "gmail-ready" : "gmail-waiting"}>{gmail?.configured ? "PRONTO PARA AUTORIZAR" : "AGUARDANDO AMBIENTE"}</span><a className={`gmail-connect-button ${gmail?.configured ? "" : "disabled"}`} href={gmail?.configured ? "/api/integrations/gmail/connect" : undefined}>Conectar Gmail</a></>}</div>
+    </section>
     <section className="panel migration-bridge">
       <header><div><p className="eyebrow">MIGRAÇÃO CONTROLADA</p><h3>Asana · VLP EXPORTAÇÃO</h3><p>Somente este projeto é aceito. Tarefas entram primeiro em uma fila de revisão; modelos, pré-operações, concluídos e itens de FINALIZADO/CANCELADO são separados automaticamente.</p></div><span>FONTE DELIMITADA</span></header>
       <div className="migration-metrics">

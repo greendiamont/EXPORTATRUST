@@ -1,138 +1,127 @@
-# ExportaTrust
+# vinext-starter
 
-Plataforma de controle de exportações, rastreabilidade e conformidade DDS/EUDR, com acompanhamento operacional do fornecedor ao cliente final.
+A clean full-stack starter running on
+[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
+Drizzle support.
 
-[![ExportaTrust CI](https://github.com/greendiamont/EXPORTATRUST/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/greendiamont/EXPORTATRUST/actions/workflows/ci.yml)
+## Prerequisites
 
-## Visão geral
+- Node.js `>=22.13.0`
+- Linux with `flock`, `curl`, and GNU `timeout`
 
-O ExportaTrust reúne em um único ambiente:
+## Sites Lifecycle
 
-- cadastro mestre de fornecedores, clientes importadores, produtos e propriedades;
-- processos de exportação com etapas operacionais STAGE 01–13;
-- documentos por operação e conjunto final de embarque;
-- Shipment Advice baseado nos dados reais do fornecedor e da operação;
-- rastreabilidade, DDS/EUDR, SICAR, IBAMA e dossiês;
-- timeline e trilha de auditoria;
-- API segura do Agente Particular;
-- integrações com Gmail, Asana e outras APIs;
-- aprovações humanas obrigatórias para ações sensíveis.
+The Sites lifecycle CLI runs the locked dependency install before returning this checkout. Edit the source under `app/`, then checkpoint when a coherent milestone is ready to inspect or share. The remote Sites builder runs `npm run build` against the pushed commit. Do not repeat install or build as a normal pre-checkpoint step.
 
-O Agente Particular pode analisar eventos, localizar a operação pelo código do processo, sugerir atualizações, organizar documentos e preparar rascunhos. Envio ao cliente, alteração financeira, cancelamento, liberação de embarque e conclusão final exigem aprovação humana.
+This starter does not use `wrangler.jsonc`.
 
-## Tecnologias
+`install:ci` is intentionally a single, non-retrying `npm ci`. It refuses a concurrent install for the same project, consumes a matching image-seeded npm cache with `--prefer-offline` while retaining registry fallback for a missing cache object, otherwise downloads and verifies the complete vinext tarball recorded in `package-lock.json`, limits npm to one socket, and terminates a stalled install. `build` applies a short timeout and then validates the Sites artifact. These helpers target Linux and use GNU `timeout`; they are not native macOS scripts.
 
-- TypeScript
-- React 19
-- Next.js 16
-- Vinext / Vite
-- Cloudflare Workers e D1
-- Drizzle ORM
-- Node.js 22
-- GitHub Actions
+Scripts that need writable project-scoped home, npm, XDG, and temporary paths use `scripts/sites-env.sh`. The `dev` and `start` scripts honor the caller's runtime environment and keep Wrangler logs inside the checkout. The generated `.sites-runtime/` directory is disposable and ignored by Git.
 
-## Estrutura principal
+## Included Shape
 
-```text
-app/                  Interface e rotas da API
-app/api/agent/        Endpoints do Agente Particular
-db/                   Schema e acesso ao banco
-drizzle/              Migrações do banco de dados
-lib/                  Regras de negócio e integrações
-tests/                Testes automatizados
-worker/               Entrada para Cloudflare Worker
+- edit site code under `app/`
+- `app/chatgpt-auth.ts` provides optional dispatch-owned ChatGPT sign-in helpers
+- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
+- `vite.config.ts` simulates declared bindings for local development
+- `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
+- `db/schema.ts` starts intentionally empty
+- `examples/d1/` contains an optional D1 example surface
+- `drizzle.config.ts` supports local migration generation when needed
+
+## Workspace Auth Headers
+
+OpenAI workspace sites can read the current user's email from
+`oai-authenticated-user-email`.
+
+SIWC-authenticated workspace sites may also receive
+`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
+`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
+`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
+
+Treat the full name as optional and fall back to email when it is absent:
+
+```tsx
+import { headers } from "next/headers";
+
+export default async function Home() {
+  const requestHeaders = await headers();
+  const email = requestHeaders.get("oai-authenticated-user-email");
+  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
+  const fullName =
+    encodedFullName &&
+    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
+      "percent-encoded-utf-8"
+      ? decodeURIComponent(encodedFullName)
+      : null;
+
+  const displayName = fullName ?? email;
+  // ...
+}
 ```
 
-## Desenvolvimento local
+## Optional Dispatch-Owned ChatGPT Sign-In
 
-Requisitos:
+Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
+optional or required ChatGPT sign-in:
 
-- Node.js 22.13 ou superior
-- npm
-- ambiente Linux ou WSL recomendado
+- Use `getChatGPTUser()` for optional signed-in UI.
+- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
+  anonymous visitors through Sign in with ChatGPT.
+- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
+  browser links or actions.
+- Pass a same-origin relative `returnTo` path for the destination after sign-in
+  or sign-out. The helper validates and safely encodes it.
+- Mark protected pages with `export const dynamic = "force-dynamic"` because
+  they depend on per-request identity headers.
 
-```bash
-npm ci
-npm run dev
-```
+Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
+OAuth cookies, and identity header injection. Do not implement app routes for
+those reserved paths. Routes that do not import and call the helper remain
+anonymous-compatible.
 
-Validação completa:
+SIWC establishes identity only; it does not prove workspace membership. Use the
+Sites hosting platform's access policy controls for workspace-wide restrictions,
+or enforce explicit server-side membership or allowlist checks.
 
-```bash
-npm run lint
-npm test
-```
+Use SIWC for account pages, user-specific dashboards, saved records, and write
+actions tied to the current ChatGPT user. Leave public content anonymous.
 
-O comando `npm test` executa o build de produção e todos os testes automatizados.
+## Diagnostic Commands
 
-## Fluxo de desenvolvimento
+- `npm run install:ci`: perform the one bounded lockfile install
+- `npm run dev`: start the Vite/Vinext development server
+- `npm run build`: build and validate the deployable Sites artifact
+- `npm run start`: start the built Vinext application
+- `npm test`: build, validate, and verify the rendered development-preview metadata
+- `npm run validate:artifact`: recheck an existing artifact's manifest and ESM `default.fetch` export
+- `npm run db:generate`: generate Drizzle migrations after schema changes
 
-O repositório utiliza o seguinte fluxo:
+## Gmail OAuth
 
-1. `main`: versão principal e estável.
-2. `develop`: integração das alterações aprovadas.
-3. `feature/*`, `fix/*` ou `chore/*`: branches temporárias de trabalho.
-4. Toda mudança deve entrar por Pull Request.
-5. O Pull Request precisa passar pelos checks automáticos antes do merge.
-6. Alterações sensíveis devem receber revisão humana.
+The operational mailbox connector uses Google OAuth 2.0 with the minimum scopes
+needed to read messages and attachments, create drafts, and send a message only
+after the ExportaTrust human-approval gate. Tokens are encrypted with AES-256-GCM
+before they are stored in D1.
 
-Fluxo recomendado:
+Production runtime values:
 
-```text
-feature/* ou fix/* → Pull Request → develop → Pull Request de release → main
-```
+- `GOOGLE_CLIENT_ID` (secret)
+- `GOOGLE_CLIENT_SECRET` (secret)
+- `GOOGLE_REDIRECT_URI` (non-secret; must end in `/api/integrations/gmail/oauth/callback`)
+- `GOOGLE_TOKEN_ENCRYPTION_KEY` (secret; 32 random bytes encoded as base64, or 64 hexadecimal characters)
 
-## Checks automáticos
+The integration screen starts OAuth, reports the connected account, runs a
+bounded 14-day/manual synchronization, stores recognized attachments in R2,
+links high-confidence messages to the operation timeline, and sends uncertain
+matches to the existing review queue. No Gmail delete or modify scope is used.
 
-O GitHub Actions executa em cada Pull Request:
+Use build and validation commands for targeted diagnosis after a remote failure, not as part of the normal checkpoint path.
 
-- instalação reprodutível das dependências;
-- lint;
-- build de produção;
-- 28 testes automatizados;
-- validações de persistência, segurança, auditoria e Agente Particular.
+The timeout defaults can be overridden for a controlled canary with `SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT`, and `SITES_BUILD_KILL_AFTER`. A timeout fails the command; the helpers never retry an unchanged install or build.
 
-## Segurança
+## Learn More
 
-- Nunca versionar arquivos `.env`, tokens ou credenciais.
-- Dados bancários são dados operacionais e não devem ser gravados em código.
-- Credenciais das integrações devem ser armazenadas como secrets do ambiente.
-- Documentos reais de clientes e fornecedores não devem ser incluídos no repositório.
-- Ações críticas do agente permanecem sujeitas à aprovação humana.
-
-## Aplicação
-
-- Aplicação atual: [ExportaTrust EUDR](https://exportatrust-eudr.ivambona.chatgpt.site/)
-- Código-fonte: [greendiamont/EXPORTATRUST](https://github.com/greendiamont/EXPORTATRUST)
-- Branch de desenvolvimento: [develop](https://github.com/greendiamont/EXPORTATRUST/tree/develop)
-
-## Licença e uso comercial
-
-Código proprietário. Todos os direitos reservados. A reprodução, distribuição, sublicenciamento ou exploração comercial depende de autorização expressa do titular do ExportaTrust.
-
-
-## Leitura de documentos com OpenAI
-
-A rota autenticada `POST /api/ai/document-analysis` analisa um documento já armazenado no ExportaTrust. O corpo deve conter:
-
-```json
-{ "documentId": 123 }
-```
-
-A API:
-
-- valida usuário, organização, operação e documento;
-- lê o arquivo diretamente do armazenamento privado;
-- aceita PDF, documentos Office, planilhas, texto e imagens;
-- usa a Responses API com saída estruturada;
-- não disponibiliza URL pública do documento;
-- não armazena a resposta na OpenAI (`store: false`);
-- registra a análise na trilha de auditoria;
-- retorna parecer informativo sujeito à aprovação humana.
-
-Variáveis de execução:
-
-- `OPENAI_API_KEY`: secret obrigatório;
-- `OPENAI_DOCUMENT_MODEL`: modelo configurável; padrão `gpt-5.6-terra`.
-
-`GET /api/ai/document-analysis` informa apenas se a integração está configurada e nunca retorna o segredo.
+- [vinext Documentation](https://github.com/cloudflare/vinext)
+- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)

@@ -688,3 +688,28 @@ export const systemEvents = sqliteTable("system_events", {
   occurredAt: text("occurred_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   resolvedAt: text("resolved_at"),
 });
+
+export const gmailConnections = sqliteTable("gmail_connections", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  userId: integer("user_id").notNull().references(() => appUsers.id),
+  gmailAddress: text("gmail_address").notNull().default(""),
+  accessTokenEncrypted: text("access_token_encrypted").notNull().default(""),
+  refreshTokenEncrypted: text("refresh_token_encrypted").notNull().default(""),
+  accessTokenExpiresAt: text("access_token_expires_at"),
+  scopesJson: text("scopes_json").notNull().default("[]"),
+  historyId: text("history_id").notNull().default(""),
+  status: text("status").notNull().default("Ativo"),
+  lastSyncAt: text("last_sync_at"),
+  lastError: text("last_error").notNull().default(""),
+  connectedAt: text("connected_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [uniqueIndex("gmail_connections_org_user_idx").on(table.organizationId, table.userId)]);
+
+export const googleOauthStates = sqliteTable("google_oauth_states", {
+  stateHash: text("state_hash").primaryKey(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  userId: integer("user_id").notNull().references(() => appUsers.id),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
