@@ -131,6 +131,7 @@ test("monitoring is tenant-scoped and deduplicates open failures", async () => {
 test("Gmail OAuth uses minimum scopes, encrypted tokens and human review", async () => {
   const source = await read("lib/gmail-integration.ts");
   const ui = await read("app/client-app.tsx");
+  const configRoute = await read("app/api/integrations/gmail/config/route.ts");
   assert.match(source, /gmail\.readonly/);
   assert.match(source, /gmail\.drafts\.create/);
   assert.match(source, /gmail\.send/);
@@ -141,6 +142,12 @@ test("Gmail OAuth uses minimum scopes, encrypted tokens and human review", async
   assert.match(source, /match\.confidence === "HIGH"/);
   assert.match(ui, /Conectar Gmail/);
   assert.match(ui, /Sincronizar agora/);
+  assert.match(source, /context\.role !== "administrador"/);
+  assert.match(source, /clientSecretEncrypted/);
+  assert.match(source, /secretStored: true/);
+  assert.doesNotMatch(source, /clientSecret:\s*saved\.clientSecretEncrypted/);
+  assert.match(configRoute, /saveGmailConfig/);
+  assert.match(ui, /Salvar credenciais com segurança/);
 });
 
 test("supplier creation uses the dedicated permission and preserves authorization responses", async () => {
