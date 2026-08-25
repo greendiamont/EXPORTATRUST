@@ -109,3 +109,30 @@ O GitHub Actions executa em cada Pull Request:
 ## Licença e uso comercial
 
 Código proprietário. Todos os direitos reservados. A reprodução, distribuição, sublicenciamento ou exploração comercial depende de autorização expressa do titular do ExportaTrust.
+
+
+## Leitura de documentos com OpenAI
+
+A rota autenticada `POST /api/ai/document-analysis` analisa um documento já armazenado no ExportaTrust. O corpo deve conter:
+
+```json
+{ "documentId": 123 }
+```
+
+A API:
+
+- valida usuário, organização, operação e documento;
+- lê o arquivo diretamente do armazenamento privado;
+- aceita PDF, documentos Office, planilhas, texto e imagens;
+- usa a Responses API com saída estruturada;
+- não disponibiliza URL pública do documento;
+- não armazena a resposta na OpenAI (`store: false`);
+- registra a análise na trilha de auditoria;
+- retorna parecer informativo sujeito à aprovação humana.
+
+Variáveis de execução:
+
+- `OPENAI_API_KEY`: secret obrigatório;
+- `OPENAI_DOCUMENT_MODEL`: modelo configurável; padrão `gpt-5.6-terra`.
+
+`GET /api/ai/document-analysis` informa apenas se a integração está configurada e nunca retorna o segredo.
