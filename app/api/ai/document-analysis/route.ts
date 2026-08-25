@@ -9,7 +9,7 @@ function errorMessage(error: unknown) {
 }
 
 type RuntimeEnvironment = {
-  BUCKET?: R2Bucket;
+  BUCKET?: { get(key: string): Promise<{ arrayBuffer(): Promise<ArrayBuffer> } | null> };
   OPENAI_API_KEY?: string;
   OPENAI_DOCUMENT_MODEL?: string;
 };
