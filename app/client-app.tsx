@@ -456,6 +456,19 @@ type ExportControlData = {
   operationalAlerts: { missingPlan: number; overdue: number; stages: Array<{ code: string; title: string; missing: string[]; overdue: boolean }> };
   compliance: { score: number; stageScore: number; status: string; verdict: string; opinion: string; approvedSetDocuments: number; eudrRequired: boolean; lastCheck: { checkedAt: string } | null; requirements: Array<{ key: string; label: string; reason: string; required: boolean; present: boolean }>; stages: Array<{ code: string; sequence: number; title: string; status: string; applicable: boolean; passed: boolean; documentCount: number; issue: string }> };
 };
+type AiDocumentReport = {
+  document: { id: number; operationId: number; fileName: string; category: string };
+  analysis?: {
+    documentType: string;
+    summary: string;
+    language: string;
+    confidence: number;
+    fields: { invoiceNumber: string | null; blNumber: string | null; exporter: string | null; importer: string | null; destinationCountry: string | null; destinationPort: string | null; currency: string | null; totalAmount: string | null; balanceDue: string | null; paymentTerms: string | null; issueDate: string | null; containers: number | null };
+    checks: Array<{ name: string; status: "ok" | "warning" | "missing"; details: string; evidence: string }>;
+    warnings: string[];
+  };
+  error?: string;
+};
 type ShipmentAdviceData = {
   advice: { id: number; status: string; recipient: string; subject: string; body: string; humanApproved: boolean; updatedAt: string } | null;
   documents: DocumentRecord[];
@@ -3047,6 +3060,7 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   const [shipmentAdvice, setShipmentAdvice] = useState<ShipmentAdviceData | null>(null);
   const [shipmentAdviceAction, setShipmentAdviceAction] = useState(false);
   const [aiReportVisible, setAiReportVisible] = useState(false);
+  const [aiDocumentReports, setAiDocumentReports] = useState<AiDocumentReport[]>([]);
 
   useEffect(() => {
     let activeRequest = true;
@@ -3212,8 +3226,51 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   }
 
   async function runAiOperationCheck() {
-    const payload = await post({ action: "country-check" }, "Relatório da operação atualizado pela IA.");
-    if (payload) setAiReportVisible(true);
+    setAction("ai-operation-check");
+    setAiReportVisible(false);
+    setAiDocumentReports([]);
+    try {
+      const controlResponse = await fetch("/api/export-control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operationId: operation.id, action: "country-check" }),
+      });
+      const controlPayload = await controlResponse.json() as ExportControlData & { error?: string };
+      if (!controlResponse.ok) throw new Error(controlPayload.error || "Não foi possível verificar as etapas da operação.");
+      setData(controlPayload);
+
+      const reports: AiDocumentReport[] = [];
+      for (const document of documents) {
+        try {
+          const response = await fetch("/api/ai/document-analysis", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ documentId: document.id }),
+          });
+          const payload = await response.json() as AiDocumentReport & { error?: string };
+          reports.push(response.ok ? payload : {
+            document: { id: document.id, operationId: operation.id, fileName: document.fileName, category: document.category },
+            error: payload.error || "Documento não analisado.",
+          });
+        } catch (error) {
+          reports.push({
+            document: { id: document.id, operationId: operation.id, fileName: document.fileName, category: document.category },
+            error: error instanceof Error ? error.message : "Documento não analisado.",
+          });
+        }
+        setAiDocumentReports([...reports]);
+      }
+
+      setAiReportVisible(true);
+      const failures = reports.filter((report) => report.error).length;
+      showNotice(failures
+        ? `Relatório concluído com ${failures} documento(s) que exigem revisão manual.`
+        : `Operação e ${reports.length} documento(s) verificados pela IA.`);
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : "Falha ao verificar a operação com IA.");
+    } finally {
+      setAction("");
+    }
   }
 
   if (loading) return <div className="command-loading">Preparando a torre de controle do pedido…</div>;
@@ -3302,12 +3359,17 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
         <section className="country-ai-card panel">
           <header><div><p className="eyebrow">AI FULL OPERATION CHECK</p><h3>Relatório da operação</h3></div></header>
           <p>Uma única verificação cruza as etapas, os documentos e as exigências de {operation.destinationCountry}.</p>
-          <button className="ai-run-button" disabled={Boolean(action)} onClick={runAiOperationCheck}>{action === "country-check" ? "VERIFICANDO…" : "VERIFICAR OPERAÇÃO COM IA"}</button>
+          <button className="ai-run-button" disabled={Boolean(action)} onClick={runAiOperationCheck}>{action === "ai-operation-check" ? `VERIFICANDO ${aiDocumentReports.length}/${documents.length} DOCUMENTOS…` : "VERIFICAR OPERAÇÃO COM IA"}</button>
           {aiReportVisible && <div className="ai-operation-report">
             <header><div><b>{data.compliance.verdict}</b><span>{data.compliance.opinion}</span></div><strong>{Math.round((data.compliance.score + data.compliance.stageScore) / 2)}%</strong></header>
             <section><h4>Pendências encontradas</h4>{data.compliance.requirements.filter((item) => item.required && !item.present).map((item) => <article key={item.key} className="missing"><span>!</span><div><b>{item.label}</b><small>{item.reason}</small></div></article>)}{!data.compliance.requirements.some((item) => item.required && !item.present) && <p>✓ Nenhuma exigência documental obrigatória pendente.</p>}</section>
             <section><h4>Status de cada etapa</h4><div className="ai-stage-report">{data.compliance.stages.map((stage) => <article key={stage.code} className={stage.passed ? "ready" : stage.applicable ? "missing" : "conditional"}><span>{stage.passed ? "✓" : stage.applicable ? "!" : "—"}</span><div><b>{String(stage.sequence).padStart(2, "0")} · {stage.title}</b><small>{stage.issue} · {stage.documentCount} documento(s)</small></div><em>{stage.status}</em></article>)}</div></section>
-            <small>Relatório preliminar; confirme exigências oficiais do país, produto e importador antes do embarque.</small>
+            <section><h4>Leitura dos documentos anexados</h4><div className="ai-stage-report">{aiDocumentReports.map((report) => {
+              const missingChecks = report.analysis?.checks.filter((check) => check.status !== "ok").length ?? 0;
+              const ready = Boolean(report.analysis) && !missingChecks && !report.analysis?.warnings.length;
+              return <article key={report.document.id} className={ready ? "ready" : "missing"}><span>{ready ? "✓" : "!"}</span><div><b>{report.document.fileName}</b><small>{report.error || report.analysis?.summary || "Análise indisponível"}</small>{report.analysis && <small>{report.analysis.documentType} · confiança {Math.round(report.analysis.confidence * 100)}% · {missingChecks} alerta(s)</small>}</div><em>{report.error ? "Revisão manual" : ready ? "Conferido" : "Com ressalvas"}</em></article>;
+            })}{!aiDocumentReports.length && <p>Nenhum documento anexado nesta operação.</p>}</div></section>
+            <small>Parecer preliminar da IA. A aprovação humana continua obrigatória antes do embarque, envio ao cliente ou alteração financeira.</small>
           </div>}
         </section>
 
