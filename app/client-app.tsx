@@ -453,6 +453,7 @@ type ExportControlData = {
   tracking: TrackingEventRecord[];
   eudrBridge: { readiness: number; reference: string; required: boolean; status: string };
   emailDelivery: { provider: string; ready: boolean; sender: string };
+  trackingProvider: { provider: string; configured: boolean };
   deliveryResult?: { status: string; provider: string; externalId: string; error: string };
   operationalAlerts: { missingPlan: number; overdue: number; stages: Array<{ code: string; title: string; missing: string[]; overdue: boolean }> };
   compliance: { score: number; stageScore: number; status: string; verdict: string; opinion: string; approvedSetDocuments: number; eudrRequired: boolean; lastCheck: { checkedAt: string } | null; requirements: Array<{ key: string; label: string; reason: string; required: boolean; present: boolean }>; stages: Array<{ code: string; sequence: number; title: string; status: string; applicable: boolean; passed: boolean; documentCount: number; issue: string }> };
@@ -3114,6 +3115,10 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   const progress = applicableMilestones.length ? Math.round(completed / applicableMilestones.length * 100) : 0;
   const selectedDocuments = selected ? documents.filter((document) => document.category === selected.category) : [];
   const latestTracking = data?.tracking[0];
+  const latestTrackingPosition = parseTrackingLocation(latestTracking?.location || "");
+  const trackingMapUrl = latestTrackingPosition.latitude !== null && latestTrackingPosition.longitude !== null
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${latestTrackingPosition.longitude - 12}%2C${latestTrackingPosition.latitude - 8}%2C${latestTrackingPosition.longitude + 12}%2C${latestTrackingPosition.latitude + 8}&layer=mapnik&marker=${latestTrackingPosition.latitude}%2C${latestTrackingPosition.longitude}`
+    : "";
   const qualityStatus = data?.milestones.find((milestone) => milestone.code === "QUALITY_CONTROL")?.qualityStatus || "Não iniciado";
   const previousStagesComplete = Boolean(data?.milestones
     .filter((milestone) => milestone.sequence < 6 && milestone.status !== "Suspenso")
@@ -3360,13 +3365,29 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
         </section>
 
         <section className="tracking-card panel">
-          <header><div><p className="eyebrow">BOOKING TRACKING</p><h3>{operation.bookingNumber || "Booking não cadastrado"}</h3></div><span>10D</span></header>
-          {latestTracking ? <article><b>{latestTracking.status}</b><span>{latestTracking.location}</span><p>{latestTracking.details}</p><small>Consultado em {formatDate(latestTracking.checkedAt)} · próximo {formatDate(latestTracking.nextCheckAt)}</small></article> : <p>Nenhuma consulta de tracking registrada.</p>}
-          <button disabled={Boolean(action)} onClick={() => post({ action: "tracking-check" }, "Tracking registrado; próximo acompanhamento programado.")}>Atualizar tracking agora ↻</button>
-          {!operation.bookingNumber && <small>Preencha armador e booking na edição do processo para conectar a futura API de tracking.</small>}
+          <header><div><p className="eyebrow">SHIPMENT TRACKING</p><h3>{operation.bookingNumber || operation.billOfLadingNumber || "Referência pendente"}</h3></div><span>{data.trackingProvider.configured ? "LIVE" : "SETUP"}</span></header>
+          {latestTracking ? <article><b>{latestTracking.status}</b><span>{latestTrackingPosition.label}</span><p>{latestTracking.details}</p><small>Consultado em {formatDate(latestTracking.checkedAt)} · próximo {formatDate(latestTracking.nextCheckAt)}</small></article> : <p>Nenhuma consulta de tracking registrada.</p>}
+          <a className="tracking-open-workspace" href="#shipment-tracking">Abrir mapa e histórico ↓</a>
+          {!data.trackingProvider.configured && <small>Adicione a credencial ShipsGo no ambiente de produção para habilitar consultas reais.</small>}
         </section>
       </aside>
     </div>
+
+    <section id="shipment-tracking" className="shipment-tracking-workspace panel">
+      <header><div><p className="eyebrow">SHIPMENT TRACKING · {data.trackingProvider.provider}</p><h3>Posição da carga e comunicação ao cliente</h3><p>{operation.containerNumbers || operation.billOfLadingNumber || operation.bookingNumber || "Cadastre contêiner, BL ou booking"} · {operation.portOfLoading || "Origem"} → {operation.portOfDischarge || "Destino"}</p></div><span className={data.trackingProvider.configured ? "active" : "pending"}>{data.trackingProvider.configured ? "Integração ativa" : "Configuração necessária"}</span></header>
+      <div className="shipment-tracking-layout">
+        <div className="shipment-map">
+          {trackingMapUrl ? <iframe title="Posição atual do navio" src={trackingMapUrl} loading="lazy" referrerPolicy="no-referrer" /> : <div className="shipment-map-empty"><b>Mapa aguardando coordenadas</b><span>A primeira consulta ao ShipsGo preencherá a posição informada pelo armador.</span></div>}
+        </div>
+        <aside>
+          <div className="shipment-current-status"><small>STATUS ATUAL</small><strong>{latestTracking?.status || "Ainda não consultado"}</strong><span>{latestTrackingPosition.label || "Localização pendente"}</span>{latestTracking?.eta && <em>ETA {latestTracking.eta}</em>}</div>
+          <button className="primary" disabled={Boolean(action) || !data.trackingProvider.configured || !settings.customerEmail} onClick={() => post({ action: "tracking-check" }, "Tracking atualizado e comunicação ao cliente processada.")}>{action === "tracking-check" ? "Consultando ShipsGo…" : "Rastrear e enviar atualização ao cliente"}</button>
+          {!settings.customerEmail && <small>Informe o e-mail do cliente na área de comunicação para habilitar o envio.</small>}
+          <div className="shipment-tracking-timeline"><h4>Histórico de posições</h4>{data.tracking.slice(0, 8).map((item) => { const position = parseTrackingLocation(item.location); return <article key={item.id}><i /><div><b>{item.status}</b><span>{position.label}{item.eta ? ` · ETA ${item.eta}` : ""}</span><small>{formatDate(item.checkedAt)} · {item.source}</small></div></article>; })}{!data.tracking.length && <p>O histórico será criado após a primeira consulta real.</p>}</div>
+        </aside>
+      </div>
+      <footer>A consulta é feita somente quando você autoriza pelo botão. O ExportaTrust registra o evento, atualiza o mapa e envia a mensagem ao cliente; a criação de rastreamentos duplicados deve ser evitada para preservar os créditos do ShipsGo.</footer>
+    </section>
 
     {previewMessage && <section className="email-preview-panel panel">
       <header><div><p className="eyebrow">PRÉVIA EXATA DO E-MAIL</p><h3>Como o cliente receberá</h3></div><button onClick={() => setPreviewMessage(null)}>Fechar ×</button></header>
@@ -3390,6 +3411,13 @@ function formatBytes(bytes: number) {
 function formatDate(value: string) {
   const date = new Date(value.endsWith("Z") ? value : `${value.replace(" ", "T")}Z`);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("pt-BR");
+}
+
+function parseTrackingLocation(value: string) {
+  const [label = "", latitude = "", longitude = ""] = value.split("|||");
+  const lat = Number(latitude);
+  const lon = Number(longitude);
+  return { label, latitude: latitude && Number.isFinite(lat) ? lat : null, longitude: longitude && Number.isFinite(lon) ? lon : null };
 }
 
 function parseStringArray(value: string) {
