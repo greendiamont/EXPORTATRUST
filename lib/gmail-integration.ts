@@ -254,17 +254,17 @@ function gmailPriorityQuery(references: string[]) {
   return `{${quoted}}`;
 }
 
-async function listPriorityMessages(token: string, references: string[]) {
+async function listGmailMessages(token: string, query: string, limit = 500) {
   const messages: Array<{ id: string }> = [];
   let pageToken = "";
   do {
-    const params = new URLSearchParams({ maxResults: "100", q: gmailPriorityQuery(references) });
+    const params = new URLSearchParams({ maxResults: "100", q: query });
     if (pageToken) params.set("pageToken", pageToken);
     const page = await gmailJson<{ messages?: Array<{ id: string }>; nextPageToken?: string }>(`messages?${params.toString()}`, token);
     messages.push(...(page.messages ?? []));
     pageToken = page.nextPageToken ?? "";
-  } while (pageToken && messages.length < 500);
-  return messages.slice(0, 500);
+  } while (pageToken && messages.length < limit);
+  return messages.slice(0, limit);
 }
 
 async function gmailJson<T>(path: string, token: string): Promise<T> {
@@ -288,7 +288,11 @@ export async function syncGmail() {
       const operation = operationRows.find((row) => row.reference.trim().toLowerCase() === reference.toLowerCase());
       return [reference.toLowerCase(), { reference, operationFound: Boolean(operation), messagesFound: 0, messagesImported: 0, alreadySynchronized: 0, attachmentsImported: 0, lastMessageAt: null }];
     }));
-    const list = await listPriorityMessages(token, references);
+    const [priorityList, recentList] = await Promise.all([
+      listGmailMessages(token, gmailPriorityQuery(references)),
+      listGmailMessages(token, "newer_than:14d"),
+    ]);
+    const list = [...new Map([...priorityList, ...recentList].map((message) => [message.id, message])).values()];
     let imported = 0;
     let reviewed = 0;
     let attachments = 0;
@@ -336,7 +340,7 @@ export async function syncGmail() {
     await db.update(gmailConnections).set({ lastSyncAt: now, lastError: "", updatedAt: now }).where(eq(gmailConnections.id, connection.id));
     const report = [...reports.values()];
     await audit(context, "GMAIL_PRIORITY_SYNC_COMPLETED", "gmail_connection", String(connection.id), { references, imported, reviewed, attachments, alreadySynchronized, inspected: list.length, report });
-    return Response.json({ inspected: list.length, imported, reviewed, attachments, alreadySynchronized, report, message: `${list.length} e-mail(s) localizado(s); ${imported} novo(s) vinculado(s), ${alreadySynchronized} já sincronizado(s) e ${reviewed} em revisão.` });
+    return Response.json({ inspected: list.length, imported, reviewed, attachments, alreadySynchronized, report, message: `${list.length} e-mail(s) verificado(s): histórico prioritário e sincronização normal dos últimos 14 dias. ${imported} novo(s) vinculado(s), ${alreadySynchronized} já sincronizado(s) e ${reviewed} em revisão.` });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha ao sincronizar Gmail.";
     await db.update(gmailConnections).set({ lastError: message, updatedAt: new Date().toISOString() }).where(eq(gmailConnections.id, connection.id));
