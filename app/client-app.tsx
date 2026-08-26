@@ -3681,6 +3681,8 @@ function IntegrationsModule() {
   const [agentBrief, setAgentBrief] = useState<AgentBriefData | null>(null);
   const [privateAgent, setPrivateAgent] = useState<PrivateAgentStatus | null>(null);
   const [gmail, setGmail] = useState<GmailStatusData | null>(null);
+  const [gmailStatusError, setGmailStatusError] = useState("");
+  const [showGmailConfig, setShowGmailConfig] = useState(false);
   const [gmailAction, setGmailAction] = useState("");
   const [gmailConfig, setGmailConfig] = useState({ clientId: "", clientSecret: "" });
   const [gmailNotice, setGmailNotice] = useState(() => {
@@ -3711,14 +3713,19 @@ function IntegrationsModule() {
       fetch(`/api/asana-import?t=${Date.now()}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
       fetch(`/api/agent-brief?t=${Date.now()}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
       fetch(`/api/agent/status?t=${Date.now()}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
-      fetch(`/api/integrations/gmail/status?t=${Date.now()}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
+      fetch(`/api/integrations/gmail/status?t=${Date.now()}`, { cache: "no-store" }).then(async (response) => {
+        const data = await response.json() as GmailStatusData & { error?: string };
+        if (!response.ok) throw new Error(data.error || "Não foi possível verificar o Gmail.");
+        return data;
+      }),
     ]).then(([asanaData, briefData, privateAgentData, gmailData]) => {
       if (!activeRequest) return;
       setAsanaImport(asanaData as AsanaImportData | null);
       setAgentBrief(briefData as AgentBriefData | null);
       setPrivateAgent(privateAgentData as PrivateAgentStatus | null);
       setGmail(gmailData as GmailStatusData | null);
-    }).catch(() => undefined);
+      setGmailStatusError("");
+    }).catch((reason) => setGmailStatusError(reason instanceof Error ? reason.message : "Não foi possível verificar o Gmail."));
     return () => { activeRequest = false; };
   }, [reload]);
   async function runGmailAction(action: "sync" | "disconnect") {
@@ -3757,9 +3764,10 @@ function IntegrationsModule() {
     {error && <div className="panel integration-error"><b>Falha ao verificar integrações</b><span>{error}</span><button onClick={() => { setLoading(true); setReload((value) => value + 1); }}>Tentar novamente</button></div>}
     <section className="panel gmail-integration-card">
       <div className="gmail-integration-copy"><p className="eyebrow">GMAIL API · OAUTH 2.0</p><h3>{gmail?.connected ? "Caixa postal conectada" : "Conectar e-mail operacional"}</h3><p>{gmail?.connected ? `Conta ${gmail.connection?.gmailAddress || "Google Workspace"}. O agente lê mensagens e anexos, identifica a operação e envia correspondências incertas para revisão.` : gmail?.configured ? "As credenciais estão prontas. Autorize a conta que o ExportaTrust deverá acompanhar." : "A API está instalada, mas as credenciais ainda precisam ser disponibilizadas no ambiente do ExportaTrust."}</p>{gmail?.connection?.lastSyncAt && <small>Última sincronização: {new Date(gmail.connection.lastSyncAt).toLocaleString("pt-BR")}</small>}{gmail?.connection?.lastError && <small className="gmail-error">Última falha: {gmail.connection.lastError}</small>}{gmailNotice && <div className="gmail-notice">{gmailNotice}</div>}</div>
-      <div className="gmail-integration-actions">{gmail?.connected ? <><span className="gmail-connected">✓ CONECTADO</span><button className="primary" disabled={!!gmailAction} onClick={() => runGmailAction("sync")}>{gmailAction === "sync" ? "Sincronizando…" : "Sincronizar agora"}</button><button className="secondary" disabled={!!gmailAction} onClick={() => runGmailAction("disconnect")}>{gmailAction === "disconnect" ? "Desconectando…" : "Desconectar"}</button></> : <><span className={gmail?.configured ? "gmail-ready" : "gmail-waiting"}>{gmail?.configured ? "PRONTO PARA AUTORIZAR" : "AGUARDANDO AMBIENTE"}</span><a className={`gmail-connect-button ${gmail?.configured ? "" : "disabled"}`} href={gmail?.configured ? "/api/integrations/gmail/connect" : undefined}>Conectar Gmail</a></>}</div>
+      <div className="gmail-integration-actions">{gmail?.connected ? <><span className="gmail-connected">✓ CONECTADO</span><button className="primary" disabled={!!gmailAction} onClick={() => runGmailAction("sync")}>{gmailAction === "sync" ? "Sincronizando…" : "Sincronizar agora"}</button><button className="secondary" disabled={!!gmailAction} onClick={() => runGmailAction("disconnect")}>{gmailAction === "disconnect" ? "Desconectando…" : "Desconectar"}</button></> : <><span className={gmail?.configured ? "gmail-ready" : "gmail-waiting"}>{gmail?.configured ? "PRONTO PARA AUTORIZAR" : "AGUARDANDO CREDENCIAIS"}</span>{!gmail?.configured && gmail?.canConfigure && <button className="secondary" type="button" onClick={() => setShowGmailConfig((value) => !value)}>{showGmailConfig ? "Fechar configuração" : "Incluir Gmail"}</button>}<a className={`gmail-connect-button ${gmail?.configured ? "" : "disabled"}`} href={gmail?.configured ? "/api/integrations/gmail/connect" : undefined}>Conectar Gmail</a></>}</div>
     </section>
-    {!gmail?.configured && gmail?.canConfigure && <form className="panel gmail-config-panel" onSubmit={saveGmailCredentials} autoComplete="off">
+    {gmailStatusError && <div className="panel integration-error"><b>Falha ao carregar a configuração do Gmail</b><span>{gmailStatusError}</span><button onClick={() => setReload((value) => value + 1)}>Tentar novamente</button></div>}
+    {!gmail?.configured && gmail?.canConfigure && showGmailConfig && <form className="panel gmail-config-panel" onSubmit={saveGmailCredentials} autoComplete="off">
       <header><div><p className="eyebrow">CONFIGURAÇÃO SEGURA</p><h3>Credenciais do Google Cloud</h3><p>Copie os dois valores do cliente OAuth criado no Google. O Client Secret será criptografado antes de ser armazenado e nunca voltará a aparecer nesta tela.</p></div><span>SOMENTE ADMINISTRADOR</span></header>
       <label>Google Client ID<input type="text" value={gmailConfig.clientId} onChange={(event) => setGmailConfig((current) => ({ ...current, clientId: event.target.value }))} placeholder="000000000000-xxxx.apps.googleusercontent.com" required spellCheck={false} /></label>
       <label>Google Client Secret<input type="password" value={gmailConfig.clientSecret} onChange={(event) => setGmailConfig((current) => ({ ...current, clientSecret: event.target.value }))} placeholder="Cole o segredo diretamente aqui" required spellCheck={false} /></label>

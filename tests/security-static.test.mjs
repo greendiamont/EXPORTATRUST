@@ -142,7 +142,9 @@ test("Gmail OAuth uses minimum scopes, encrypted tokens and human review", async
   assert.match(source, /match\.confidence === "HIGH"/);
   assert.match(ui, /Conectar Gmail/);
   assert.match(ui, /Sincronizar agora/);
-  assert.match(source, /context\.role !== "administrador"/);
+  assert.match(source, /context\.role === "administrador"/);
+  assert.match(source, /EXPORTATRUST_ADMIN_EMAILS/);
+  assert.match(source, /canManageGmail/);
   assert.match(source, /clientSecretEncrypted/);
   assert.match(source, /secretStored: true/);
   assert.doesNotMatch(source, /clientSecret:\s*saved\.clientSecretEncrypted/);
