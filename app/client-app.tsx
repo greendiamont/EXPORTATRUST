@@ -43,7 +43,8 @@ function translateInterface(root: Node, language: Language) {
   }
 }
 
-const nav = ["Dashboard", "Processos", "Portal Cliente", "Riscos", "Relatórios", "Integrações", "Segurança"];
+const nav = ["Dashboard", "Processos", "Portal Cliente", "Riscos", "Relatórios", "Segurança"];
+const protectedModules = ["Integrações"];
 const brazilStates = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
 
 async function openSecureDocument(documentId: number, documentType: "operation" | "forest", inline = false) {
@@ -664,7 +665,7 @@ export default function Home({ initialData }: { initialData: InitialAppData }) {
   const [active, setActive] = useState(() => {
     if (typeof window === "undefined") return "Dashboard";
     const requested = new URLSearchParams(window.location.search).get("module");
-    return requested && nav.includes(requested) ? requested : "Dashboard";
+    return requested && [...nav, ...protectedModules].includes(requested) ? requested : "Dashboard";
   });
   const [drawer, setDrawer] = useState<"operation" | "supplier" | null>(null);
   const [notice, setNotice] = useState("");
@@ -1456,6 +1457,7 @@ export default function Home({ initialData }: { initialData: InitialAppData }) {
               savedProperties={allProperties}
               onActionsChange={setExceptionActions}
               onClientsChange={setMasterClients}
+              openIntegrations={() => { setActive("Integrações"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
             />
           )}
         </div>
@@ -2374,7 +2376,7 @@ function MasterProductsModule({ suppliers,showNotice,onProductsChange }:{supplie
 function DeduplicationModule({showNotice}:{showNotice:(message:string)=>void}){const [data,setData]=useState<{queue:Array<{id:number;entityType:string;primaryRecordId:number;possibleDuplicateId:number;reason:string;confidence:number;status:string}>;entities:Record<string,Array<{id:number;legalName?:string;name?:string}>>}|null>(null);const load=()=>fetch(`/api/deduplication?t=${Date.now()}`,{cache:"no-store"}).then(r=>r.json()).then(setData);useEffect(()=>{void load();},[]);const scan=async()=>{const r=await fetch("/api/deduplication",{method:"POST"});const d=await r.json() as {created?:number};await load();showNotice(`${d.created??0} nova(s) possível(is) duplicidade(s) encontrada(s).`);};const decide=async(id:number,status:string)=>{await fetch("/api/deduplication",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({id,status})});await load();};const name=(type:string,id:number)=>{const x=data?.entities?.[type]?.find(item=>item.id===id);return x?.legalName||x?.name||`Registro #${id}`};return <section className="master-data-page"><header className="master-data-header"><div><p className="eyebrow">NORMALIZAÇÃO SEGURA</p><h2>Possíveis duplicidades</h2><p>Aliases e nomes semelhantes são revisados sem excluir ou sobrescrever o histórico antigo.</p></div><button className="primary" onClick={scan}>Analisar cadastros</button></header><article className="panel dedupe-list">{data?.queue.map(item=><div key={item.id}><span>{item.entityType}</span><div><b>{name(item.entityType,item.primaryRecordId)}</b><em>⇄</em><b>{name(item.entityType,item.possibleDuplicateId)}</b><small>{item.reason}</small></div><strong>{Math.round(item.confidence*100)}%</strong><select value={item.status} onChange={e=>void decide(item.id,e.target.value)}><option>Possível duplicidade</option><option>Confirmado</option><option>Não duplicado</option></select></div>)}{data&&!data.queue.length&&<p>Nenhuma possível duplicidade na fila. Execute a análise.</p>}</article></section>}
 
 function ModuleView({
-  active, showNotice, openOperation, openSupplier, openSupplierDetails, editSupplier, openOperationDetails, savedOperations, savedSuppliers, savedActions, savedDocuments, savedProperties, onActionsChange, onClientsChange,
+  active, showNotice, openOperation, openSupplier, openSupplierDetails, editSupplier, openOperationDetails, savedOperations, savedSuppliers, savedActions, savedDocuments, savedProperties, onActionsChange, onClientsChange, openIntegrations,
 }: {
   active: string;
   showNotice: (message: string) => void;
@@ -2390,6 +2392,7 @@ function ModuleView({
   savedProperties: MapProperty[];
   onActionsChange: (actions: ExceptionActionRecord[]) => void;
   onClientsChange: (clients: ImporterClientRecord[]) => void;
+  openIntegrations: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [moduleFilter, setModuleFilter] = useState("Todos");
@@ -2399,8 +2402,8 @@ function ModuleView({
   if (active === "Duplicidades") return <DeduplicationModule showNotice={showNotice} />;
   if (active === "Portal Cliente") return <BrazilClientPortal suppliers={savedSuppliers} operations={savedOperations} documents={savedDocuments} properties={savedProperties} actions={savedActions} openOperationDetails={openOperationDetails} showNotice={showNotice} />;
   if (active === "Riscos") return <RisksModule actions={savedActions} operations={savedOperations} openOperationDetails={openOperationDetails} onActionsChange={onActionsChange} />;
-  if (active === "Integrações") return <IntegrationsModule />;
-  if (active === "Segurança") return <SecurityGovernanceModule />;
+  if (active === "Integrações") return <ProtectedIntegrationsModule />;
+  if (active === "Segurança") return <SecurityGovernanceModule openIntegrations={openIntegrations} />;
 
   const data = moduleData[active as keyof typeof moduleData] ?? moduleData.Processos;
   const persistedRows: readonly (readonly string[])[] = active === "Processos"
@@ -3612,7 +3615,36 @@ type SecurityPayload = {
   controls: SecurityControl[];
 };
 
-function SecurityGovernanceModule() {
+function AdminIntegrationsShortcut({ onOpen }: { onOpen: () => void }) {
+  const [allowed, setAllowed] = useState(false);
+  useEffect(() => {
+    let activeRequest = true;
+    fetch(`/api/integrations/gmail/status?t=${Date.now()}`, { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() as Promise<GmailStatusData> : null)
+      .then((status) => { if (activeRequest) setAllowed(Boolean(status?.canConfigure)); })
+      .catch(() => undefined);
+    return () => { activeRequest = false; };
+  }, []);
+  if (!allowed) return null;
+  return <section className="panel security-section"><header><div><p className="eyebrow">CONFIGURAÇÃO RESTRITA</p><h3>Integrações administrativas</h3><p>Credenciais, conexões externas e configurações técnicas ficam ocultas do menu principal.</p></div><span>SOMENTE ADMINISTRADOR</span></header><div className="security-actions"><button className="primary" onClick={onOpen}>Abrir integrações seguras →</button></div></section>;
+}
+
+function ProtectedIntegrationsModule() {
+  const [access, setAccess] = useState<"loading" | "allowed" | "denied">("loading");
+  useEffect(() => {
+    let activeRequest = true;
+    fetch(`/api/integrations/gmail/status?t=${Date.now()}`, { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() as Promise<GmailStatusData> : null)
+      .then((status) => { if (activeRequest) setAccess(status?.canConfigure ? "allowed" : "denied"); })
+      .catch(() => { if (activeRequest) setAccess("denied"); });
+    return () => { activeRequest = false; };
+  }, []);
+  if (access === "loading") return <section className="module-page"><div className="panel security-loading">Verificando autorização administrativa…</div></section>;
+  if (access === "denied") return <section className="module-page"><div className="panel integration-error"><b>Área administrativa protegida</b><span>Seu perfil não possui acesso às configurações de integrações.</span></div></section>;
+  return <IntegrationsModule />;
+}
+
+function SecurityGovernanceModule({ openIntegrations }: { openIntegrations: () => void }) {
   const [data, setData] = useState<SecurityPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState("");
@@ -3655,6 +3687,7 @@ function SecurityGovernanceModule() {
     <header className="module-header security-hero"><div><p className="eyebrow">SECURITY & GOVERNANCE</p><h2>Central de Segurança e LGPD</h2><p>Controle de identidade, empresas, perfis, documentos, auditoria, backups e integridade dos dossiês EUDR.</p></div><div><span className={data.auditChain.valid ? "security-seal valid" : "security-seal invalid"}>{data.auditChain.valid ? "✓ Cadeia íntegra" : "! Verificar auditoria"}</span><button className="primary" onClick={load}>Atualizar ↻</button></div></header>
     {error && <div className="agent-error"><span>{error}</span></div>}
     <div className="module-stats security-stats"><article className="module-stat"><strong>{operational}/12</strong><span>controles operacionais</span></article><article className="module-stat"><strong>{data.members.length}</strong><span>usuários da empresa</span></article><article className="module-stat"><strong>{data.auditChain.checked}</strong><span>eventos auditados</span></article><article className={`module-stat ${data.monitoring.openCount ? "alert" : ""}`}><strong>{data.monitoring.openCount}</strong><span>alertas técnicos abertos</span></article></div>
+    <AdminIntegrationsShortcut onOpen={openIntegrations} />
     <section className="security-control-grid">{data.controls.map((control) => <article className={`panel security-control ${control.state}`} key={control.id}><span>{String(control.id).padStart(2, "0")}</span><div><b>{control.name}</b><p>{control.detail}</p></div><em>{control.state === "operational" ? "Operacional" : control.state === "attention" ? "Ação necessária" : control.state === "critical" ? "Crítico" : control.state === "testing" ? "Em teste" : "Preparado"}</em></article>)}</section>
     <div className="security-columns">
       <section className="panel security-section"><header><div><p className="eyebrow">EMPRESA E ACESSOS</p><h3>{data.context.organizationName}</h3><p>Tenant #{data.context.organizationId} · {data.context.email} · {data.context.role}</p></div><span>{data.infrastructure.environment === "production" ? "PRODUÇÃO" : "TESTE"}</span></header>
