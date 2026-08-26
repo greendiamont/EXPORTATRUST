@@ -29,6 +29,18 @@ type GmailMessage = {
 
 type TokenPayload = { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string; error?: string; error_description?: string };
 
+export const DEFAULT_PRIORITY_REFERENCES = ["02/2026", "GBU002/26", "GBU011/26", "049/26 A", "048/26", "PO0657", "GBU003/26"] as const;
+
+type SyncProcessReport = {
+  reference: string;
+  operationFound: boolean;
+  messagesFound: number;
+  messagesImported: number;
+  alreadySynchronized: number;
+  attachmentsImported: number;
+  lastMessageAt: string | null;
+};
+
 async function runtimeEnv() {
   const { env } = await import("cloudflare:workers");
   return env as unknown as Record<string, unknown> & { DB: D1Database; BUCKET: R2Bucket };
@@ -215,10 +227,10 @@ async function validAccessToken(connection: typeof gmailConnections.$inferSelect
   return tokens.access_token;
 }
 
-async function matchEmailOperation(context: SecurityContext, message: GmailMessage) {
+async function matchEmailOperation(context: SecurityContext, message: GmailMessage, operationRows?: Array<typeof operations.$inferSelect>) {
   const db = await getDb();
   const text = [header(message.payload, "Subject"), message.snippet, messageText(message)].join(" ").toLowerCase();
-  const rows = await db.select().from(operations).where(eq(operations.organizationId, context.organizationId)).limit(1000);
+  const rows = operationRows ?? await db.select().from(operations).where(eq(operations.organizationId, context.organizationId)).limit(1000);
   const candidates = rows.map((operation) => {
     const tokens = [operation.reference, operation.contractNumber, operation.bookingNumber, operation.billOfLadingNumber, operation.containerNumbers].filter(Boolean);
     const score = tokens.reduce((total, token) => total + (text.includes(token.toLowerCase()) ? (token === operation.reference ? 100 : 45) : 0), 0);
@@ -226,6 +238,33 @@ async function matchEmailOperation(context: SecurityContext, message: GmailMessa
   }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score);
   const top = candidates[0];
   return top ? { operation: top.operation, confidence: top.score >= 100 ? "HIGH" : "MEDIUM", score: top.score } : { operation: null, confidence: "NONE", score: 0 };
+}
+
+function priorityReferences(env: Record<string, unknown>) {
+  const configured = String(env.GMAIL_PRIORITY_REFERENCES ?? "")
+    .split(/[\n,;]/)
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .slice(0, 25);
+  return configured.length ? configured : [...DEFAULT_PRIORITY_REFERENCES];
+}
+
+function gmailPriorityQuery(references: string[]) {
+  const quoted = references.map((reference) => `"${reference.replace(/["\\]/g, " ")}"`).join(" ");
+  return `{${quoted}}`;
+}
+
+async function listPriorityMessages(token: string, references: string[]) {
+  const messages: Array<{ id: string }> = [];
+  let pageToken = "";
+  do {
+    const params = new URLSearchParams({ maxResults: "100", q: gmailPriorityQuery(references) });
+    if (pageToken) params.set("pageToken", pageToken);
+    const page = await gmailJson<{ messages?: Array<{ id: string }>; nextPageToken?: string }>(`messages?${params.toString()}`, token);
+    messages.push(...(page.messages ?? []));
+    pageToken = page.nextPageToken ?? "";
+  } while (pageToken && messages.length < 500);
+  return messages.slice(0, 500);
 }
 
 async function gmailJson<T>(path: string, token: string): Promise<T> {
@@ -242,15 +281,33 @@ export async function syncGmail() {
   if (!connection || connection.status !== "Ativo") return Response.json({ error: "Conecte uma conta Gmail antes de sincronizar." }, { status: 409 });
   try {
     const token = await validAccessToken(connection, context);
-    const list = await gmailJson<{ messages?: Array<{ id: string }>; resultSizeEstimate?: number }>("messages?maxResults=25&q=newer_than%3A14d", token);
+    const env = await runtimeEnv();
+    const references = priorityReferences(env);
+    const operationRows = await db.select().from(operations).where(eq(operations.organizationId, context.organizationId)).limit(1000);
+    const reports = new Map<string, SyncProcessReport>(references.map((reference) => {
+      const operation = operationRows.find((row) => row.reference.trim().toLowerCase() === reference.toLowerCase());
+      return [reference.toLowerCase(), { reference, operationFound: Boolean(operation), messagesFound: 0, messagesImported: 0, alreadySynchronized: 0, attachmentsImported: 0, lastMessageAt: null }];
+    }));
+    const list = await listPriorityMessages(token, references);
     let imported = 0;
     let reviewed = 0;
     let attachments = 0;
-    for (const item of list.messages ?? []) {
-      const existing = await db.select({ id: agentEvents.id }).from(agentEvents).where(and(eq(agentEvents.organizationId, context.organizationId), eq(agentEvents.eventId, `gmail:${item.id}`))).limit(1);
-      if (existing.length) continue;
+    let alreadySynchronized = 0;
+    for (const item of list) {
       const message = await gmailJson<GmailMessage>(`messages/${encodeURIComponent(item.id)}?format=full`, token);
-      const match = await matchEmailOperation(context, message);
+      const match = await matchEmailOperation(context, message, operationRows);
+      const report = match.operation ? reports.get(match.operation.reference.trim().toLowerCase()) : undefined;
+      if (report) {
+        report.messagesFound += 1;
+        const messageAt = message.internalDate ? new Date(Number(message.internalDate)).toISOString() : null;
+        if (messageAt && (!report.lastMessageAt || messageAt > report.lastMessageAt)) report.lastMessageAt = messageAt;
+      }
+      const existing = await db.select({ id: agentEvents.id }).from(agentEvents).where(and(eq(agentEvents.organizationId, context.organizationId), eq(agentEvents.eventId, `gmail:${item.id}`))).limit(1);
+      if (existing.length) {
+        alreadySynchronized += 1;
+        if (report) report.alreadySynchronized += 1;
+        continue;
+      }
       const subject = sanitize(header(message.payload, "Subject"));
       const sender = sanitize(header(message.payload, "From"));
       const recipients = header(message.payload, "To").split(",").map((value) => sanitize(value)).filter(Boolean);
@@ -269,14 +326,17 @@ export async function syncGmail() {
           const classification = classifyDocument(part.filename || "");
           await db.insert(operationDocuments).values({ organizationId: context.organizationId, operationId: match.operation.id, category: classification.stage, fileName: part.filename || "attachment", objectKey, contentType: part.mimeType || "application/octet-stream", sizeBytes: bytes.byteLength, status: "Recebido — aguardando aprovação", sourceSystem: "Gmail", sourceExternalId: message.id, sourceTaskId: message.threadId ?? "", sourceCreatedAt: message.internalDate ? new Date(Number(message.internalDate)).toISOString() : "", documentType: classification.type, lifecycleStatus: "Vigente", shipmentSetStatus: "Fora do set", clientShareStatus: "Interno" });
           attachments += 1;
+          if (report) report.attachmentsImported += 1;
         }
         imported += 1;
+        if (report) report.messagesImported += 1;
       } else reviewed += 1;
     }
     const now = new Date().toISOString();
     await db.update(gmailConnections).set({ lastSyncAt: now, lastError: "", updatedAt: now }).where(eq(gmailConnections.id, connection.id));
-    await audit(context, "GMAIL_SYNC_COMPLETED", "gmail_connection", String(connection.id), { imported, reviewed, attachments, inspected: list.messages?.length ?? 0 });
-    return Response.json({ inspected: list.messages?.length ?? 0, imported, reviewed, attachments, message: `${imported} e-mail(s) vinculado(s); ${reviewed} encaminhado(s) para revisão.` });
+    const report = [...reports.values()];
+    await audit(context, "GMAIL_PRIORITY_SYNC_COMPLETED", "gmail_connection", String(connection.id), { references, imported, reviewed, attachments, alreadySynchronized, inspected: list.length, report });
+    return Response.json({ inspected: list.length, imported, reviewed, attachments, alreadySynchronized, report, message: `${list.length} e-mail(s) localizado(s); ${imported} novo(s) vinculado(s), ${alreadySynchronized} já sincronizado(s) e ${reviewed} em revisão.` });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha ao sincronizar Gmail.";
     await db.update(gmailConnections).set({ lastError: message, updatedAt: new Date().toISOString() }).where(eq(gmailConnections.id, connection.id));
