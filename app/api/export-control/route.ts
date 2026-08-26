@@ -3,6 +3,7 @@ import { ensureBaseTables, getDb } from "../../../db";
 import { clientNotifications, countryComplianceChecks, exportControlSettings, exportMilestones, operationDocuments, operations, shipmentTrackingEvents } from "../../../db/schema";
 import { addDays, canApproveShipment, countryRequirements, EXPORT_ORDER_MILESTONES, isEudrRequired, milestoneEmail, requirementMatches } from "../../../lib/export-control";
 import { audit, requireSecurityContext } from "../../../lib/security";
+import { encodeTrackingLocation, shipsGoConfiguration, trackOceanShipment } from "../../../lib/shipsgo";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Erro inesperado";
@@ -184,6 +185,7 @@ async function snapshot(operationId: number, organizationId: number, controlSeed
   const requiredRows = requirementRows.filter((item) => item.required);
   const score = requiredRows.length ? Math.round(requiredRows.filter((item) => item.present).length / requiredRows.length * 100) : 100;
   const emailConfiguration = await emailProviderConfiguration();
+  const trackingConfiguration = await shipsGoConfiguration();
   const today = new Date().toISOString().slice(0, 10);
   const activeMilestones = milestones.filter((milestone) => !["Concluído", "Suspenso"].includes(milestone.status));
   const incompletePlans = activeMilestones.filter((milestone) => !milestone.responsibleName || !milestone.dueDate || !milestone.nextAction);
@@ -212,6 +214,7 @@ async function snapshot(operationId: number, organizationId: number, controlSeed
       status: !eudrRequired ? "Suspenso · EUDR não aplicável para este destino" : operation.eudrReference ? "Referência DDS registrada" : operation.readiness >= 100 ? "Checklist concluído · revisão pendente" : operation.readiness > 0 ? "Em andamento" : "Não iniciado",
     },
     emailDelivery: { provider: emailConfiguration.provider, ready: emailConfiguration.ready, sender: emailConfiguration.from || "Não configurado" },
+    trackingProvider: { provider: trackingConfiguration.provider, configured: trackingConfiguration.configured },
     operationalAlerts: {
       missingPlan: incompletePlans.length,
       overdue: overdueMilestones.length,
@@ -324,14 +327,18 @@ export async function POST(request: Request) {
     if (action === "tracking-check") {
       const interval = settings.trackingIntervalDays || 10;
       const nextCheckAt = addDays(now, interval);
-      const shipped = (await db.select().from(exportMilestones).where(and(eq(exportMilestones.operationId, operationId), eq(exportMilestones.code, "SHIPPED"))).limit(1))[0];
-      const status = shipped?.status === "Concluído" ? "Em trânsito · aguardando posição do armador" : "Aguardando embarque";
-      const details = operation.bookingNumber ? `Booking ${operation.bookingNumber}${operation.containerNumbers ? ` · contêiner(es) ${operation.containerNumbers}` : ""}.` : "Cadastre o booking para habilitar a consulta automática do armador.";
-      await db.insert(shipmentTrackingEvents).values({ organizationId: context.organizationId, operationId, source: "ExportaTrust scheduler", status, location: operation.portOfLoading || "Origem", eta: "", details, checkedAt: now.toISOString(), nextCheckAt });
+      const [previousTracking] = await db.select().from(shipmentTrackingEvents).where(and(eq(shipmentTrackingEvents.operationId, operationId), eq(shipmentTrackingEvents.organizationId, context.organizationId))).orderBy(desc(shipmentTrackingEvents.id)).limit(1);
+      const previousRequestId = previousTracking?.source.startsWith("ShipsGo · ") ? previousTracking.source.slice("ShipsGo · ".length) : "";
+      const result = await trackOceanShipment({ ...operation, requestId: previousRequestId });
+      await db.insert(shipmentTrackingEvents).values({ organizationId: context.organizationId, operationId, source: `ShipsGo · ${result.requestId}`, status: result.status, location: encodeTrackingLocation(result.location, result.latitude, result.longitude), eta: result.eta, details: result.details, checkedAt: now.toISOString(), nextCheckAt });
       await db.update(exportControlSettings).set({ nextTrackingAt: nextCheckAt, updatedAt: now.toISOString() }).where(and(eq(exportControlSettings.operationId, operationId), eq(exportControlSettings.organizationId, context.organizationId)));
-      if (settings.notificationsEnabled) await createNotification(db, context.organizationId, operation, settings, "IN_TRANSIT", "Tracking de embarque", status, details);
+      let deliveryResult = null;
+      if (settings.customerEmail) {
+        const notification = await createNotification(db, context.organizationId, operation, settings, "IN_TRANSIT", "Atualização de tracking marítimo", result.status, `${result.details}${result.location ? ` · Localização: ${result.location}` : ""}${result.eta ? ` · ETA: ${result.eta}` : ""}`, true);
+        deliveryResult = notification.delivery;
+      }
       await audit(context, "SHIPMENT_TRACKING_CHECKED", "operation", String(operationId), { booking: operation.bookingNumber, nextCheckAt });
-      return Response.json(await snapshot(operationId, context.organizationId, true));
+      return Response.json({ ...(await snapshot(operationId, context.organizationId, true)), deliveryResult });
     }
 
     if (action === "test-email") {

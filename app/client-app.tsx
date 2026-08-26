@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { translateToEnglish, type Language } from "./i18n";
 import { parseGeographicInput } from "../lib/geo-input";
 import { SUPPLY_CHAIN_STAGES } from "../lib/supply-chain-stages";
@@ -43,7 +43,8 @@ function translateInterface(root: Node, language: Language) {
   }
 }
 
-const nav = ["Dashboard", "Processos", "Portal Cliente", "Riscos", "Relatórios", "Integrações", "Segurança"];
+const nav = ["Dashboard", "Processos", "Portal Cliente", "Riscos", "Relatórios", "Segurança"];
+const protectedModules = ["Integrações"];
 const brazilStates = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
 
 async function openSecureDocument(documentId: number, documentType: "operation" | "forest", inline = false) {
@@ -452,9 +453,20 @@ type ExportControlData = {
   tracking: TrackingEventRecord[];
   eudrBridge: { readiness: number; reference: string; required: boolean; status: string };
   emailDelivery: { provider: string; ready: boolean; sender: string };
+  trackingProvider: { provider: string; configured: boolean };
   deliveryResult?: { status: string; provider: string; externalId: string; error: string };
   operationalAlerts: { missingPlan: number; overdue: number; stages: Array<{ code: string; title: string; missing: string[]; overdue: boolean }> };
   compliance: { score: number; stageScore: number; status: string; verdict: string; opinion: string; approvedSetDocuments: number; eudrRequired: boolean; lastCheck: { checkedAt: string } | null; requirements: Array<{ key: string; label: string; reason: string; required: boolean; present: boolean }>; stages: Array<{ code: string; sequence: number; title: string; status: string; applicable: boolean; passed: boolean; documentCount: number; issue: string }> };
+};
+type AiDocumentReport = {
+  document: { id: number; operationId: number; fileName: string; category: string };
+  analysis?: {
+    documentType: string; summary: string; language: string; confidence: number;
+    fields: { invoiceNumber: string | null; blNumber: string | null; exporter: string | null; importer: string | null; destinationCountry: string | null; destinationPort: string | null; currency: string | null; totalAmount: string | null; balanceDue: string | null; paymentTerms: string | null; issueDate: string | null; containers: number | null };
+    checks: Array<{ name: string; status: "ok" | "warning" | "missing"; details: string; evidence: string }>;
+    warnings: string[];
+  };
+  error?: string;
 };
 type ShipmentAdviceData = {
   advice: { id: number; status: string; recipient: string; subject: string; body: string; humanApproved: boolean; updatedAt: string } | null;
@@ -473,6 +485,8 @@ type ShipmentAdviceData = {
 type AgentMetrics = { activeAgents: number; jobsExecuted: number; jobsPending: number; awaitingApproval: number; failures: number; alerts: number; cost: number; revenue: number; grossMargin: number; marginPct: number; estimatedSavings: number };
 type AgentControlData = { settings: AgentSettingsRecord; services: AgentServiceRecord[]; jobs: AgentJobRecord[]; ledger: AgentLedgerRecord[]; reputation: AgentReputationRecord[]; metrics: AgentMetrics };
 type IntegrationStatusRecord = { id: string; name: string; category: "data" | "intelligence" | "agents" | "eudr" | "payments"; state: "operational" | "credential_required" | "sandbox" | "disabled"; label: string; detail: string; provider: string; live: boolean };
+type GmailStatusData = { configured: boolean; connected: boolean; connection: { gmailAddress: string; status: string; scopesJson: string; lastSyncAt: string | null; lastError: string; connectedAt: string } | null; config: { clientIdMasked: string; redirectUri: string; secretStored: boolean; source: string } | null; canConfigure: boolean; scopes: string[] };
+type GmailSyncReport = { reference: string; operationFound: boolean; messagesFound: number; messagesImported: number; alreadySynchronized: number; attachmentsImported: number; lastMessageAt: string | null };
 type PrivateAgentStatus = { api: { active: boolean; mode: string; auth: string; tokenVisible: boolean }; metrics: { eventsProcessed: number; eventsWithError: number; eventsInReview: number; documentsProcessed: number; approvalsPending: number }; lastEvent: { subject?: string; source?: string; matchConfidence?: string; createdAt?: string } | null; endpoints: string[] };
 type AsanaImportData = {
   project: { id: string; name: string; url: string };
@@ -650,7 +664,11 @@ function EnvironmentalNews({ language }: { language: Language }) {
 export default function Home({ initialData }: { initialData: InitialAppData }) {
   const initialProperties = useMemo(() => mapProperties(initialData.properties), [initialData.properties]);
   const [language, setLanguage] = useState<Language>("pt");
-  const [active, setActive] = useState("Dashboard");
+  const [active, setActive] = useState(() => {
+    if (typeof window === "undefined") return "Dashboard";
+    const requested = new URLSearchParams(window.location.search).get("module");
+    return requested && [...nav, ...protectedModules].includes(requested) ? requested : "Dashboard";
+  });
   const [drawer, setDrawer] = useState<"operation" | "supplier" | null>(null);
   const [notice, setNotice] = useState("");
   const [selectedProperty, setSelectedProperty] = useState<MapProperty | null>(initialProperties[0] ?? null);
@@ -1441,6 +1459,7 @@ export default function Home({ initialData }: { initialData: InitialAppData }) {
               savedProperties={allProperties}
               onActionsChange={setExceptionActions}
               onClientsChange={setMasterClients}
+              openIntegrations={() => { setActive("Integrações"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
             />
           )}
         </div>
@@ -2359,7 +2378,7 @@ function MasterProductsModule({ suppliers,showNotice,onProductsChange }:{supplie
 function DeduplicationModule({showNotice}:{showNotice:(message:string)=>void}){const [data,setData]=useState<{queue:Array<{id:number;entityType:string;primaryRecordId:number;possibleDuplicateId:number;reason:string;confidence:number;status:string}>;entities:Record<string,Array<{id:number;legalName?:string;name?:string}>>}|null>(null);const load=()=>fetch(`/api/deduplication?t=${Date.now()}`,{cache:"no-store"}).then(r=>r.json()).then(setData);useEffect(()=>{void load();},[]);const scan=async()=>{const r=await fetch("/api/deduplication",{method:"POST"});const d=await r.json() as {created?:number};await load();showNotice(`${d.created??0} nova(s) possível(is) duplicidade(s) encontrada(s).`);};const decide=async(id:number,status:string)=>{await fetch("/api/deduplication",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({id,status})});await load();};const name=(type:string,id:number)=>{const x=data?.entities?.[type]?.find(item=>item.id===id);return x?.legalName||x?.name||`Registro #${id}`};return <section className="master-data-page"><header className="master-data-header"><div><p className="eyebrow">NORMALIZAÇÃO SEGURA</p><h2>Possíveis duplicidades</h2><p>Aliases e nomes semelhantes são revisados sem excluir ou sobrescrever o histórico antigo.</p></div><button className="primary" onClick={scan}>Analisar cadastros</button></header><article className="panel dedupe-list">{data?.queue.map(item=><div key={item.id}><span>{item.entityType}</span><div><b>{name(item.entityType,item.primaryRecordId)}</b><em>⇄</em><b>{name(item.entityType,item.possibleDuplicateId)}</b><small>{item.reason}</small></div><strong>{Math.round(item.confidence*100)}%</strong><select value={item.status} onChange={e=>void decide(item.id,e.target.value)}><option>Possível duplicidade</option><option>Confirmado</option><option>Não duplicado</option></select></div>)}{data&&!data.queue.length&&<p>Nenhuma possível duplicidade na fila. Execute a análise.</p>}</article></section>}
 
 function ModuleView({
-  active, showNotice, openOperation, openSupplier, openSupplierDetails, editSupplier, openOperationDetails, savedOperations, savedSuppliers, savedActions, savedDocuments, savedProperties, onActionsChange, onClientsChange,
+  active, showNotice, openOperation, openSupplier, openSupplierDetails, editSupplier, openOperationDetails, savedOperations, savedSuppliers, savedActions, savedDocuments, savedProperties, onActionsChange, onClientsChange, openIntegrations,
 }: {
   active: string;
   showNotice: (message: string) => void;
@@ -2375,6 +2394,7 @@ function ModuleView({
   savedProperties: MapProperty[];
   onActionsChange: (actions: ExceptionActionRecord[]) => void;
   onClientsChange: (clients: ImporterClientRecord[]) => void;
+  openIntegrations: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [moduleFilter, setModuleFilter] = useState("Todos");
@@ -2384,8 +2404,8 @@ function ModuleView({
   if (active === "Duplicidades") return <DeduplicationModule showNotice={showNotice} />;
   if (active === "Portal Cliente") return <BrazilClientPortal suppliers={savedSuppliers} operations={savedOperations} documents={savedDocuments} properties={savedProperties} actions={savedActions} openOperationDetails={openOperationDetails} showNotice={showNotice} />;
   if (active === "Riscos") return <RisksModule actions={savedActions} operations={savedOperations} openOperationDetails={openOperationDetails} onActionsChange={onActionsChange} />;
-  if (active === "Integrações") return <IntegrationsModule />;
-  if (active === "Segurança") return <SecurityGovernanceModule />;
+  if (active === "Integrações") return <ProtectedIntegrationsModule />;
+  if (active === "Segurança") return <SecurityGovernanceModule openIntegrations={openIntegrations} />;
 
   const data = moduleData[active as keyof typeof moduleData] ?? moduleData.Processos;
   const persistedRows: readonly (readonly string[])[] = active === "Processos"
@@ -3047,6 +3067,7 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   const [shipmentAdvice, setShipmentAdvice] = useState<ShipmentAdviceData | null>(null);
   const [shipmentAdviceAction, setShipmentAdviceAction] = useState(false);
   const [aiReportVisible, setAiReportVisible] = useState(false);
+  const [aiDocumentReports, setAiDocumentReports] = useState<AiDocumentReport[]>([]);
 
   useEffect(() => {
     let activeRequest = true;
@@ -3094,6 +3115,10 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   const progress = applicableMilestones.length ? Math.round(completed / applicableMilestones.length * 100) : 0;
   const selectedDocuments = selected ? documents.filter((document) => document.category === selected.category) : [];
   const latestTracking = data?.tracking[0];
+  const latestTrackingPosition = parseTrackingLocation(latestTracking?.location || "");
+  const trackingMapUrl = latestTrackingPosition.latitude !== null && latestTrackingPosition.longitude !== null
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${latestTrackingPosition.longitude - 12}%2C${latestTrackingPosition.latitude - 8}%2C${latestTrackingPosition.longitude + 12}%2C${latestTrackingPosition.latitude + 8}&layer=mapnik&marker=${latestTrackingPosition.latitude}%2C${latestTrackingPosition.longitude}`
+    : "";
   const qualityStatus = data?.milestones.find((milestone) => milestone.code === "QUALITY_CONTROL")?.qualityStatus || "Não iniciado";
   const previousStagesComplete = Boolean(data?.milestones
     .filter((milestone) => milestone.sequence < 6 && milestone.status !== "Suspenso")
@@ -3212,8 +3237,31 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   }
 
   async function runAiOperationCheck() {
-    const payload = await post({ action: "country-check" }, "Relatório da operação atualizado pela IA.");
-    if (payload) setAiReportVisible(true);
+    setAction("ai-operation-check");
+    setAiReportVisible(false);
+    setAiDocumentReports([]);
+    try {
+      const controlResponse = await fetch("/api/export-control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ operationId: operation.id, action: "country-check" }) });
+      const controlPayload = await controlResponse.json() as ExportControlData & { error?: string };
+      if (!controlResponse.ok) throw new Error(controlPayload.error || "Não foi possível verificar as etapas da operação.");
+      setData(controlPayload);
+      const reports: AiDocumentReport[] = [];
+      for (const document of documents) {
+        try {
+          const response = await fetch("/api/ai/document-analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ documentId: document.id }) });
+          const payload = await response.json() as AiDocumentReport & { error?: string };
+          reports.push(response.ok ? payload : { document: { id: document.id, operationId: operation.id, fileName: document.fileName, category: document.category }, error: payload.error || "Documento não analisado." });
+        } catch (error) {
+          reports.push({ document: { id: document.id, operationId: operation.id, fileName: document.fileName, category: document.category }, error: error instanceof Error ? error.message : "Documento não analisado." });
+        }
+        setAiDocumentReports([...reports]);
+      }
+      setAiReportVisible(true);
+      const failures = reports.filter((report) => report.error).length;
+      showNotice(failures ? `Relatório concluído com ${failures} documento(s) que exigem revisão manual.` : `Operação e ${reports.length} documento(s) verificados pela IA.`);
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : "Falha ao verificar a operação com IA.");
+    } finally { setAction(""); }
   }
 
   if (loading) return <div className="command-loading">Preparando a torre de controle do pedido…</div>;
@@ -3302,23 +3350,44 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
         <section className="country-ai-card panel">
           <header><div><p className="eyebrow">AI FULL OPERATION CHECK</p><h3>Relatório da operação</h3></div></header>
           <p>Uma única verificação cruza as etapas, os documentos e as exigências de {operation.destinationCountry}.</p>
-          <button className="ai-run-button" disabled={Boolean(action)} onClick={runAiOperationCheck}>{action === "country-check" ? "VERIFICANDO…" : "VERIFICAR OPERAÇÃO COM IA"}</button>
+          <button className="ai-run-button" disabled={Boolean(action)} onClick={runAiOperationCheck}>{action === "ai-operation-check" ? `VERIFICANDO ${aiDocumentReports.length}/${documents.length} DOCUMENTOS…` : "VERIFICAR OPERAÇÃO COM IA"}</button>
           {aiReportVisible && <div className="ai-operation-report">
             <header><div><b>{data.compliance.verdict}</b><span>{data.compliance.opinion}</span></div><strong>{Math.round((data.compliance.score + data.compliance.stageScore) / 2)}%</strong></header>
             <section><h4>Pendências encontradas</h4>{data.compliance.requirements.filter((item) => item.required && !item.present).map((item) => <article key={item.key} className="missing"><span>!</span><div><b>{item.label}</b><small>{item.reason}</small></div></article>)}{!data.compliance.requirements.some((item) => item.required && !item.present) && <p>✓ Nenhuma exigência documental obrigatória pendente.</p>}</section>
             <section><h4>Status de cada etapa</h4><div className="ai-stage-report">{data.compliance.stages.map((stage) => <article key={stage.code} className={stage.passed ? "ready" : stage.applicable ? "missing" : "conditional"}><span>{stage.passed ? "✓" : stage.applicable ? "!" : "—"}</span><div><b>{String(stage.sequence).padStart(2, "0")} · {stage.title}</b><small>{stage.issue} · {stage.documentCount} documento(s)</small></div><em>{stage.status}</em></article>)}</div></section>
-            <small>Relatório preliminar; confirme exigências oficiais do país, produto e importador antes do embarque.</small>
+            <section><h4>Leitura dos documentos anexados</h4><div className="ai-stage-report">{aiDocumentReports.map((report) => {
+              const missingChecks = report.analysis?.checks.filter((check) => check.status !== "ok").length ?? 0;
+              const ready = Boolean(report.analysis) && !missingChecks && !report.analysis?.warnings.length;
+              return <article key={report.document.id} className={ready ? "ready" : "missing"}><span>{ready ? "✓" : "!"}</span><div><b>{report.document.fileName}</b><small>{report.error || report.analysis?.summary || "Análise indisponível"}</small>{report.analysis && <small>{report.analysis.documentType} · confiança {Math.round(report.analysis.confidence * 100)}% · {missingChecks} alerta(s)</small>}</div><em>{report.error ? "Revisão manual" : ready ? "Conferido" : "Com ressalvas"}</em></article>;
+            })}{!aiDocumentReports.length && <p>Nenhum documento anexado nesta operação.</p>}</div></section>
+            <small>Parecer preliminar da IA. A aprovação humana continua obrigatória antes do embarque, envio ao cliente ou alteração financeira.</small>
           </div>}
         </section>
 
         <section className="tracking-card panel">
-          <header><div><p className="eyebrow">BOOKING TRACKING</p><h3>{operation.bookingNumber || "Booking não cadastrado"}</h3></div><span>10D</span></header>
-          {latestTracking ? <article><b>{latestTracking.status}</b><span>{latestTracking.location}</span><p>{latestTracking.details}</p><small>Consultado em {formatDate(latestTracking.checkedAt)} · próximo {formatDate(latestTracking.nextCheckAt)}</small></article> : <p>Nenhuma consulta de tracking registrada.</p>}
-          <button disabled={Boolean(action)} onClick={() => post({ action: "tracking-check" }, "Tracking registrado; próximo acompanhamento programado.")}>Atualizar tracking agora ↻</button>
-          {!operation.bookingNumber && <small>Preencha armador e booking na edição do processo para conectar a futura API de tracking.</small>}
+          <header><div><p className="eyebrow">SHIPMENT TRACKING</p><h3>{operation.bookingNumber || operation.billOfLadingNumber || "Referência pendente"}</h3></div><span>{data.trackingProvider.configured ? "LIVE" : "SETUP"}</span></header>
+          {latestTracking ? <article><b>{latestTracking.status}</b><span>{latestTrackingPosition.label}</span><p>{latestTracking.details}</p><small>Consultado em {formatDate(latestTracking.checkedAt)} · próximo {formatDate(latestTracking.nextCheckAt)}</small></article> : <p>Nenhuma consulta de tracking registrada.</p>}
+          <a className="tracking-open-workspace" href="#shipment-tracking">Abrir mapa e histórico ↓</a>
+          {!data.trackingProvider.configured && <small>Adicione a credencial ShipsGo no ambiente de produção para habilitar consultas reais.</small>}
         </section>
       </aside>
     </div>
+
+    <section id="shipment-tracking" className="shipment-tracking-workspace panel">
+      <header><div><p className="eyebrow">SHIPMENT TRACKING · {data.trackingProvider.provider}</p><h3>Posição da carga e comunicação ao cliente</h3><p>{operation.containerNumbers || operation.billOfLadingNumber || operation.bookingNumber || "Cadastre contêiner, BL ou booking"} · {operation.portOfLoading || "Origem"} → {operation.portOfDischarge || "Destino"}</p></div><span className={data.trackingProvider.configured ? "active" : "pending"}>{data.trackingProvider.configured ? "Integração ativa" : "Configuração necessária"}</span></header>
+      <div className="shipment-tracking-layout">
+        <div className="shipment-map">
+          {trackingMapUrl ? <iframe title="Posição atual do navio" src={trackingMapUrl} loading="lazy" referrerPolicy="no-referrer" /> : <div className="shipment-map-empty"><b>Mapa aguardando coordenadas</b><span>A primeira consulta ao ShipsGo preencherá a posição informada pelo armador.</span></div>}
+        </div>
+        <aside>
+          <div className="shipment-current-status"><small>STATUS ATUAL</small><strong>{latestTracking?.status || "Ainda não consultado"}</strong><span>{latestTrackingPosition.label || "Localização pendente"}</span>{latestTracking?.eta && <em>ETA {latestTracking.eta}</em>}</div>
+          <button className="primary" disabled={Boolean(action) || !data.trackingProvider.configured || !settings.customerEmail} onClick={() => post({ action: "tracking-check" }, "Tracking atualizado e comunicação ao cliente processada.")}>{action === "tracking-check" ? "Consultando ShipsGo…" : "Rastrear e enviar atualização ao cliente"}</button>
+          {!settings.customerEmail && <small>Informe o e-mail do cliente na área de comunicação para habilitar o envio.</small>}
+          <div className="shipment-tracking-timeline"><h4>Histórico de posições</h4>{data.tracking.slice(0, 8).map((item) => { const position = parseTrackingLocation(item.location); return <article key={item.id}><i /><div><b>{item.status}</b><span>{position.label}{item.eta ? ` · ETA ${item.eta}` : ""}</span><small>{formatDate(item.checkedAt)} · {item.source}</small></div></article>; })}{!data.tracking.length && <p>O histórico será criado após a primeira consulta real.</p>}</div>
+        </aside>
+      </div>
+      <footer>A consulta é feita somente quando você autoriza pelo botão. O ExportaTrust registra o evento, atualiza o mapa e envia a mensagem ao cliente; a criação de rastreamentos duplicados deve ser evitada para preservar os créditos do ShipsGo.</footer>
+    </section>
 
     {previewMessage && <section className="email-preview-panel panel">
       <header><div><p className="eyebrow">PRÉVIA EXATA DO E-MAIL</p><h3>Como o cliente receberá</h3></div><button onClick={() => setPreviewMessage(null)}>Fechar ×</button></header>
@@ -3342,6 +3411,13 @@ function formatBytes(bytes: number) {
 function formatDate(value: string) {
   const date = new Date(value.endsWith("Z") ? value : `${value.replace(" ", "T")}Z`);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("pt-BR");
+}
+
+function parseTrackingLocation(value: string) {
+  const [label = "", latitude = "", longitude = ""] = value.split("|||");
+  const lat = Number(latitude);
+  const lon = Number(longitude);
+  return { label, latitude: latitude && Number.isFinite(lat) ? lat : null, longitude: longitude && Number.isFinite(lon) ? lon : null };
 }
 
 function parseStringArray(value: string) {
@@ -3568,7 +3644,36 @@ type SecurityPayload = {
   controls: SecurityControl[];
 };
 
-function SecurityGovernanceModule() {
+function AdminIntegrationsShortcut({ onOpen }: { onOpen: () => void }) {
+  const [allowed, setAllowed] = useState(false);
+  useEffect(() => {
+    let activeRequest = true;
+    fetch(`/api/integrations/gmail/status?t=${Date.now()}`, { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() as Promise<GmailStatusData> : null)
+      .then((status) => { if (activeRequest) setAllowed(Boolean(status?.canConfigure)); })
+      .catch(() => undefined);
+    return () => { activeRequest = false; };
+  }, []);
+  if (!allowed) return null;
+  return <section className="panel security-section"><header><div><p className="eyebrow">CONFIGURAÇÃO RESTRITA</p><h3>Integrações administrativas</h3><p>Credenciais, conexões externas e configurações técnicas ficam ocultas do menu principal.</p></div><span>SOMENTE ADMINISTRADOR</span></header><div className="security-actions"><button className="primary" onClick={onOpen}>Abrir integrações seguras →</button></div></section>;
+}
+
+function ProtectedIntegrationsModule() {
+  const [access, setAccess] = useState<"loading" | "allowed" | "denied">("loading");
+  useEffect(() => {
+    let activeRequest = true;
+    fetch(`/api/integrations/gmail/status?t=${Date.now()}`, { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() as Promise<GmailStatusData> : null)
+      .then((status) => { if (activeRequest) setAccess(status?.canConfigure ? "allowed" : "denied"); })
+      .catch(() => { if (activeRequest) setAccess("denied"); });
+    return () => { activeRequest = false; };
+  }, []);
+  if (access === "loading") return <section className="module-page"><div className="panel security-loading">Verificando autorização administrativa…</div></section>;
+  if (access === "denied") return <section className="module-page"><div className="panel integration-error"><b>Área administrativa protegida</b><span>Seu perfil não possui acesso às configurações de integrações.</span></div></section>;
+  return <IntegrationsModule />;
+}
+
+function SecurityGovernanceModule({ openIntegrations }: { openIntegrations: () => void }) {
   const [data, setData] = useState<SecurityPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState("");
@@ -3611,6 +3716,7 @@ function SecurityGovernanceModule() {
     <header className="module-header security-hero"><div><p className="eyebrow">SECURITY & GOVERNANCE</p><h2>Central de Segurança e LGPD</h2><p>Controle de identidade, empresas, perfis, documentos, auditoria, backups e integridade dos dossiês EUDR.</p></div><div><span className={data.auditChain.valid ? "security-seal valid" : "security-seal invalid"}>{data.auditChain.valid ? "✓ Cadeia íntegra" : "! Verificar auditoria"}</span><button className="primary" onClick={load}>Atualizar ↻</button></div></header>
     {error && <div className="agent-error"><span>{error}</span></div>}
     <div className="module-stats security-stats"><article className="module-stat"><strong>{operational}/12</strong><span>controles operacionais</span></article><article className="module-stat"><strong>{data.members.length}</strong><span>usuários da empresa</span></article><article className="module-stat"><strong>{data.auditChain.checked}</strong><span>eventos auditados</span></article><article className={`module-stat ${data.monitoring.openCount ? "alert" : ""}`}><strong>{data.monitoring.openCount}</strong><span>alertas técnicos abertos</span></article></div>
+    <AdminIntegrationsShortcut onOpen={openIntegrations} />
     <section className="security-control-grid">{data.controls.map((control) => <article className={`panel security-control ${control.state}`} key={control.id}><span>{String(control.id).padStart(2, "0")}</span><div><b>{control.name}</b><p>{control.detail}</p></div><em>{control.state === "operational" ? "Operacional" : control.state === "attention" ? "Ação necessária" : control.state === "critical" ? "Crítico" : control.state === "testing" ? "Em teste" : "Preparado"}</em></article>)}</section>
     <div className="security-columns">
       <section className="panel security-section"><header><div><p className="eyebrow">EMPRESA E ACESSOS</p><h3>{data.context.organizationName}</h3><p>Tenant #{data.context.organizationId} · {data.context.email} · {data.context.role}</p></div><span>{data.infrastructure.environment === "production" ? "PRODUÇÃO" : "TESTE"}</span></header>
@@ -3636,6 +3742,19 @@ function IntegrationsModule() {
   const [asanaImport, setAsanaImport] = useState<AsanaImportData | null>(null);
   const [agentBrief, setAgentBrief] = useState<AgentBriefData | null>(null);
   const [privateAgent, setPrivateAgent] = useState<PrivateAgentStatus | null>(null);
+  const [gmail, setGmail] = useState<GmailStatusData | null>(null);
+  const [gmailStatusError, setGmailStatusError] = useState("");
+  const [showGmailConfig, setShowGmailConfig] = useState(false);
+  const [gmailAction, setGmailAction] = useState("");
+  const [gmailConfig, setGmailConfig] = useState({ clientId: "", clientSecret: "" });
+  const [gmailNotice, setGmailNotice] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gmail") === "connected") return "Gmail conectado com sucesso. Agora você já pode sincronizar mensagens e anexos.";
+    if (params.get("gmail") === "error") return `Falha ao conectar Gmail: ${params.get("reason") || "autorização não concluída"}.`;
+    return "";
+  });
+  const [gmailSyncReport, setGmailSyncReport] = useState<GmailSyncReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
@@ -3657,14 +3776,48 @@ function IntegrationsModule() {
       fetch(`/api/asana-import?t=${Date.now()}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
       fetch(`/api/agent-brief?t=${Date.now()}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
       fetch(`/api/agent/status?t=${Date.now()}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
-    ]).then(([asanaData, briefData, privateAgentData]) => {
+      fetch(`/api/integrations/gmail/status?t=${Date.now()}`, { cache: "no-store" }).then(async (response) => {
+        const data = await response.json() as GmailStatusData & { error?: string };
+        if (!response.ok) throw new Error(data.error || "Não foi possível verificar o Gmail.");
+        return data;
+      }),
+    ]).then(([asanaData, briefData, privateAgentData, gmailData]) => {
       if (!activeRequest) return;
       setAsanaImport(asanaData as AsanaImportData | null);
       setAgentBrief(briefData as AgentBriefData | null);
       setPrivateAgent(privateAgentData as PrivateAgentStatus | null);
-    }).catch(() => undefined);
+      setGmail(gmailData as GmailStatusData | null);
+      setGmailStatusError("");
+    }).catch((reason) => setGmailStatusError(reason instanceof Error ? reason.message : "Não foi possível verificar o Gmail."));
     return () => { activeRequest = false; };
   }, [reload]);
+  async function runGmailAction(action: "sync" | "disconnect") {
+    setGmailAction(action);
+    setGmailNotice("");
+    try {
+      const response = await fetch(`/api/integrations/gmail/${action}`, { method: "POST" });
+      const data = await response.json() as { error?: string; message?: string; report?: GmailSyncReport[] };
+      if (!response.ok) throw new Error(data.error || "Não foi possível concluir a ação no Gmail.");
+      setGmailNotice(data.message || (action === "disconnect" ? "Gmail desconectado com segurança." : "Sincronização concluída."));
+      if (action === "sync") setGmailSyncReport(data.report ?? []);
+      setReload((value) => value + 1);
+    } catch (reason) { setGmailNotice(reason instanceof Error ? reason.message : "Falha na integração Gmail."); }
+    finally { setGmailAction(""); }
+  }
+  async function saveGmailCredentials(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setGmailAction("config");
+    setGmailNotice("");
+    try {
+      const response = await fetch("/api/integrations/gmail/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(gmailConfig) });
+      const data = await response.json() as { error?: string; clientIdMasked?: string };
+      if (!response.ok) throw new Error(data.error || "Não foi possível salvar as credenciais.");
+      setGmailConfig({ clientId: "", clientSecret: "" });
+      setGmailNotice(`Credenciais protegidas e salvas${data.clientIdMasked ? ` (${data.clientIdMasked})` : ""}. Agora clique em Conectar Gmail.`);
+      setReload((value) => value + 1);
+    } catch (reason) { setGmailNotice(reason instanceof Error ? reason.message : "Falha ao salvar as credenciais."); }
+    finally { setGmailAction(""); }
+  }
   const ready = integrations.filter((item) => item.state === "operational" || item.state === "sandbox").length;
   const credentials = integrations.filter((item) => item.state === "credential_required").length;
   const groups: Array<[IntegrationStatusRecord["category"], string]> = [["data", "Dados oficiais & geoespacial"], ["intelligence", "OCR & inteligência documental"], ["agents", "Agent Discovery"], ["eudr", "EUDR Information System"], ["payments", "Pagamentos"]];
@@ -3673,6 +3826,20 @@ function IntegrationsModule() {
     <div className="module-stats integration-stats"><article className="module-stat"><strong>{integrations.length}</strong><span>conectores instalados</span></article><article className="module-stat"><strong>{ready}</strong><span>operacionais / sandbox</span></article><article className="module-stat"><strong>{credentials}</strong><span>aguardando credencial</span></article><article className="module-stat"><strong>0</strong><span>provedores demo</span></article></div>
     {loading && <div className="panel integration-loading">Verificando conectores no servidor…</div>}
     {error && <div className="panel integration-error"><b>Falha ao verificar integrações</b><span>{error}</span><button onClick={() => { setLoading(true); setReload((value) => value + 1); }}>Tentar novamente</button></div>}
+    <section className="panel gmail-integration-card">
+      <div className="gmail-integration-copy"><p className="eyebrow">GMAIL API · OAUTH 2.0</p><h3>{gmail?.connected ? "Caixa postal conectada" : "Conectar e-mail operacional"}</h3><p>{gmail?.connected ? `Conta ${gmail.connection?.gmailAddress || "Google Workspace"}. O agente lê mensagens e anexos, identifica a operação e envia correspondências incertas para revisão.` : gmail?.configured ? "As credenciais estão prontas. Autorize a conta que o ExportaTrust deverá acompanhar." : "A API está instalada, mas as credenciais ainda precisam ser disponibilizadas no ambiente do ExportaTrust."}</p>{gmail?.connection?.lastSyncAt && <small>Última sincronização: {new Date(gmail.connection.lastSyncAt).toLocaleString("pt-BR")}</small>}{gmail?.connection?.lastError && <small className="gmail-error">Última falha: {gmail.connection.lastError}</small>}{gmailNotice && <div className="gmail-notice">{gmailNotice}</div>}</div>
+      <div className="gmail-integration-actions">{gmail?.connected ? <><span className="gmail-connected">✓ CONECTADO</span><button className="primary" disabled={!!gmailAction} onClick={() => runGmailAction("sync")}>{gmailAction === "sync" ? "Verificando histórico…" : "Sincronizar processos prioritários"}</button><button className="secondary" disabled={!!gmailAction} onClick={() => runGmailAction("disconnect")}>{gmailAction === "disconnect" ? "Desconectando…" : "Desconectar"}</button></> : <><span className={gmail?.configured ? "gmail-ready" : "gmail-waiting"}>{gmail?.configured ? "PRONTO PARA AUTORIZAR" : "AGUARDANDO CREDENCIAIS"}</span>{!gmail?.configured && gmail?.canConfigure && <button className="secondary" type="button" onClick={() => setShowGmailConfig((value) => !value)}>{showGmailConfig ? "Fechar configuração" : "Incluir Gmail"}</button>}<a className={`gmail-connect-button ${gmail?.configured ? "" : "disabled"}`} href={gmail?.configured ? "/api/integrations/gmail/connect" : undefined}>Conectar Gmail</a></>}</div>
+    </section>
+    {!!gmailSyncReport.length && <section className="panel gmail-sync-report"><header><div><p className="eyebrow">VARREDURA PRIORITÁRIA</p><h3>Resultado por processo</h3></div><span>{gmailSyncReport.reduce((total, item) => total + item.messagesFound, 0)} E-MAIL(S)</span></header><div>{gmailSyncReport.map((item) => <article key={item.reference} className={!item.operationFound || !item.messagesFound ? "attention" : "ok"}><strong>{item.reference}</strong><span>{!item.operationFound ? "Processo não localizado no ExportaTrust" : item.messagesFound ? `${item.messagesFound} e-mail(s) · ${item.messagesImported} novo(s) · ${item.attachmentsImported} anexo(s)` : "Nenhum e-mail localizado"}</span><small>{item.lastMessageAt ? `Último: ${new Date(item.lastMessageAt).toLocaleString("pt-BR")}` : item.alreadySynchronized ? `${item.alreadySynchronized} já sincronizado(s)` : "Requer conferência"}</small></article>)}</div></section>}
+    {gmailStatusError && <div className="panel integration-error"><b>Falha ao carregar a configuração do Gmail</b><span>{gmailStatusError}</span><button onClick={() => setReload((value) => value + 1)}>Tentar novamente</button></div>}
+    {!gmail?.configured && gmail?.canConfigure && showGmailConfig && <form className="panel gmail-config-panel" onSubmit={saveGmailCredentials} autoComplete="off">
+      <header><div><p className="eyebrow">CONFIGURAÇÃO SEGURA</p><h3>Credenciais do Google Cloud</h3><p>Copie os dois valores do cliente OAuth criado no Google. O Client Secret será criptografado antes de ser armazenado e nunca voltará a aparecer nesta tela.</p></div><span>SOMENTE ADMINISTRADOR</span></header>
+      <label>Google Client ID<input type="text" value={gmailConfig.clientId} onChange={(event) => setGmailConfig((current) => ({ ...current, clientId: event.target.value }))} placeholder="000000000000-xxxx.apps.googleusercontent.com" required spellCheck={false} /></label>
+      <label>Google Client Secret<input type="password" value={gmailConfig.clientSecret} onChange={(event) => setGmailConfig((current) => ({ ...current, clientSecret: event.target.value }))} placeholder="Cole o segredo diretamente aqui" required spellCheck={false} /></label>
+      <div className="gmail-config-security"><span>🔒</span><p><b>Proteção ativa</b><small>Não envie essas chaves por e-mail ou chat. Salve-as somente por este formulário.</small></p></div>
+      <button className="primary" disabled={gmailAction === "config"}>{gmailAction === "config" ? "Criptografando e salvando…" : "Salvar credenciais com segurança"}</button>
+    </form>}
+    {gmail?.config && gmail?.canConfigure && <section className="panel gmail-config-summary"><div><p className="eyebrow">CREDENCIAL PROTEGIDA</p><h3>{gmail.config.clientIdMasked}</h3><small>URI: {gmail.config.redirectUri}</small></div><span>✓ SECRET ARMAZENADO</span></section>}
     <section className="panel migration-bridge">
       <header><div><p className="eyebrow">MIGRAÇÃO CONTROLADA</p><h3>Asana · VLP EXPORTAÇÃO</h3><p>Somente este projeto é aceito. Tarefas entram primeiro em uma fila de revisão; modelos, pré-operações, concluídos e itens de FINALIZADO/CANCELADO são separados automaticamente.</p></div><span>FONTE DELIMITADA</span></header>
       <div className="migration-metrics">
