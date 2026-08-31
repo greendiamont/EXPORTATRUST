@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "./task-position-fix.css";
 import TaskAutoSaveBridge from "./task-autosave-bridge";
 
 const geistSans = Geist({
