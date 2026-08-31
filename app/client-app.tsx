@@ -444,18 +444,24 @@ type AgentLedgerRecord = {
 type AgentReputationRecord = { id: number; agentId: string; capability: string; score: number; successCount: number; failureCount: number; averageDurationMs: number; qualityScore: number; averageConfidence: number };
 type AgentSettingsRecord = { id: number; operationId: number; autonomyLevel: number; transactionLimit: number; dailyLimit: number; externalPaymentsEnabled: boolean };
 type ExportMilestoneRecord = { id: number; operationId: number; code: string; sequence: number; title: string; category: string; status: string; qualityStatus: string; shipmentApproval: string; responsibleName: string; responsibleEmail: string; dueDate: string; nextAction: string; note: string; completedAt: string | null; updatedAt: string };
+type OperationTaskRecord = { id: number; operationId: number; parentTaskId: number | null; sequence: number; description: string; dueDate: string; responsibleName: string; responsibleEmail: string; status: string; scheduled: boolean; note: string; completedAt: string | null; updatedAt: string; createdAt: string };
 type ClientNotificationRecord = { id: number; milestoneCode: string; recipient: string; subject: string; body: string; status: string; provider: string; error: string; sentAt: string | null; createdAt: string };
 type TrackingEventRecord = { id: number; source: string; status: string; location: string; eta: string; details: string; checkedAt: string; nextCheckAt: string };
+type OrderItemDraft = { species: string; quality: string; size: string; volume: string; unitPrice: string };
+type SupplierOrderDraft = { tradingName: string; currency: string; incoterm: string; paymentTerms: string; notes: string };
 type ExportControlData = {
+  operation: OperationRecord;
   settings: { customerName: string; customerEmail: string; customerReference: string; notificationsEnabled: boolean; trackingIntervalDays: number; nextTrackingAt: string | null; emailProviderStatus: string };
   milestones: ExportMilestoneRecord[];
+  tasks: OperationTaskRecord[];
   notifications: ClientNotificationRecord[];
   tracking: TrackingEventRecord[];
   eudrBridge: { readiness: number; reference: string; required: boolean; status: string };
   emailDelivery: { provider: string; ready: boolean; sender: string };
-  trackingProvider: { provider: string; configured: boolean };
+  trackingProvider: { provider: string; configured: boolean; assisted: { mode: string; carrier: string; reference: string; referenceType: string; officialUrl: string; helperText: string; confidence: string } };
   deliveryResult?: { status: string; provider: string; externalId: string; error: string };
   operationalAlerts: { missingPlan: number; overdue: number; stages: Array<{ code: string; title: string; missing: string[]; overdue: boolean }> };
+  taskAlerts: { open: number; overdue: number; scheduled: number };
   compliance: { score: number; stageScore: number; status: string; verdict: string; opinion: string; approvedSetDocuments: number; eudrRequired: boolean; lastCheck: { checkedAt: string } | null; requirements: Array<{ key: string; label: string; reason: string; required: boolean; present: boolean }>; stages: Array<{ code: string; sequence: number; title: string; status: string; applicable: boolean; passed: boolean; documentCount: number; issue: string }> };
 };
 type AiDocumentReport = {
@@ -487,6 +493,31 @@ type AgentControlData = { settings: AgentSettingsRecord; services: AgentServiceR
 type IntegrationStatusRecord = { id: string; name: string; category: "data" | "intelligence" | "agents" | "eudr" | "payments"; state: "operational" | "credential_required" | "sandbox" | "disabled"; label: string; detail: string; provider: string; live: boolean };
 type GmailStatusData = { configured: boolean; connected: boolean; connection: { gmailAddress: string; status: string; scopesJson: string; lastSyncAt: string | null; lastError: string; connectedAt: string } | null; config: { clientIdMasked: string; redirectUri: string; secretStored: boolean; source: string } | null; canConfigure: boolean; scopes: string[] };
 type GmailSyncReport = { reference: string; operationFound: boolean; messagesFound: number; messagesImported: number; alreadySynchronized: number; attachmentsImported: number; lastMessageAt: string | null };
+
+const defaultOrderNotes = `TOLERANCES: -1/+2MM;
+ORIGIN COUNTRY: BRAZIL;
+10% ALLOWANCE FOR MORE OR LESS IN AMOUNT AND QUANTITY.
+QUALITY B GRADE - EVENTUAL BLUESTAIN AND WANES IS ALLOWED.
+MANDATORY CERTIFICATES: NIMF 15 CERTIFICATION, CERTIFICATE OF ORIGIN, PHYTOSANITARY CERTIFICATE.
+IF ANY SIGNIFICANT INCREASE ON LOG PRICES AND/OR OCEAN FREIGHTS, OR IF A SIGNIFICANT DROP ON THE EXCHANGE RATE HAPPENS, PRICE MAY SUFFER ADJUSTMENT PRIOR TO SHIPMENT.
+ANY CLAIM NEED TO BE ADVISED WITHIN MAXIMUM 15 DAYS AFTER ARRIVAL AND FULL QUANTITY NEEDS TO BE AVAILABLE FOR SUPPLIER'S INSPECTION. PICTURES SHOWING THE PROBLEM WITH THE TIMBER MUST BE SENT WITH THE CLAIM REPORT.`;
+
+function parseOrderDetails(operation: OperationRecord) {
+  const fallbackItem = { species: operation.species || "", quality: operation.product || "", size: operation.lotCodes || "", volume: String(operation.volumeM3 || operation.quantity || ""), unitPrice: operation.volumeM3 || operation.quantity ? String(Number(operation.commercialValue || 0) / Number(operation.volumeM3 || operation.quantity)) : "" };
+  const fallbackSupplierOrder = { tradingName: operation.exporterName || "", currency: operation.currency || "USD", incoterm: operation.incoterm || "FOB", paymentTerms: "", notes: "", items: [fallbackItem] };
+  try {
+    const parsed = JSON.parse(operation.supplyChainNotes || "{}") as { orderItems?: Array<{ species?: string; quality?: string; size?: string; volume?: number; unitPrice?: number }>; paymentTerms?: string; orderNotes?: string; supplierOrder?: SupplierOrderDraft & { items?: Array<{ species?: string; quality?: string; size?: string; volume?: number; unitPrice?: number }> } };
+    const items = Array.isArray(parsed.orderItems) && parsed.orderItems.length
+      ? parsed.orderItems.map((item) => ({ species: String(item.species ?? ""), quality: String(item.quality ?? ""), size: String(item.size ?? ""), volume: item.volume ? String(item.volume) : "", unitPrice: item.unitPrice ? String(item.unitPrice) : "" }))
+      : [fallbackItem];
+    const supplierItems = Array.isArray(parsed.supplierOrder?.items) && parsed.supplierOrder.items.length
+      ? parsed.supplierOrder.items.map((item) => ({ species: String(item.species ?? ""), quality: String(item.quality ?? ""), size: String(item.size ?? ""), volume: item.volume ? String(item.volume) : "", unitPrice: item.unitPrice ? String(item.unitPrice) : "" }))
+      : items;
+    return { items, paymentTerms: String(parsed.paymentTerms ?? ""), orderNotes: String(parsed.orderNotes ?? "") || defaultOrderNotes, supplierOrder: { ...fallbackSupplierOrder, ...parsed.supplierOrder, items: supplierItems } };
+  } catch {
+    return { items: [fallbackItem], paymentTerms: "", orderNotes: operation.supplyChainNotes || defaultOrderNotes, supplierOrder: fallbackSupplierOrder };
+  }
+}
 type PrivateAgentStatus = { api: { active: boolean; mode: string; auth: string; tokenVisible: boolean }; metrics: { eventsProcessed: number; eventsWithError: number; eventsInReview: number; documentsProcessed: number; approvalsPending: number }; lastEvent: { subject?: string; source?: string; matchConfidence?: string; createdAt?: string } | null; endpoints: string[] };
 type AsanaImportData = {
   project: { id: string; name: string; url: string };
@@ -2842,6 +2873,7 @@ function OperationCommandCenter({ operation, properties, forestDocuments, onClos
           </div>}
           {!loading && tab === "export" && <ExportOrderControl operation={operation} documents={documents} uploadFiles={uploadFiles} removeDocument={removeDocument} showNotice={showNotice} onOpenSupplyChain={() => setTab("checklist")} />}
           {!loading && tab === "overview" && <div className="operation-overview">
+            <ExportOrderControl operation={operation} documents={documents} uploadFiles={uploadFiles} removeDocument={removeDocument} showNotice={showNotice} onOpenSupplyChain={() => setTab("checklist")} taskBoardOnly />
             <section><h3>Participantes principais</h3><dl>
               <div><dt>Exportador</dt><dd>{operation.exporterName || "Não informado"}<small>{operation.exporterTaxId}</small></dd></div>
               <div><dt>Fornecedor</dt><dd>{operation.supplierName}</dd></div>
@@ -3056,7 +3088,7 @@ function OperationCommandCenter({ operation, properties, forestDocuments, onClos
   );
 }
 
-function ExportOrderControl({ operation, documents, uploadFiles, removeDocument, showNotice, onOpenSupplyChain }: { operation: OperationRecord; documents: DocumentRecord[]; uploadFiles: (files: File[], forcedCategory?: string) => Promise<void>; removeDocument: (document: DocumentRecord) => Promise<void>; showNotice: (message: string) => void; onOpenSupplyChain: () => void }) {
+function ExportOrderControl({ operation, documents, uploadFiles, removeDocument, showNotice, onOpenSupplyChain, taskBoardOnly = false }: { operation: OperationRecord; documents: DocumentRecord[]; uploadFiles: (files: File[], forcedCategory?: string) => Promise<void>; removeDocument: (document: DocumentRecord) => Promise<void>; showNotice: (message: string) => void; onOpenSupplyChain: () => void; taskBoardOnly?: boolean }) {
   const [data, setData] = useState<ExportControlData | null>(null);
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState("");
@@ -3068,6 +3100,14 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   const [shipmentAdviceAction, setShipmentAdviceAction] = useState(false);
   const [aiReportVisible, setAiReportVisible] = useState(false);
   const [aiDocumentReports, setAiDocumentReports] = useState<AiDocumentReport[]>([]);
+  const [assistedTracking, setAssistedTracking] = useState({ status: "", location: "", eta: "", note: "" });
+  const [taskDrafts, setTaskDrafts] = useState<OperationTaskRecord[]>([]);
+  const initialOrderDetails = parseOrderDetails(operation);
+  const [orderDraft, setOrderDraft] = useState({ reference: operation.reference, contractNumber: operation.contractNumber, product: operation.product, hsCode: operation.hsCode, quantity: String(operation.quantity || ""), quantityUnit: operation.quantityUnit, volumeM3: String(operation.volumeM3 || ""), commercialValue: String(operation.commercialValue || ""), currency: operation.currency, incoterm: operation.incoterm, shipmentDate: operation.shipmentDate, portOfLoading: operation.portOfLoading, portOfDischarge: operation.portOfDischarge, exporterName: operation.exporterName, exporterTaxId: operation.exporterTaxId, paymentTerms: initialOrderDetails.paymentTerms, orderNotes: initialOrderDetails.orderNotes });
+  const [orderItems, setOrderItems] = useState<OrderItemDraft[]>(initialOrderDetails.items);
+  const [supplierOrderDraft, setSupplierOrderDraft] = useState<SupplierOrderDraft>({ tradingName: initialOrderDetails.supplierOrder.tradingName || operation.exporterName, currency: initialOrderDetails.supplierOrder.currency || operation.currency, incoterm: initialOrderDetails.supplierOrder.incoterm || operation.incoterm, paymentTerms: initialOrderDetails.supplierOrder.paymentTerms || "", notes: initialOrderDetails.supplierOrder.notes || "" });
+  const [supplierOrderItems, setSupplierOrderItems] = useState<OrderItemDraft[]>(initialOrderDetails.supplierOrder.items);
+  const [bookingDraft, setBookingDraft] = useState({ carrier: operation.carrier, bookingNumber: operation.bookingNumber, billOfLadingNumber: operation.billOfLadingNumber, containerNumbers: operation.containerNumbers, vesselVoyage: operation.vesselVoyage, portOfLoading: operation.portOfLoading, portOfDischarge: operation.portOfDischarge, shipmentDate: operation.shipmentDate });
 
   useEffect(() => {
     let activeRequest = true;
@@ -3080,7 +3120,14 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
         if (!response.ok) throw new Error(payload.error || "Não foi possível carregar o acompanhamento do pedido.");
         if (!activeRequest) return;
         setData(payload);
+        setTaskDrafts(payload.tasks);
         setSettings({ customerName: payload.settings.customerName, customerEmail: payload.settings.customerEmail, customerReference: payload.settings.customerReference, notificationsEnabled: payload.settings.notificationsEnabled, trackingIntervalDays: payload.settings.trackingIntervalDays });
+        const orderDetails = parseOrderDetails(payload.operation);
+        setOrderDraft({ reference: payload.operation.reference, contractNumber: payload.operation.contractNumber, product: payload.operation.product, hsCode: payload.operation.hsCode, quantity: String(payload.operation.quantity || ""), quantityUnit: payload.operation.quantityUnit, volumeM3: String(payload.operation.volumeM3 || ""), commercialValue: String(payload.operation.commercialValue || ""), currency: payload.operation.currency, incoterm: payload.operation.incoterm, shipmentDate: payload.operation.shipmentDate, portOfLoading: payload.operation.portOfLoading, portOfDischarge: payload.operation.portOfDischarge, exporterName: payload.operation.exporterName, exporterTaxId: payload.operation.exporterTaxId, paymentTerms: orderDetails.paymentTerms, orderNotes: orderDetails.orderNotes });
+        setOrderItems(orderDetails.items);
+        setSupplierOrderDraft({ tradingName: orderDetails.supplierOrder.tradingName || payload.operation.exporterName, currency: orderDetails.supplierOrder.currency || payload.operation.currency, incoterm: orderDetails.supplierOrder.incoterm || payload.operation.incoterm, paymentTerms: orderDetails.supplierOrder.paymentTerms || "", notes: orderDetails.supplierOrder.notes || "" });
+        setSupplierOrderItems(orderDetails.supplierOrder.items);
+        setBookingDraft({ carrier: payload.operation.carrier, bookingNumber: payload.operation.bookingNumber, billOfLadingNumber: payload.operation.billOfLadingNumber, containerNumbers: payload.operation.containerNumbers, vesselVoyage: payload.operation.vesselVoyage, portOfLoading: payload.operation.portOfLoading, portOfDischarge: payload.operation.portOfDischarge, shipmentDate: payload.operation.shipmentDate });
         const eudrStage = payload.milestones.find((milestone) => milestone.code === "ORIGIN_COMPLIANCE" && ["Em andamento", "Aguardando aprovação"].includes(milestone.status));
         const initial = eudrStage || payload.milestones.find((milestone) => milestone.status !== "Concluído") || payload.milestones.at(-1);
         if (initial) setSelectedCode(initial.code);
@@ -3103,6 +3150,7 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   }, [operation.id, documents.length]);
 
   const selected = data?.milestones.find((milestone) => milestone.code === selectedCode) || data?.milestones[0];
+  const currentOperation = data?.operation || operation;
   useEffect(() => {
     if (!selected) return;
     // The editor draft mirrors the newly selected persisted milestone.
@@ -3130,6 +3178,8 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
     qualityStatus,
     previousStagesComplete,
   }));
+  const orderItemsTotal = orderItems.reduce((sum, item) => sum + Number(item.volume || 0) * Number(item.unitPrice || 0), 0);
+  const supplierOrderItemsTotal = supplierOrderItems.reduce((sum, item) => sum + Number(item.volume || 0) * Number(item.unitPrice || 0), 0);
 
   async function post(body: Record<string, unknown>, successMessage: string) {
     setAction(String(body.action || "saving"));
@@ -3138,7 +3188,14 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
       const payload = await response.json() as ExportControlData & { error?: string };
       if (!response.ok) throw new Error(payload.error || "Não foi possível atualizar o processo de exportação.");
       setData(payload);
+      setTaskDrafts(payload.tasks);
       setSettings({ customerName: payload.settings.customerName, customerEmail: payload.settings.customerEmail, customerReference: payload.settings.customerReference, notificationsEnabled: payload.settings.notificationsEnabled, trackingIntervalDays: payload.settings.trackingIntervalDays });
+      const orderDetails = parseOrderDetails(payload.operation);
+      setOrderDraft({ reference: payload.operation.reference, contractNumber: payload.operation.contractNumber, product: payload.operation.product, hsCode: payload.operation.hsCode, quantity: String(payload.operation.quantity || ""), quantityUnit: payload.operation.quantityUnit, volumeM3: String(payload.operation.volumeM3 || ""), commercialValue: String(payload.operation.commercialValue || ""), currency: payload.operation.currency, incoterm: payload.operation.incoterm, shipmentDate: payload.operation.shipmentDate, portOfLoading: payload.operation.portOfLoading, portOfDischarge: payload.operation.portOfDischarge, exporterName: payload.operation.exporterName, exporterTaxId: payload.operation.exporterTaxId, paymentTerms: orderDetails.paymentTerms, orderNotes: orderDetails.orderNotes });
+      setOrderItems(orderDetails.items);
+      setSupplierOrderDraft({ tradingName: orderDetails.supplierOrder.tradingName || payload.operation.exporterName, currency: orderDetails.supplierOrder.currency || payload.operation.currency, incoterm: orderDetails.supplierOrder.incoterm || payload.operation.incoterm, paymentTerms: orderDetails.supplierOrder.paymentTerms || "", notes: orderDetails.supplierOrder.notes || "" });
+      setSupplierOrderItems(orderDetails.supplierOrder.items);
+      setBookingDraft({ carrier: payload.operation.carrier, bookingNumber: payload.operation.bookingNumber, billOfLadingNumber: payload.operation.billOfLadingNumber, containerNumbers: payload.operation.containerNumbers, vesselVoyage: payload.operation.vesselVoyage, portOfLoading: payload.operation.portOfLoading, portOfDischarge: payload.operation.portOfDischarge, shipmentDate: payload.operation.shipmentDate });
       if (successMessage) showNotice(successMessage);
       return payload;
     } catch (error) {
@@ -3147,14 +3204,69 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
     } finally { setAction(""); }
   }
 
-  async function sendTestEmail() {
-    const payload = await post({ action: "test-email", customerName: settings.customerName, customerEmail: settings.customerEmail, customerReference: settings.customerReference }, "");
-    if (!payload?.deliveryResult) return;
-    const latest = payload.notifications[0];
-    if (latest) setPreviewMessage({ subject: latest.subject, body: latest.body });
-    showNotice(payload.deliveryResult.status === "Enviado"
-      ? `E-mail enviado agora para ${settings.customerEmail}.`
-      : `Teste não enviado: ${payload.deliveryResult.error || payload.deliveryResult.status}.`);
+  async function saveAssistedTracking() {
+    const payload = await post({ action: "assisted-tracking-log", ...assistedTracking }, "Tracking assistido registrado no histórico do processo.");
+    if (payload) setAssistedTracking({ status: "", location: "", eta: "", note: "" });
+  }
+
+  async function saveBookingLogistics() {
+    await post({ action: "booking-logistics", ...bookingDraft }, "Booking, contêineres e dados logísticos atualizados na Etapa 07.");
+  }
+
+  async function saveOrderCommercial() {
+    await post({ action: "order-commercial", ...orderDraft, commercialValue: orderItemsTotal, orderItems, supplierOrder: { ...supplierOrderDraft, items: supplierOrderItems }, customerName: settings.customerName, customerEmail: settings.customerEmail }, "Dados comerciais da Etapa 01 atualizados.");
+  }
+
+  function openOrderDocument(document: "sales-order" | "purchase-invoice" | "supplier-po") {
+    window.open(`/api/export-control?operationId=${operation.id}&document=${document}`, "_blank", "noopener,noreferrer");
+  }
+
+  function updateOrderItem(index: number, field: keyof OrderItemDraft, value: string) {
+    setOrderItems((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item));
+  }
+
+  function addOrderItem() {
+    setOrderItems((items) => [...items, { species: "", quality: "", size: "", volume: "", unitPrice: "" }]);
+  }
+
+  function removeOrderItem(index: number) {
+    setOrderItems((items) => items.length > 1 ? items.filter((_, itemIndex) => itemIndex !== index) : items);
+  }
+
+  function updateSupplierOrderItem(index: number, field: keyof OrderItemDraft, value: string) {
+    setSupplierOrderItems((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item));
+  }
+
+  function addSupplierOrderItem() {
+    setSupplierOrderItems((items) => [...items, { species: "", quality: "", size: "", volume: "", unitPrice: "" }]);
+  }
+
+  function removeSupplierOrderItem(index: number) {
+    setSupplierOrderItems((items) => items.length > 1 ? items.filter((_, itemIndex) => itemIndex !== index) : items);
+  }
+
+  function updateTaskDraft(id: number, field: keyof OperationTaskRecord, value: string | number | boolean) {
+    setTaskDrafts((tasks) => tasks.map((task) => task.id === id ? { ...task, [field]: value } : task));
+  }
+
+  async function createOperationTask() {
+    await post({ action: "operation-task-create", sequence: taskDrafts.length + 1, description: "Nova tarefa", responsibleName: operation.internalResponsible, responsibleEmail: operation.responsibleEmail }, "Nova tarefa criada no Supply Chain.");
+  }
+
+  async function saveOperationTask(task: OperationTaskRecord) {
+    await post({ action: "operation-task-update", taskId: task.id, sequence: task.sequence, description: task.description, dueDate: task.dueDate, responsibleName: task.responsibleName, responsibleEmail: task.responsibleEmail, status: task.status, scheduled: task.scheduled, note: task.note }, "Tarefa atualizada.");
+  }
+
+  async function toggleTaskScheduled(task: OperationTaskRecord) {
+    await post({ action: "operation-task-toggle-scheduled", taskId: task.id, scheduled: !task.scheduled }, !task.scheduled ? "Tarefa marcada como agendada." : "Agendamento removido.");
+  }
+
+  async function completeOperationTask(task: OperationTaskRecord) {
+    await post({ action: "operation-task-complete", taskId: task.id, completed: task.status !== "Concluído" }, task.status === "Concluído" ? "Tarefa reaberta." : "Tarefa concluída.");
+  }
+
+  async function sendTaskDelayNote(task: OperationTaskRecord) {
+    await post({ action: "operation-task-delay-note", taskId: task.id }, "Nota de atraso enviada ao responsável.");
   }
 
   async function saveMilestone(statusOverride?: string) {
@@ -3222,20 +3334,6 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
     } finally { setShipmentAdviceAction(false); }
   }
 
-  async function sendShipmentAdviceTest() {
-    if (!shipmentAdvice?.complete) { showNotice("Aprove primeiro todos os documentos obrigatórios da Etapa 09."); return; }
-    setShipmentAdviceAction(true);
-    try {
-      const response = await fetch("/api/shipment-advice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ operationId: operation.id, action: "test-send", recipient: settings.customerEmail }) });
-      const payload = await response.json() as ShipmentAdviceData & { error?: string };
-      if (!response.ok) throw new Error(payload.error || "Não foi possível enviar o teste do Shipment Advice.");
-      setShipmentAdvice(payload);
-      showNotice(`Teste do Shipment Advice enviado para ${settings.customerEmail} com ${payload.generated.included.length} anexo(s).`);
-    } catch (error) {
-      showNotice(error instanceof Error ? error.message : "Falha ao enviar o teste do Shipment Advice.");
-    } finally { setShipmentAdviceAction(false); }
-  }
-
   async function runAiOperationCheck() {
     setAction("ai-operation-check");
     setAiReportVisible(false);
@@ -3267,9 +3365,44 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   if (loading) return <div className="command-loading">Preparando a torre de controle do pedido…</div>;
   if (!data || !selected) return <div className="empty-command">Não foi possível iniciar o acompanhamento deste pedido.</div>;
 
-  const previewSubject = `${operation.reference} · ${selected.title} · ${draft.status}`;
-  const previewBody = `Dear customer,\n\nThis is an automatic ExportaTrust update for your order.\n\nOrder/process: ${operation.reference}\nProduct: ${operation.product}\nCurrent stage: ${selected.title}\nStatus: ${draft.status}${operation.bookingNumber ? `\nBooking: ${operation.bookingNumber}` : ""}${operation.containerNumbers ? `\nContainer(s): ${operation.containerNumbers}` : ""}${operation.portOfLoading || operation.portOfDischarge ? `\nRoute: ${operation.portOfLoading || "TBC"} → ${operation.portOfDischarge || "TBC"}` : ""}${draft.note ? `\nUpdate: ${draft.note}` : ""}\n\nAll original documents and compliance records remain available in the ExportaTrust control tower.\n\nBest regards,\nExportaTrust`;
+  const previewSubject = `${operation.reference} - ${selected.title} - ${draft.status}`;
+  const previewBody = `Dear customer,\n\nThis is an ExportaTrust update for your order.\n\nOrder/process: ${operation.reference}\nProduct: ${operation.product}\nCurrent stage: ${selected.title}\nStatus: ${draft.status}${operation.bookingNumber ? `\nBooking: ${operation.bookingNumber}` : ""}${operation.containerNumbers ? `\nContainer(s): ${operation.containerNumbers}` : ""}${operation.portOfLoading || operation.portOfDischarge ? `\nRoute: ${operation.portOfLoading || "TBC"} → ${operation.portOfDischarge || "TBC"}` : ""}${draft.note ? `\nUpdate: ${draft.note}` : ""}\n\nAll original documents and compliance records remain available in the ExportaTrust control tower.\n\nBest regards,\nExportaTrust`;
   const activePreview = previewMessage || { subject: previewSubject, body: previewBody };
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const overdueTaskIds = new Set(taskDrafts.filter((task) => task.status !== "Concluído" && task.dueDate && task.dueDate < todayIso).map((task) => task.id));
+  const taskBoard = <section className="operation-task-board panel">
+    <header>
+      <div><p className="eyebrow">SUPPLY CHAIN TASKS</p><h3>Tarefas e subtarefas do pedido</h3></div>
+      <div className="task-board-summary"><span className={data.taskAlerts.overdue ? "danger" : ""}>{data.taskAlerts.overdue} atrasada(s)</span><span>{data.taskAlerts.open} aberta(s)</span><span>{data.taskAlerts.scheduled} agendada(s)</span><button type="button" disabled={Boolean(action)} onClick={createOperationTask}>+ tarefa</button></div>
+    </header>
+    <div className="operation-task-head"><span>Nº</span><span>Descrição da tarefa</span><span>Data</span><span>Responsável</span><span>Status</span><span>Ações</span></div>
+    <div className="operation-task-list">
+      {taskDrafts.map((task) => {
+        const overdue = overdueTaskIds.has(task.id);
+        return <article key={task.id} className={`operation-task-row ${task.status === "Concluído" ? "done" : ""} ${overdue ? "overdue" : ""}`}>
+          <button type="button" className="task-check" title={task.status === "Concluído" ? "Reabrir tarefa" : "Marcar como concluída"} disabled={Boolean(action)} onClick={() => completeOperationTask(task)}>{task.status === "Concluído" ? "✓" : ""}</button>
+          <span className="task-sequence">{String(task.sequence).padStart(2, "0")}</span>
+          <input aria-label="Descrição da tarefa" value={task.description} onChange={(event) => updateTaskDraft(task.id, "description", event.target.value)} placeholder="Descrição da tarefa" />
+          <input aria-label="Data da tarefa" type="date" value={task.dueDate} onChange={(event) => updateTaskDraft(task.id, "dueDate", event.target.value)} />
+          <div className="task-responsible-fields">
+            <input aria-label="Responsável pela tarefa" value={task.responsibleName} onChange={(event) => updateTaskDraft(task.id, "responsibleName", event.target.value)} placeholder="Responsável" />
+            <input aria-label="E-mail do responsável" type="email" value={task.responsibleEmail} onChange={(event) => updateTaskDraft(task.id, "responsibleEmail", event.target.value)} placeholder="email@empresa.com" />
+          </div>
+          <select aria-label="Status da tarefa" value={task.status} onChange={(event) => updateTaskDraft(task.id, "status", event.target.value)}>
+            <option>Pendente</option><option>Agendada</option><option>Em andamento</option><option>Atrasada</option><option>Concluído</option>
+          </select>
+          <div className="task-actions">
+            <button type="button" className={task.scheduled ? "scheduled" : ""} disabled={Boolean(action)} onClick={() => toggleTaskScheduled(task)}>{task.scheduled ? "Agendada ✓" : "Marcar agendada"}</button>
+            <button type="button" disabled={Boolean(action)} onClick={() => saveOperationTask(task)}>Salvar</button>
+            {overdue && <button type="button" className="danger" disabled={Boolean(action)} onClick={() => sendTaskDelayNote(task)}>Enviar nota atraso</button>}
+          </div>
+          <textarea aria-label="Nota da tarefa" value={task.note} onChange={(event) => updateTaskDraft(task.id, "note", event.target.value)} placeholder="Nota interna, evidência ou comentário da tarefa…" />
+        </article>;
+      })}
+    </div>
+  </section>;
+
+  if (taskBoardOnly) return taskBoard;
 
   return <div className="export-control-view">
     <header className="export-control-hero">
@@ -3312,6 +3445,87 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
           {data.eudrBridge.required ? <button onClick={onOpenSupplyChain}>Abrir Supply Chain e inspeção EUDR →</button> : <button onClick={onOpenSupplyChain}>Abrir supply chain operacional →</button>}
         </section>}
         {selected.code === "SHIPMENT_APPROVAL" && <div className={`shipment-gate ${shippingGateReady ? "ready" : "blocked"}`}><b>{shippingGateReady ? "✓ Pedido pronto para aprovação humana" : "! Aprovação ainda bloqueada"}</b><span>{data.compliance.eudrRequired ? `EUDR ${operation.readiness}% · país ${data.compliance.score}% · ` : "EUDR não aplicável ao destino · "}etapas anteriores {previousStagesComplete ? "concluídas" : "pendentes"} · qualidade {qualityStatus}</span></div>}
+        {selected.code === "ORDER_CONFIRMED" && <section className="order-stage-fields">
+          <header><div><p className="eyebrow">ETAPA 01 · PEDIDO</p><h4>Base comercial do processo</h4><p>Preencha estes dados uma vez para alimentar Sales Order, Purchase Invoice e Pedido de Compra do fornecedor.</p></div><span>{orderDraft.reference ? "Pedido ativo" : "Pendente"}</span></header>
+          <div className="order-stage-grid">
+            <label>Processo / Sales Order<input value={orderDraft.reference} onChange={(event) => setOrderDraft({ ...orderDraft, reference: event.target.value })} placeholder="Ex.: GBU002/26" /></label>
+            <label>PO / referência do cliente<input value={orderDraft.contractNumber} onChange={(event) => setOrderDraft({ ...orderDraft, contractNumber: event.target.value })} placeholder="Ex.: PO0657" /></label>
+            <label>Exportador / Trading<input value={orderDraft.exporterName} onChange={(event) => setOrderDraft({ ...orderDraft, exporterName: event.target.value })} placeholder={currentOperation.supplierName} /></label>
+            <label>Fornecedor Brazil<input value={currentOperation.supplierName || "Fornecedor não informado"} readOnly title="Puxado do Cadastro de Fornecedores" /></label>
+            <label>Comprador / Consignee<input value={settings.customerName || currentOperation.euImporter} onChange={(event) => setSettings({ ...settings, customerName: event.target.value })} placeholder={currentOperation.euImporter} /></label>
+            <label>E-mail do comprador<input type="email" value={settings.customerEmail} onChange={(event) => setSettings({ ...settings, customerEmail: event.target.value })} placeholder="logistics@customer.com" /></label>
+            <label>POD / Porto destino<input value={orderDraft.portOfDischarge} onChange={(event) => setOrderDraft({ ...orderDraft, portOfDischarge: event.target.value })} placeholder="Ex.: CAT LAI PORT - VIETNAM" /></label>
+            <label>POL / Porto embarque<input value={orderDraft.portOfLoading} onChange={(event) => setOrderDraft({ ...orderDraft, portOfLoading: event.target.value })} /></label>
+            <label>Incoterm<select value={orderDraft.incoterm} onChange={(event) => setOrderDraft({ ...orderDraft, incoterm: event.target.value })}><option>FOB</option><option>FCA</option><option>CFR</option><option>CIF</option><option>DAP</option><option>EXW</option></select></label>
+            <label>Moeda<select value={orderDraft.currency} onChange={(event) => setOrderDraft({ ...orderDraft, currency: event.target.value })}><option>USD</option><option>EUR</option><option>GBP</option><option>BRL</option></select></label>
+            <label>Latest shipment / entrega<input type="date" value={orderDraft.shipmentDate} onChange={(event) => setOrderDraft({ ...orderDraft, shipmentDate: event.target.value })} /></label>
+            <label>NCM / HS Code<input value={orderDraft.hsCode} onChange={(event) => setOrderDraft({ ...orderDraft, hsCode: event.target.value })} placeholder="Ex.: 4407.11.00" /></label>
+            <label>Produto base<input value={orderDraft.product} onChange={(event) => setOrderDraft({ ...orderDraft, product: event.target.value })} /></label>
+            <label>Unidade<input value={orderDraft.quantityUnit} onChange={(event) => setOrderDraft({ ...orderDraft, quantityUnit: event.target.value })} placeholder="CBM / MT / PCS" /></label>
+            <label>Valor total<input type="text" value={`${orderDraft.currency} ${orderItemsTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} readOnly title="Somatório automático dos totais dos itens" /></label>
+            <div className="order-items-editor wide">
+              <header><b>ORDER DETAILS</b><button type="button" onClick={addOrderItem}>+ adicionar item</button></header>
+              <div className="order-items-head"><span>Espécie</span><span>Qualidade</span><span>Medida</span><span>Volume m³</span><span>Preço unitário</span><span>Total</span><span /></div>
+              {orderItems.map((item, index) => {
+                const total = Number(item.volume || 0) * Number(item.unitPrice || 0);
+                return <div className="order-item-row" key={index}>
+                  <input value={item.species} onChange={(event) => updateOrderItem(index, "species", event.target.value)} placeholder="Taeda Pine" />
+                  <input value={item.quality} onChange={(event) => updateOrderItem(index, "quality", event.target.value)} placeholder="B Grade" />
+                  <input value={item.size} onChange={(event) => updateOrderItem(index, "size", event.target.value)} placeholder="15x140x1800" />
+                  <input type="number" step="0.001" value={item.volume} onChange={(event) => updateOrderItem(index, "volume", event.target.value)} />
+                  <input type="number" step="0.01" value={item.unitPrice} onChange={(event) => updateOrderItem(index, "unitPrice", event.target.value)} />
+                  <strong>{orderDraft.currency} {total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                  <button type="button" disabled={orderItems.length === 1} onClick={() => removeOrderItem(index)}>×</button>
+                </div>;
+              })}
+            </div>
+            <label className="wide">Payment Terms<textarea value={orderDraft.paymentTerms} onChange={(event) => setOrderDraft({ ...orderDraft, paymentTerms: event.target.value })} placeholder="Ex.: 10% ADVANCED AND 90% TT AGAINST COPY OF DOCS ETA 2 WEEKS" /></label>
+            <label className="wide">Notes padrão do pedido<textarea value={orderDraft.orderNotes} onChange={(event) => setOrderDraft({ ...orderDraft, orderNotes: event.target.value })} /></label>
+          </div>
+          <footer className="order-stage-actions"><button className="primary" disabled={Boolean(action)} onClick={saveOrderCommercial}>{action === "order-commercial" ? "Salvando pedido…" : "Salvar dados da Etapa 01"}</button><button onClick={() => openOrderDocument("sales-order")}>Emitir Sales Order cliente</button><button onClick={() => openOrderDocument("purchase-invoice")}>Emitir Purchase Invoice cliente</button></footer>
+          <section className="supplier-purchase-layer wide">
+            <header><div><p className="eyebrow">PEDIDO DE COMPRA FORNECEDOR</p><h4>Camada comercial para envio ao fornecedor</h4><p>Use quando o fornecedor tiver preço, trading, incoterm ou pagamento diferente do documento enviado ao cliente.</p></div><strong>{supplierOrderDraft.currency} {supplierOrderItemsTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></header>
+            <div className="order-stage-grid">
+              <label>Trading / comprador<input value={supplierOrderDraft.tradingName} onChange={(event) => setSupplierOrderDraft({ ...supplierOrderDraft, tradingName: event.target.value })} placeholder="Hub das Américas / trading compradora" /></label>
+              <label>Fornecedor Brazil<input value={currentOperation.supplierName || "Fornecedor não informado"} readOnly title="Puxado do Cadastro de Fornecedores" /></label>
+              <label>Incoterm compra<select value={supplierOrderDraft.incoterm} onChange={(event) => setSupplierOrderDraft({ ...supplierOrderDraft, incoterm: event.target.value })}><option>FOB</option><option>FCA</option><option>CFR</option><option>CIF</option><option>DAP</option><option>EXW</option></select></label>
+              <label>Moeda compra<select value={supplierOrderDraft.currency} onChange={(event) => setSupplierOrderDraft({ ...supplierOrderDraft, currency: event.target.value })}><option>USD</option><option>EUR</option><option>GBP</option><option>BRL</option></select></label>
+              <label className="wide">Condição de pagamento fornecedor<textarea value={supplierOrderDraft.paymentTerms} onChange={(event) => setSupplierOrderDraft({ ...supplierOrderDraft, paymentTerms: event.target.value })} placeholder="Ex.: 40% adiantado e 60% contra cópia dos documentos" /></label>
+              <div className="order-items-editor wide">
+                <header><b>ITENS DO PEDIDO DE COMPRA</b><button type="button" onClick={addSupplierOrderItem}>+ adicionar item</button></header>
+                <div className="order-items-head"><span>Produto</span><span>Qualidade</span><span>Medida</span><span>Volume m³</span><span>Preço fornecedor</span><span>Total</span><span /></div>
+                {supplierOrderItems.map((item, index) => {
+                  const total = Number(item.volume || 0) * Number(item.unitPrice || 0);
+                  return <div className="order-item-row" key={index}>
+                    <input value={item.species} onChange={(event) => updateSupplierOrderItem(index, "species", event.target.value)} placeholder="Pinus spp." />
+                    <input value={item.quality} onChange={(event) => updateSupplierOrderItem(index, "quality", event.target.value)} placeholder="Madeira serrada" />
+                    <input value={item.size} onChange={(event) => updateSupplierOrderItem(index, "size", event.target.value)} placeholder="15x100x2500" />
+                    <input type="number" step="0.001" value={item.volume} onChange={(event) => updateSupplierOrderItem(index, "volume", event.target.value)} />
+                    <input type="number" step="0.01" value={item.unitPrice} onChange={(event) => updateSupplierOrderItem(index, "unitPrice", event.target.value)} />
+                    <strong>{supplierOrderDraft.currency} {total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                    <button type="button" disabled={supplierOrderItems.length === 1} onClick={() => removeSupplierOrderItem(index)}>×</button>
+                  </div>;
+                })}
+              </div>
+              <label className="wide">Observações para o fornecedor<textarea value={supplierOrderDraft.notes} onChange={(event) => setSupplierOrderDraft({ ...supplierOrderDraft, notes: event.target.value })} placeholder="Condições internas, tolerâncias, prazo de produção, instruções de embalagem ou documentos exigidos." /></label>
+            </div>
+            <footer className="order-stage-actions"><button className="primary" disabled={Boolean(action)} onClick={saveOrderCommercial}>Salvar pedido fornecedor</button><button onClick={() => openOrderDocument("supplier-po")}>Emitir Pedido de Compra fornecedor</button></footer>
+          </section>
+        </section>}
+        {selected.code === "BOOKING" && <section className="booking-stage-fields">
+          <header><div><p className="eyebrow">ETAPA 07 · DADOS DO BOOKING</p><h4>Booking, BL e contêineres utilizados</h4><p>Estes campos alimentam automaticamente o Tracking Assistido, Gmail, Shipment Advice e busca de documentos.</p></div><span>{bookingDraft.bookingNumber || bookingDraft.containerNumbers ? "Dados informados" : "Pendente"}</span></header>
+          <div>
+            <label>Armador / operador logístico<input value={bookingDraft.carrier} onChange={(event) => setBookingDraft({ ...bookingDraft, carrier: event.target.value })} placeholder="Ex.: Maersk, MSC, CMA CGM, Hapag-Lloyd" /></label>
+            <label>Booking Number<input value={bookingDraft.bookingNumber} onChange={(event) => setBookingDraft({ ...bookingDraft, bookingNumber: event.target.value })} placeholder="Número do booking confirmado" /></label>
+            <label>BL / Bill of Lading<input value={bookingDraft.billOfLadingNumber} onChange={(event) => setBookingDraft({ ...bookingDraft, billOfLadingNumber: event.target.value })} placeholder="Preencher quando disponível" /></label>
+            <label>Contêiner(es) utilizados<textarea value={bookingDraft.containerNumbers} onChange={(event) => setBookingDraft({ ...bookingDraft, containerNumbers: event.target.value })} placeholder="Ex.: MSCU1234567, MEDU7654321" /></label>
+            <label>Navio / viagem<input value={bookingDraft.vesselVoyage} onChange={(event) => setBookingDraft({ ...bookingDraft, vesselVoyage: event.target.value })} placeholder="Ex.: MSC LENA F / voyage 123W" /></label>
+            <label>Data prevista de embarque<input type="date" value={bookingDraft.shipmentDate} onChange={(event) => setBookingDraft({ ...bookingDraft, shipmentDate: event.target.value })} /></label>
+            <label>Porto/local de embarque<input value={bookingDraft.portOfLoading} onChange={(event) => setBookingDraft({ ...bookingDraft, portOfLoading: event.target.value })} /></label>
+            <label>Porto/local de destino<input value={bookingDraft.portOfDischarge} onChange={(event) => setBookingDraft({ ...bookingDraft, portOfDischarge: event.target.value })} /></label>
+          </div>
+          <button className="primary" disabled={Boolean(action)} onClick={saveBookingLogistics}>{action === "booking-logistics" ? "Salvando booking…" : "Salvar dados do booking e containers"}</button>
+        </section>}
         <div className="export-editor-actions"><button disabled={Boolean(action)} onClick={() => saveMilestone()}>Salvar atualização</button><button className="primary" disabled={Boolean(action) || selected.status === "Concluído"} onClick={() => saveMilestone("Concluído")}>Concluir etapa e notificar cliente ✓</button></div>
 
         <div className="export-stage-files">
@@ -3329,21 +3543,19 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
           <div className="shipment-final-files">{shipmentAdvice?.generated.candidates.map((document) => { const approved = document.shipmentSetStatus === "Incluído" && document.clientShareStatus === "Aprovado"; return <article key={document.id} className={approved ? "approved" : "review"}><span className="shipment-file-icon">{approved ? "✓" : fileIcon(document.fileName)}</span><div><b>{document.documentType || "Documento da Etapa 09"}</b><small>{document.fileName}</small><em>{approved ? "OK para envio" : "Aguardando conferência"}</em></div><button className="view-document" onClick={() => openSecureDocument(document.id, "operation", true)}>Ver</button><button className={approved ? "reopen-document" : "approve-document"} disabled={shipmentAdviceAction} onClick={() => setShipmentDocumentStatus(document, !approved)}>{approved ? "Reabrir" : "Aprovar"}</button></article>; })}{shipmentAdvice && !shipmentAdvice.generated.candidates.length && <p>Nenhum documento foi incluído na Etapa 09.</p>}</div>
           <div className="shipment-advice-status"><b>{shipmentAdvice?.advice?.status || "Rascunho ainda não gerado"}</b><span>{shipmentAdvice?.advice?.humanApproved ? "Aprovado por responsável" : "Envio bloqueado até aprovação humana"}</span></div>
           <button className="primary" disabled={shipmentAdviceAction} onClick={regenerateShipmentAdvice}>{shipmentAdviceAction ? "Preparando…" : "Atualizar rascunho do Shipment Advice"}</button>
-          <button disabled={shipmentAdviceAction || !shipmentAdvice?.complete || !settings.customerEmail} onClick={sendShipmentAdviceTest}>{shipmentAdviceAction ? "Enviando…" : "Enviar teste com todos os anexos"}</button>
           <button className="send-shipment" disabled={shipmentAdviceAction || !shipmentAdvice?.complete || !settings.customerEmail} onClick={sendShipmentAdvice}>Aprovar e enviar e-mail com anexos ✓</button>
           {shipmentAdvice && <button onClick={() => setPreviewMessage({ subject: shipmentAdvice.advice?.subject || shipmentAdvice.generated.subject, body: shipmentAdvice.advice?.body || shipmentAdvice.generated.body })}>Ver prévia com cobrança e documentos</button>}
         </section>
 
         <section className="client-communication-card panel">
-          <header><div><p className="eyebrow">CLIENT COMMUNICATION</p><h3>Atualização automática</h3></div><span className={data.emailDelivery.ready ? "active" : "simulation"}>{data.emailDelivery.ready ? "Envio real ativo" : "Configuração necessária"}</span></header>
+          <header><div><p className="eyebrow">CLIENT COMMUNICATION</p><h3>Comunicação oficial</h3></div><span className={data.emailDelivery.ready ? "active" : "simulation"}>{data.emailDelivery.ready ? "Envio real ativo" : "Configuração necessária"}</span></header>
           <label>Cliente<input value={settings.customerName} onChange={(event) => setSettings({ ...settings, customerName: event.target.value })} placeholder={operation.euImporter} /></label>
           <label>E-mail do cliente<input type="email" value={settings.customerEmail} onChange={(event) => setSettings({ ...settings, customerEmail: event.target.value })} placeholder="logistics@customer.com" /></label>
           <label>Referência do cliente<input value={settings.customerReference} onChange={(event) => setSettings({ ...settings, customerReference: event.target.value })} placeholder="PO / customer order" /></label>
-          <div className="communication-inline"><label>Tracking marítimo a cada<input type="number" min="1" max="90" value={settings.trackingIntervalDays} onChange={(event) => setSettings({ ...settings, trackingIntervalDays: Number(event.target.value) })} /><small>dias · não afeta o teste imediato</small></label><label className="communication-toggle"><input type="checkbox" checked={settings.notificationsEnabled} onChange={(event) => setSettings({ ...settings, notificationsEnabled: event.target.checked })} /><span>Notificar ao concluir etapas</span></label></div>
+          <div className="communication-inline"><label>Tracking marítimo a cada<input type="number" min="1" max="90" value={settings.trackingIntervalDays} onChange={(event) => setSettings({ ...settings, trackingIntervalDays: Number(event.target.value) })} /><small>dias · define a próxima rotina</small></label><label className="communication-toggle"><input type="checkbox" checked={settings.notificationsEnabled} onChange={(event) => setSettings({ ...settings, notificationsEnabled: event.target.checked })} /><span>Notificar ao concluir etapas</span></label></div>
           <button className="primary" disabled={Boolean(action)} onClick={() => post({ action: "settings", ...settings }, "Preferências de comunicação salvas.")}>Salvar comunicação</button>
-          <button disabled={Boolean(action) || !settings.customerEmail} onClick={sendTestEmail}>{action === "test-email" ? "Enviando agora…" : "Enviar e-mail de teste agora"}</button>
           <button onClick={() => setPreviewMessage(previewMessage ? null : { subject: previewSubject, body: previewBody })}>{previewMessage ? "Fechar prévia" : "Ver prévia do e-mail"}</button>
-          {!data.emailDelivery.ready && <p className="integration-warning"><b>O teste é imediato; não espera 10 dias.</b> O envio externo está bloqueado porque o remetente transacional ainda não foi configurado. A mensagem continuará registrada com o motivo exato, sem indicar envio falso.</p>}
+          {!data.emailDelivery.ready && <p className="integration-warning"><b>Envio oficial bloqueado.</b> O envio externo está bloqueado porque o Gmail ou o remetente transacional ainda não foi configurado.</p>}
           <p className="email-provider-line"><b>Provedor:</b> {data.emailDelivery.provider} · <b>Remetente:</b> {data.emailDelivery.sender}</p>
         </section>
 
@@ -3365,28 +3577,42 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
         </section>
 
         <section className="tracking-card panel">
-          <header><div><p className="eyebrow">SHIPMENT TRACKING</p><h3>{operation.bookingNumber || operation.billOfLadingNumber || "Referência pendente"}</h3></div><span>{data.trackingProvider.configured ? "LIVE" : "SETUP"}</span></header>
+          <header><div><p className="eyebrow">SHIPMENT TRACKING</p><h3>{currentOperation.bookingNumber || currentOperation.billOfLadingNumber || "Referência pendente"}</h3></div><span>{data.trackingProvider.configured ? "LIVE" : "FREE"}</span></header>
           {latestTracking ? <article><b>{latestTracking.status}</b><span>{latestTrackingPosition.label}</span><p>{latestTracking.details}</p><small>Consultado em {formatDate(latestTracking.checkedAt)} · próximo {formatDate(latestTracking.nextCheckAt)}</small></article> : <p>Nenhuma consulta de tracking registrada.</p>}
           <a className="tracking-open-workspace" href="#shipment-tracking">Abrir mapa e histórico ↓</a>
-          {!data.trackingProvider.configured && <small>Adicione a credencial ShipsGo no ambiente de produção para habilitar consultas reais.</small>}
+          {!data.trackingProvider.configured && <small>Modo assistido free ativo: abrir site oficial do armador e registrar o status manualmente.</small>}
         </section>
       </aside>
     </div>
 
     <section id="shipment-tracking" className="shipment-tracking-workspace panel">
-      <header><div><p className="eyebrow">SHIPMENT TRACKING · {data.trackingProvider.provider}</p><h3>Posição da carga e comunicação ao cliente</h3><p>{operation.containerNumbers || operation.billOfLadingNumber || operation.bookingNumber || "Cadastre contêiner, BL ou booking"} · {operation.portOfLoading || "Origem"} → {operation.portOfDischarge || "Destino"}</p></div><span className={data.trackingProvider.configured ? "active" : "pending"}>{data.trackingProvider.configured ? "Integração ativa" : "Configuração necessária"}</span></header>
+      <header><div><p className="eyebrow">SHIPMENT TRACKING · FREE ASSISTED</p><h3>Posição da carga e comunicação ao cliente</h3><p>{currentOperation.containerNumbers || currentOperation.billOfLadingNumber || currentOperation.bookingNumber || "Cadastre contêiner, BL ou booking"} · {currentOperation.portOfLoading || "Origem"} → {currentOperation.portOfDischarge || "Destino"}</p></div><span className={data.trackingProvider.configured ? "active" : "pending"}>{data.trackingProvider.configured ? "ShipsGo disponível" : "Sem consumo de crédito"}</span></header>
       <div className="shipment-tracking-layout">
         <div className="shipment-map">
           {trackingMapUrl ? <iframe title="Posição atual do navio" src={trackingMapUrl} loading="lazy" referrerPolicy="no-referrer" /> : <div className="shipment-map-empty"><b>Mapa aguardando coordenadas</b><span>A primeira consulta ao ShipsGo preencherá a posição informada pelo armador.</span></div>}
         </div>
         <aside>
           <div className="shipment-current-status"><small>STATUS ATUAL</small><strong>{latestTracking?.status || "Ainda não consultado"}</strong><span>{latestTrackingPosition.label || "Localização pendente"}</span>{latestTracking?.eta && <em>ETA {latestTracking.eta}</em>}</div>
-          <button className="primary" disabled={Boolean(action) || !data.trackingProvider.configured || !settings.customerEmail} onClick={() => post({ action: "tracking-check" }, "Tracking atualizado e comunicação ao cliente processada.")}>{action === "tracking-check" ? "Consultando ShipsGo…" : "Rastrear e enviar atualização ao cliente"}</button>
+          <div className="assisted-tracking-card">
+            <small>TRACKING ASSISTIDO FREE</small>
+            <strong>{data.trackingProvider.assisted.carrier}</strong>
+            <span>{data.trackingProvider.assisted.helperText}</span>
+            {data.trackingProvider.assisted.officialUrl ? <a href={data.trackingProvider.assisted.officialUrl} target="_blank" rel="noreferrer">Abrir site oficial do armador ↗</a> : <em>Cadastre armador, BL, booking ou contêiner.</em>}
+            <small>Confiança: {data.trackingProvider.assisted.confidence} · Referência: {data.trackingProvider.assisted.reference || "pendente"}</small>
+          </div>
+          <div className="assisted-tracking-form">
+            <label>Status encontrado<input value={assistedTracking.status} onChange={(event) => setAssistedTracking({ ...assistedTracking, status: event.target.value })} placeholder="Ex.: In transit / Embarcado / Chegou ao POD" /></label>
+            <label>Localização / porto atual<input value={assistedTracking.location} onChange={(event) => setAssistedTracking({ ...assistedTracking, location: event.target.value })} placeholder="Ex.: Santos, Singapore, Cat Lai" /></label>
+            <label>ETA<input value={assistedTracking.eta} onChange={(event) => setAssistedTracking({ ...assistedTracking, eta: event.target.value })} placeholder="Ex.: 12/09/2026" /></label>
+            <label>Observação<input value={assistedTracking.note} onChange={(event) => setAssistedTracking({ ...assistedTracking, note: event.target.value })} placeholder="Ex.: informação coletada no site do armador" /></label>
+            <button className="primary" disabled={Boolean(action) || !assistedTracking.status.trim()} onClick={saveAssistedTracking}>{action === "assisted-tracking-log" ? "Registrando…" : "Registrar tracking encontrado"}</button>
+          </div>
+          {data.trackingProvider.configured && <button className="primary" disabled={Boolean(action) || !settings.customerEmail} onClick={() => post({ action: "tracking-check" }, "Tracking atualizado e comunicação ao cliente processada.")}>{action === "tracking-check" ? "Consultando ShipsGo…" : "Rastrear via ShipsGo e enviar ao cliente"}</button>}
           {!settings.customerEmail && <small>Informe o e-mail do cliente na área de comunicação para habilitar o envio.</small>}
           <div className="shipment-tracking-timeline"><h4>Histórico de posições</h4>{data.tracking.slice(0, 8).map((item) => { const position = parseTrackingLocation(item.location); return <article key={item.id}><i /><div><b>{item.status}</b><span>{position.label}{item.eta ? ` · ETA ${item.eta}` : ""}</span><small>{formatDate(item.checkedAt)} · {item.source}</small></div></article>; })}{!data.tracking.length && <p>O histórico será criado após a primeira consulta real.</p>}</div>
         </aside>
       </div>
-      <footer>A consulta é feita somente quando você autoriza pelo botão. O ExportaTrust registra o evento, atualiza o mapa e envia a mensagem ao cliente; a criação de rastreamentos duplicados deve ser evitada para preservar os créditos do ShipsGo.</footer>
+      <footer>O modo assistido free não consome créditos: ele abre o site oficial do armador e registra no ExportaTrust o status conferido por você. ShipsGo continua disponível apenas como automação premium quando houver crédito/API.</footer>
     </section>
 
     {previewMessage && <section className="email-preview-panel panel">
