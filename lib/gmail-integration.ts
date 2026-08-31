@@ -273,6 +273,66 @@ async function gmailJson<T>(path: string, token: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+function headerSafe(value: string) {
+  return value.replace(/[\r\n]+/g, " ").trim();
+}
+
+function mimeHeader(value: string) {
+  const safe = headerSafe(value);
+  if (/^[\x20-\x7e]*$/.test(safe)) return safe;
+  return `=?UTF-8?B?${bytesToBase64(new TextEncoder().encode(safe))}?=`;
+}
+
+function utf8Base64Url(value: string) {
+  return bytesToBase64(new TextEncoder().encode(value)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+export async function gmailDeliveryConfiguration(context: SecurityContext) {
+  await ensureGmailTables();
+  const db = await getDb();
+  const [connection] = await db.select({ gmailAddress: gmailConnections.gmailAddress, status: gmailConnections.status, lastError: gmailConnections.lastError }).from(gmailConnections).where(and(eq(gmailConnections.organizationId, context.organizationId), eq(gmailConnections.userId, context.userId))).limit(1);
+  return { ready: connection?.status === "Ativo", provider: "Gmail", sender: connection?.gmailAddress || "Não conectado", error: connection?.lastError || "" };
+}
+
+export async function sendGmailEmail(context: SecurityContext, recipient: string, subject: string, body: string, html: string) {
+  await ensureGmailTables();
+  const db = await getDb();
+  const [connection] = await db.select().from(gmailConnections).where(and(eq(gmailConnections.organizationId, context.organizationId), eq(gmailConnections.userId, context.userId))).limit(1);
+  if (!connection || connection.status !== "Ativo") return { status: "Não enviado", provider: "gmail-not-connected", externalId: "", error: "Gmail operacional não está conectado." };
+  const token = await validAccessToken(connection, context);
+  const boundary = `exportatrust-${crypto.randomUUID()}`;
+  const raw = [
+    `From: ${headerSafe(connection.gmailAddress)}`,
+    `To: ${headerSafe(recipient)}`,
+    `Subject: ${mimeHeader(subject)}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: 8bit",
+    "",
+    body,
+    "",
+    `--${boundary}`,
+    "Content-Type: text/html; charset=UTF-8",
+    "Content-Transfer-Encoding: 8bit",
+    "",
+    html,
+    "",
+    `--${boundary}--`,
+  ].join("\r\n");
+  const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ raw: utf8Base64Url(raw) }),
+  });
+  const payload = await response.json().catch(() => ({})) as { id?: string; error?: { message?: string } };
+  if (!response.ok) return { status: "Falha", provider: "gmail", externalId: "", error: payload.error?.message || `Gmail respondeu HTTP ${response.status}.` };
+  await audit(context, "GMAIL_CLIENT_EMAIL_SENT", "gmail_connection", String(connection.id), { recipient, subject });
+  return { status: "Enviado", provider: "gmail", externalId: payload.id || "", error: "" };
+}
+
 export async function syncGmail() {
   const context = await requireSecurityContext("write");
   await ensureGmailTables();

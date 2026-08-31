@@ -95,21 +95,23 @@ export function addDays(date: Date, days: number) {
 }
 
 export function milestoneEmail(reference: string, milestoneTitle: string, status: string, note: string, operation: { product: string; bookingNumber: string; containerNumbers: string; vesselVoyage: string; portOfLoading: string; portOfDischarge: string; shipmentDate: string }) {
-  const subject = `${reference} · ${milestoneTitle} · ${status}`;
-  const details = [
-    `Order/process: ${reference}`,
-    `Product: ${operation.product}`,
-    `Current stage: ${milestoneTitle}`,
-    `Status: ${status}`,
-    operation.bookingNumber ? `Booking: ${operation.bookingNumber}` : "",
-    operation.containerNumbers ? `Container(s): ${operation.containerNumbers}` : "",
-    operation.vesselVoyage ? `Vessel / voyage: ${operation.vesselVoyage}` : "",
-    operation.portOfLoading || operation.portOfDischarge ? `Route: ${operation.portOfLoading || "TBC"} → ${operation.portOfDischarge || "TBC"}` : "",
-    operation.shipmentDate ? `Expected shipment: ${operation.shipmentDate}` : "",
-    note ? `Update: ${note}` : "",
-  ].filter(Boolean);
-  const body = `Dear customer,\n\nThis is an automatic ExportaTrust update for your order.\n\n${details.join("\n")}\n\nAll original documents and compliance records remain available in the ExportaTrust control tower.\n\nBest regards,\nExportaTrust`;
-  const escapedDetails = details.map((detail) => `<tr><td style="padding:7px 0;border-bottom:1px solid #e6eeea;color:#40534a;font:14px Arial,sans-serif">${detail.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</td></tr>`).join("");
-  const html = `<div style="margin:0;padding:24px;background:#f3f7f5"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;margin:auto;background:#fff;border:1px solid #d9e6df;border-radius:12px;overflow:hidden"><tr><td style="padding:24px 28px;background:#086c55;color:#fff"><div style="font:700 12px Arial,sans-serif;letter-spacing:1.4px">EXPORTATRUST</div><div style="margin-top:8px;font:700 24px Arial,sans-serif">Order & compliance update</div></td></tr><tr><td style="padding:26px 28px"><p style="margin:0 0 18px;color:#22362d;font:15px Arial,sans-serif">Dear customer,</p><p style="margin:0 0 18px;color:#52645b;font:14px Arial,sans-serif;line-height:1.6">This is an automatic ExportaTrust update for your order.</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${escapedDetails}</table><p style="margin:22px 0 0;color:#52645b;font:13px Arial,sans-serif;line-height:1.6">All original documents and compliance records remain available in the ExportaTrust control tower.</p><p style="margin:18px 0 0;color:#22362d;font:14px Arial,sans-serif">Best regards,<br><strong>ExportaTrust</strong></p></td></tr></table></div>`;
+  const subject = `${reference} - ${milestoneTitle} - ${status}`;
+  const rows = [
+    ["Order/process", reference],
+    ["Product", operation.product],
+    ["Current stage", milestoneTitle],
+    ["Status", status],
+    ["Booking", operation.bookingNumber],
+    ["Container(s)", operation.containerNumbers],
+    ["Vessel / voyage", operation.vesselVoyage],
+    ["Route", operation.portOfLoading || operation.portOfDischarge ? `${operation.portOfLoading || "TBC"} → ${operation.portOfDischarge || "TBC"}` : ""],
+    ["Expected shipment", operation.shipmentDate],
+  ].filter(([, value]) => value);
+  const details = rows.map(([label, value]) => `${label}: ${value}`);
+  const body = `Dear customer,\n\nThis is an ExportaTrust update for your order.\n\n${details.join("\n")}${note ? `\n\nUpdate:\n${note}` : ""}\n\nAll original documents and compliance records remain available in the ExportaTrust control tower.\n\nBest regards,\nExportaTrust`;
+  const escapeHtml = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\"", "&quot;");
+  const detailRows = rows.map(([label, value]) => `<tr><td style="width:34%;padding:10px 12px;border-bottom:1px solid #e8f0ec;color:#60756c;font:700 12px Arial,sans-serif;text-transform:uppercase;letter-spacing:.4px">${escapeHtml(label)}</td><td style="padding:10px 12px;border-bottom:1px solid #e8f0ec;color:#20362d;font:14px Arial,sans-serif;line-height:1.45">${escapeHtml(value)}</td></tr>`).join("");
+  const updateBlock = note ? `<tr><td style="padding:18px 28px 0"><div style="padding:14px 16px;background:#f4faf7;border-left:4px solid #086c55;border-radius:8px"><div style="margin:0 0 6px;color:#086c55;font:700 12px Arial,sans-serif;text-transform:uppercase;letter-spacing:.6px">Update</div><div style="color:#20362d;font:14px Arial,sans-serif;line-height:1.6;white-space:pre-line">${escapeHtml(note)}</div></div></td></tr>` : "";
+  const html = `<div style="margin:0;padding:24px;background:#f3f7f5"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;margin:auto;background:#ffffff;border:1px solid #d9e6df;border-radius:12px;overflow:hidden"><tr><td style="padding:24px 28px;background:#086c55;color:#ffffff"><div style="font:700 12px Arial,sans-serif;letter-spacing:1.4px">EXPORTATRUST</div><div style="margin-top:8px;font:700 23px Arial,sans-serif;line-height:1.25">Order update</div><div style="margin-top:8px;color:#dff2e9;font:13px Arial,sans-serif">${escapeHtml(reference)} · ${escapeHtml(milestoneTitle)}</div></td></tr><tr><td style="padding:24px 28px 10px"><p style="margin:0 0 14px;color:#20362d;font:15px Arial,sans-serif">Dear customer,</p><p style="margin:0;color:#52645b;font:14px Arial,sans-serif;line-height:1.6">This is an ExportaTrust update for your order.</p></td></tr><tr><td style="padding:6px 28px 0"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #e8f0ec;border-radius:8px;overflow:hidden">${detailRows}</table></td></tr>${updateBlock}<tr><td style="padding:22px 28px 26px"><p style="margin:0;color:#52645b;font:13px Arial,sans-serif;line-height:1.6">All original documents and compliance records remain available in the ExportaTrust control tower.</p><p style="margin:18px 0 0;color:#20362d;font:14px Arial,sans-serif;line-height:1.5">Best regards,<br><strong>ExportaTrust</strong></p></td></tr></table></div>`;
   return { subject, body, html };
 }

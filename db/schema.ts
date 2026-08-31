@@ -528,6 +528,24 @@ export const exportMilestones = sqliteTable("export_milestones", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [uniqueIndex("export_milestones_operation_code_idx").on(table.operationId, table.code)]);
 
+export const operationTasks = sqliteTable("operation_tasks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  organizationId: integer("organization_id").notNull().default(1),
+  operationId: integer("operation_id").notNull().references(() => operations.id),
+  parentTaskId: integer("parent_task_id"),
+  sequence: integer("sequence").notNull(),
+  description: text("description").notNull(),
+  dueDate: text("due_date").notNull().default(""),
+  responsibleName: text("responsible_name").notNull().default(""),
+  responsibleEmail: text("responsible_email").notNull().default(""),
+  status: text("status").notNull().default("Pendente"),
+  scheduled: integer("scheduled", { mode: "boolean" }).notNull().default(false),
+  note: text("note").notNull().default(""),
+  completedAt: text("completed_at"),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [uniqueIndex("operation_tasks_operation_sequence_idx").on(table.operationId, table.sequence)]);
+
 export const clientNotifications = sqliteTable("client_notifications", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   organizationId: integer("organization_id").notNull().default(1),

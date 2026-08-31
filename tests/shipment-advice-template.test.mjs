@@ -33,12 +33,24 @@ test("stage 09 is the authoritative shipment folder with human document approval
   assert.match(template, /candidates\.filter\(\(document\) => document\.shipmentSetStatus === "Incluído" && document\.clientShareStatus === "Aprovado"\)/);
   assert.match(route, /action === "set-document-status"/);
   assert.match(route, /action === "approve-send"/);
-  assert.match(route, /action === "test-send"/);
+  assert.doesNotMatch(route, /action === "test-send"/);
   assert.match(route, /attachments/);
   assert.match(template, /resolvedShipmentDocumentType/);
   assert.match(client, /Aprovar e enviar e-mail com anexos/);
-  assert.match(client, /Enviar teste com todos os anexos/);
+  assert.doesNotMatch(client, /Enviar teste com todos os anexos/);
+  assert.doesNotMatch(client, /Enviar e-mail de teste agora/);
   assert.match(client, /approved \? "Reabrir" : "Aprovar"/);
+});
+
+test("stage communication email is cleanly formatted for Gmail", async () => {
+  const template = await read("lib/export-control.ts");
+  assert.match(template, /Order update/);
+  assert.match(template, /role="presentation"/);
+  assert.match(template, /Current stage/);
+  assert.match(template, /Container\(s\)/);
+  assert.match(template, /white-space:pre-line/);
+  assert.match(template, /escapeHtml/);
+  assert.doesNotMatch(template, /automatic ExportaTrust update/);
 });
 
 test("AI country check evaluates requirements and every operational stage", async () => {
