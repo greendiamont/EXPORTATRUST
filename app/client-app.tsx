@@ -2873,7 +2873,6 @@ function OperationCommandCenter({ operation, properties, forestDocuments, onClos
           </div>}
           {!loading && tab === "export" && <ExportOrderControl operation={operation} documents={documents} uploadFiles={uploadFiles} removeDocument={removeDocument} showNotice={showNotice} onOpenSupplyChain={() => setTab("checklist")} />}
           {!loading && tab === "overview" && <div className="operation-overview">
-            <ExportOrderControl operation={operation} documents={documents} uploadFiles={uploadFiles} removeDocument={removeDocument} showNotice={showNotice} onOpenSupplyChain={() => setTab("checklist")} taskBoardOnly />
             <section><h3>Participantes principais</h3><dl>
               <div><dt>Exportador</dt><dd>{operation.exporterName || "Não informado"}<small>{operation.exporterTaxId}</small></dd></div>
               <div><dt>Fornecedor</dt><dd>{operation.supplierName}</dd></div>
@@ -2911,6 +2910,7 @@ function OperationCommandCenter({ operation, properties, forestDocuments, onClos
               <div><dt>Observações</dt><dd>{operation.supplyChainNotes || "Sem observações"}</dd></div>
             </dl></section>
             <button className="primary overview-edit" onClick={onEdit}>Editar dados completos da supply chain →</button>
+            <ExportOrderControl operation={operation} documents={documents} uploadFiles={uploadFiles} removeDocument={removeDocument} showNotice={showNotice} onOpenSupplyChain={() => setTab("checklist")} taskBoardOnly />
           </div>}
           {!loading && tab === "partners" && <>
             <div className="partner-form">
