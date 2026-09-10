@@ -6,6 +6,8 @@ const displayValue = (value: unknown) => {
   return text || "Não informado";
 };
 
+const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
 export const buildClientDossierFields = (client: Record<string, unknown>): DossierField[] => [
   { label: "Nome / Razão Social", value: client.legalName },
   { label: "Aliases", value: client.aliases },
@@ -52,25 +54,42 @@ export const dossierText = (title: string, fields: DossierField[]) => [
   ...fields.map((field) => `${field.label}: ${displayValue(field.value)}`),
 ].join("\n");
 
-export const dossierHtml = (title: string, fields: DossierField[]) => `<!doctype html>
+export const dossierHtml = (title: string, fields: DossierField[]) => {
+  const text = dossierText(title, fields);
+  const serializedText = JSON.stringify(text).replace(/</g, "\\u003c");
+  const serializedTitle = JSON.stringify(title).replace(/</g, "\\u003c");
+  return `<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>${title}</title>
+<title>${escapeHtml(title)}</title>
 <style>
-  body{font-family:Arial,Helvetica,sans-serif;margin:32px;color:#111;line-height:1.4}
+  body{font-family:Arial,Helvetica,sans-serif;margin:32px;color:#111;line-height:1.4;background:#fff}
   h1{font-size:24px;margin:0 0 8px}.meta{font-size:12px;color:#666;margin-bottom:24px}
   table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:9px 10px;text-align:left;vertical-align:top}
-  th{width:32%;background:#f6f6f6;font-weight:600}.actions{margin-bottom:20px;display:flex;gap:8px}
-  button{padding:8px 12px;border:1px solid #bbb;border-radius:6px;background:white;cursor:pointer}
+  th{width:32%;background:#f6f6f6;font-weight:600}.actions{margin-bottom:20px;display:flex;gap:8px;flex-wrap:wrap}
+  button{padding:9px 13px;border:1px solid #bbb;border-radius:6px;background:white;cursor:pointer;font-weight:600}
+  #shareStatus{font-size:12px;color:#555;align-self:center}
   @media print{.actions{display:none}body{margin:16mm}th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style>
 </head><body>
-<div class="actions"><button onclick="window.print()">Imprimir / Salvar PDF</button></div>
-<h1>${title}</h1><div class="meta">Gerado pelo ExportaTrust</div>
-<table>${fields.map((field) => `<tr><th>${field.label}</th><td>${displayValue(field.value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>")}</td></tr>`).join("")}</table>
+<div class="actions"><button onclick="window.print()">Imprimir / Salvar PDF</button><button onclick="shareDossier()">Compartilhar</button><span id="shareStatus"></span></div>
+<h1>${escapeHtml(title)}</h1><div class="meta">Gerado pelo ExportaTrust</div>
+<table>${fields.map((field) => `<tr><th>${escapeHtml(field.label)}</th><td>${escapeHtml(displayValue(field.value)).replace(/\n/g,"<br>")}</td></tr>`).join("")}</table>
+<script>
+const dossierTitle=${serializedTitle}; const dossierText=${serializedText};
+async function shareDossier(){
+  const status=document.getElementById('shareStatus');
+  try{
+    if(navigator.share){await navigator.share({title:dossierTitle,text:dossierText});status.textContent='Compartilhado.';return;}
+    if(navigator.clipboard){await navigator.clipboard.writeText(dossierText);status.textContent='Dados copiados para compartilhar.';return;}
+    status.textContent='Copie os dados manualmente.';
+  }catch(error){if(error && error.name!=='AbortError')status.textContent='Não foi possível compartilhar.';}
+}
+</script>
 </body></html>`;
+};
 
 export async function shareDossier(title: string, fields: DossierField[]) {
   const text = dossierText(title, fields);
