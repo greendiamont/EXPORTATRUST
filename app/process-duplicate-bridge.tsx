@@ -15,78 +15,103 @@ function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-function clonePayload(operation: OperationRow, reference: string) {
-  return {
-    reference,
-    product: operation.product ?? "",
-    hsCode: operation.hsCode ?? "",
-    destinationCountry: operation.destinationCountry ?? "",
-    euImporter: operation.euImporter ?? "",
-    importerClientId: operation.importerClientId ?? null,
-    masterProductId: operation.masterProductId ?? null,
-    supplierId: operation.supplierId ?? null,
-    supplierName: operation.supplierName ?? "",
-    shipmentDate: "",
-    exporterName: operation.exporterName ?? "",
-    exporterTaxId: operation.exporterTaxId ?? "",
-    internalResponsible: operation.internalResponsible ?? "",
-    responsibleEmail: operation.responsibleEmail ?? "",
-    contractNumber: operation.contractNumber ?? "",
-    incoterm: operation.incoterm ?? "FOB",
-    currency: operation.currency ?? "USD",
-    commercialValue: operation.commercialValue ?? 0,
-    quantity: operation.quantity ?? 0,
-    quantityUnit: operation.quantityUnit ?? "MT",
-    grossWeightKg: operation.grossWeightKg ?? 0,
-    netWeightKg: operation.netWeightKg ?? 0,
-    volumeM3: operation.volumeM3 ?? 0,
-    lotCodes: operation.lotCodes ?? "",
-    rawMaterial: operation.rawMaterial ?? "",
-    species: operation.species ?? "",
-    forestOriginType: operation.forestOriginType ?? "Plantação",
-    productionUnit: operation.productionUnit ?? "",
-    productionLocation: operation.productionLocation ?? "",
-    propertyIds: operation.propertyIds ?? "[]",
-    transportMode: operation.transportMode ?? "Marítimo",
-    portOfLoading: operation.portOfLoading ?? "",
-    portOfDischarge: operation.portOfDischarge ?? "",
-    carrier: "",
-    bookingNumber: "",
-    billOfLadingNumber: "",
-    containerNumbers: "",
-    vesselVoyage: "",
-    euOperatorEori: operation.euOperatorEori ?? "",
-    eudrReference: "",
-    supplyChainNotes: operation.supplyChainNotes ?? "",
-    readiness: 10,
-    status: "Cadastro inicial",
-  };
-}
-
 function suggestedReference(reference: string) {
   const match = reference.match(/^(.*?)(?:[-\s]?P(?:ART)?\s*)(\d+)$/i);
   if (match) return `${match[1].replace(/[-\s]+$/, "")}-P${Number(match[2]) + 1}`;
   return `${reference}-P2`;
 }
 
-function makeButton(onClick: () => void) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.textContent = "Duplicar processo ⧉";
-  button.className = "duplicate-process-action";
-  button.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    onClick();
-  }, true);
-  return button;
+function setValue(element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null, value: unknown) {
+  if (!element) return;
+  const text = value === null || value === undefined ? "" : String(value);
+  const prototype = element instanceof HTMLInputElement
+    ? HTMLInputElement.prototype
+    : element instanceof HTMLSelectElement
+      ? HTMLSelectElement.prototype
+      : HTMLTextAreaElement.prototype;
+  const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+  setter?.call(element, text);
+  element.dispatchEvent(new Event("input", { bubbles: true }));
+  element.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function setChecked(element: HTMLInputElement, checked: boolean) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "checked")?.set;
+  setter?.call(element, checked);
+  element.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function fieldByLabel(root: HTMLElement, labelText: string) {
+  const target = normalize(labelText);
+  const labels = Array.from(root.querySelectorAll<HTMLLabelElement>("label"));
+  const label = labels.find((item) => normalize(item.textContent ?? "").startsWith(target));
+  return label?.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input,select,textarea") ?? null;
+}
+
+function copyProperties(root: HTMLElement, propertyIds: unknown) {
+  let ids: string[] = [];
+  try {
+    const parsed = typeof propertyIds === "string" ? JSON.parse(propertyIds) : propertyIds;
+    if (Array.isArray(parsed)) ids = parsed.map(String);
+  } catch {
+    ids = [];
+  }
+  root.querySelectorAll<HTMLInputElement>(".property-options input[type='checkbox']").forEach((checkbox) => {
+    const label = checkbox.closest("label");
+    const text = label?.textContent ?? "";
+    setChecked(checkbox, ids.some((id) => text.includes(id)));
+  });
+}
+
+function fillNewProcessForm(root: HTMLElement, operation: OperationRow) {
+  setValue(root.querySelector<HTMLInputElement>("[data-operation-field='reference']"), suggestedReference(String(operation.reference ?? "")));
+  setValue(root.querySelector<HTMLInputElement>("[data-operation-field='product']"), operation.product);
+  setValue(root.querySelector<HTMLInputElement>("[data-operation-field='hsCode']"), operation.hsCode);
+  setValue(fieldByLabel(root, "Contrato / PO"), operation.contractNumber);
+  setValue(fieldByLabel(root, "Responsável interno"), operation.internalResponsible);
+  setValue(fieldByLabel(root, "E-mail do responsável"), operation.responsibleEmail);
+
+  setValue(root.querySelector<HTMLSelectElement>("[data-operation-field='supplierId']"), operation.supplierId);
+  setValue(fieldByLabel(root, "Exportador / trading"), operation.exporterName);
+  setValue(fieldByLabel(root, "CNPJ do exportador"), operation.exporterTaxId);
+  setValue(root.querySelector<HTMLInputElement>("[data-operation-field='euImporter']"), operation.euImporter);
+  setValue(fieldByLabel(root, "Cliente cadastrado"), operation.importerClientId);
+  setValue(fieldByLabel(root, "EORI do operador"), operation.euOperatorEori);
+  setValue(fieldByLabel(root, "Referência DDS/EUDR"), "");
+
+  setValue(fieldByLabel(root, "Matéria-prima"), operation.rawMaterial);
+  setValue(fieldByLabel(root, "Espécie(s)"), operation.species);
+  setValue(fieldByLabel(root, "Tipo de origem"), operation.forestOriginType);
+  setValue(fieldByLabel(root, "Unidade produtiva"), operation.productionUnit);
+  setValue(fieldByLabel(root, "Códigos dos lotes"), operation.lotCodes);
+  copyProperties(root, operation.propertyIds);
+
+  setValue(fieldByLabel(root, "Quantidade"), operation.quantity);
+  setValue(fieldByLabel(root, "Unidade"), operation.quantityUnit);
+  setValue(fieldByLabel(root, "Peso líquido (kg)"), operation.netWeightKg);
+  setValue(fieldByLabel(root, "Peso bruto (kg)"), operation.grossWeightKg);
+  setValue(fieldByLabel(root, "Volume (m³)"), operation.volumeM3);
+  setValue(fieldByLabel(root, "Incoterm"), operation.incoterm);
+  setValue(fieldByLabel(root, "Moeda"), operation.currency);
+  setValue(fieldByLabel(root, "Valor comercial"), operation.commercialValue);
+
+  setValue(fieldByLabel(root, "Modal"), operation.transportMode);
+  setValue(fieldByLabel(root, "Data prevista de embarque"), "");
+  setValue(fieldByLabel(root, "Porto/local de embarque"), operation.portOfLoading);
+  setValue(fieldByLabel(root, "Porto/local de destino"), operation.portOfDischarge);
+  setValue(root.querySelector<HTMLInputElement>("[data-operation-field='destinationCountry']"), operation.destinationCountry);
+  setValue(fieldByLabel(root, "Armador / transportadora"), "");
+  setValue(fieldByLabel(root, "Booking"), "");
+  setValue(fieldByLabel(root, "BL / Bill of Lading"), "");
+  setValue(fieldByLabel(root, "Contêiner(es)"), "");
+  setValue(fieldByLabel(root, "Navio / viagem"), "");
+  setValue(fieldByLabel(root, "Fluxo, particularidades e participantes ainda não cadastrados"), operation.supplyChainNotes);
 }
 
 export default function ProcessDuplicateBridge() {
   useEffect(() => {
     let operations: OperationRow[] = [];
     let disposed = false;
-    let busy = false;
 
     const load = async () => {
       try {
@@ -99,53 +124,53 @@ export default function ProcessDuplicateBridge() {
       if (!disposed) install();
     };
 
-    const duplicate = async (operation: OperationRow) => {
-      if (busy) return;
-      const current = String(operation.reference ?? "").trim();
-      const nextReference = window.prompt(
-        `Novo código do processo para o embarque parcial seguinte.\n\nO sistema copiará os dados-base de ${current}, mas zerará Booking, BL, contêineres, navio, tracking, EUDR reference e status de embarque.`,
-        suggestedReference(current),
-      )?.trim();
-      if (!nextReference || nextReference === current) return;
-      const confirmed = window.confirm(
-        `Criar ${nextReference} como espelho de ${current}?\n\nSerão mantidos cliente, fornecedor, produto, origem/florestas, condições comerciais e portos. Documentos e dados específicos do embarque anterior não serão copiados.`,
-      );
-      if (!confirmed) return;
-      busy = true;
-      try {
-        const response = await fetch("/api/operations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          cache: "no-store",
-          body: JSON.stringify(clonePayload(operation, nextReference)),
-        });
-        const raw = await response.text();
-        let payload: { operation?: OperationRow; error?: string } = {};
-        try { payload = raw ? JSON.parse(raw) : {}; } catch { /* handled below */ }
-        if (!response.ok || !payload.operation) throw new Error(payload.error || `Falha ao duplicar processo (HTTP ${response.status}).`);
-        window.alert(`Processo ${nextReference} criado com sucesso. Revise quantidade, valor, datas e dados do novo embarque antes de avançar.`);
-        window.location.reload();
-      } catch (error) {
-        window.alert(error instanceof Error ? error.message : "Não foi possível duplicar o processo.");
-      } finally {
-        busy = false;
-      }
-    };
-
     const install = () => {
-      document.querySelectorAll<HTMLTableRowElement>(".module-table tbody tr").forEach((row) => {
-        const page = row.closest(".module-page");
-        const heading = page?.querySelector("h2")?.textContent ?? "";
-        if (!normalize(heading).includes("pedidos processos de exportacao")) return;
-        const cells = row.querySelectorAll<HTMLTableCellElement>("td");
-        if (cells.length < 2) return;
-        const actionCell = cells[cells.length - 1];
-        if (actionCell.querySelector(".duplicate-process-action")) return;
-        const reference = cells[0].textContent?.trim() ?? "";
-        const operation = operations.find((item) => normalize(String(item.reference ?? "")) === normalize(reference));
-        if (!operation) return;
-        actionCell.appendChild(makeButton(() => void duplicate(operation)));
+      // This feature belongs inside "Novo processo +". It is intentionally not rendered in the processes table.
+      const referenceInput = document.querySelector<HTMLInputElement>("[data-operation-field='reference']");
+      if (!referenceInput) return;
+      const firstSection = referenceInput.closest("fieldset");
+      const formRoot = firstSection?.parentElement as HTMLElement | null;
+      if (!firstSection || !formRoot) return;
+
+      // Existing-process edit forms must not show the copier. New-process forms start without a reference.
+      if (referenceInput.value.trim() && !formRoot.querySelector(".process-copy-panel")) return;
+      if (formRoot.querySelector(".process-copy-panel")) return;
+
+      const panel = document.createElement("section");
+      panel.className = "process-copy-panel operation-form-section";
+      panel.style.marginBottom = "16px";
+      panel.style.padding = "14px";
+      panel.style.border = "1px solid var(--border, #d9dee7)";
+      panel.style.borderRadius = "10px";
+      panel.innerHTML = `
+        <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+          <label style="flex:1;min-width:280px"><strong>Copiar processo existente</strong><br><small>Ideal para embarque parcial ou próximo lote do mesmo pedido.</small><select class="process-copy-select" style="width:100%;margin-top:8px"><option value="">Selecione o processo original</option></select></label>
+          <button type="button" class="process-copy-action">Copiar dados para este novo processo ⧉</button>
+        </div>
+        <small class="process-copy-note" style="display:block;margin-top:8px">Copia cliente, fornecedor, produto, origem, condições comerciais e portos. Booking, BL, contêineres, navio, data de embarque e referência EUDR ficam em branco.</small>
+      `;
+      const select = panel.querySelector<HTMLSelectElement>(".process-copy-select")!;
+      [...operations]
+        .sort((a, b) => String(b.reference ?? "").localeCompare(String(a.reference ?? ""), "pt-BR", { numeric: true }))
+        .forEach((operation) => {
+          const option = document.createElement("option");
+          option.value = String(operation.id ?? "");
+          option.textContent = `${String(operation.reference ?? "Sem referência")} · ${String(operation.euImporter ?? "Cliente não informado")} · ${String(operation.supplierName ?? "Fornecedor não informado")}`;
+          select.appendChild(option);
+        });
+      panel.querySelector<HTMLButtonElement>(".process-copy-action")?.addEventListener("click", () => {
+        const operation = operations.find((item) => String(item.id ?? "") === select.value);
+        if (!operation) {
+          window.alert("Selecione o processo que deseja copiar.");
+          return;
+        }
+        const originalReference = String(operation.reference ?? "");
+        if (!window.confirm(`Copiar os dados-base de ${originalReference} para o formulário do novo processo?\n\nVocê poderá revisar quantidade, volume, valor, datas e demais campos antes de salvar.`)) return;
+        fillNewProcessForm(formRoot, operation);
+        panel.querySelector<HTMLElement>(".process-copy-note")!.textContent = `Dados de ${originalReference} copiados. Revise o novo embarque antes de salvar.`;
+        referenceInput.scrollIntoView({ behavior: "smooth", block: "center" });
       });
+      formRoot.insertBefore(panel, firstSection);
     };
 
     const observer = new MutationObserver(() => install());
