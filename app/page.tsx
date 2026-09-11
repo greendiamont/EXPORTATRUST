@@ -6,6 +6,7 @@ import { ensureDailyBackup } from "../lib/backup";
 import { chatGPTSignInPath, chatGPTSignOutPath, getChatGPTUser } from "./chatgpt-auth";
 import ClientApp, { type InitialAppData } from "./client-app";
 import DossierActionsBridge from "./dossier-actions-bridge";
+import ProcessDuplicateBridge from "./process-duplicate-bridge";
 
 export default async function Page() {
   const signedInUser = await getChatGPTUser();
@@ -49,5 +50,5 @@ export default async function Page() {
     // The client has an independent retry path if server-side loading is unavailable.
   }
 
-  return <><ClientApp initialData={initialData} /><DossierActionsBridge /></>;
+  return <><ClientApp initialData={initialData} /><DossierActionsBridge /><ProcessDuplicateBridge /></>;
 }
