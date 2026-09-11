@@ -54,10 +54,18 @@ export const dossierText = (title: string, fields: DossierField[]) => [
   ...fields.map((field) => `${field.label}: ${displayValue(field.value)}`),
 ].join("\n");
 
+function recordId(fields: DossierField[]) {
+  const fiscal = fields.find((field) => /VAT|GST|Tax ID|CNPJ/i.test(field.label) && displayValue(field.value) !== "Não informado");
+  return fiscal ? displayValue(fiscal.value) : "Cadastro ExportaTrust";
+}
+
 export const dossierHtml = (title: string, fields: DossierField[]) => {
   const text = dossierText(title, fields);
   const serializedText = JSON.stringify(text).replace(/</g, "\\u003c");
   const serializedTitle = JSON.stringify(title).replace(/</g, "\\u003c");
+  const issuedAt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeStyle: "short" }).format(new Date());
+  const id = recordId(fields);
+  const dossierType = /fornecedor/i.test(title) ? "SUPPLIER DOSSIER" : "CLIENT DOSSIER";
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -66,16 +74,20 @@ export const dossierHtml = (title: string, fields: DossierField[]) => {
 <title>${escapeHtml(title)}</title>
 <style>
   body{font-family:Arial,Helvetica,sans-serif;margin:32px;color:#111;line-height:1.4;background:#fff}
-  h1{font-size:24px;margin:0 0 8px}.meta{font-size:12px;color:#666;margin-bottom:24px}
+  .brand{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:16px;margin-bottom:22px}
+  .brand-left{display:flex;gap:12px;align-items:center}.mark{width:42px;height:42px;border:2px solid #111;border-radius:10px;display:grid;place-items:center;font-weight:800;letter-spacing:-1px}
+  .brand b{font-size:20px}.brand small{display:block;color:#666;margin-top:2px}.doc-meta{text-align:right;font-size:12px;color:#555}.doc-meta strong{display:block;color:#111;font-size:13px}
+  h1{font-size:24px;margin:0 0 8px}.subtitle{font-size:12px;color:#666;margin-bottom:24px}
   table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:9px 10px;text-align:left;vertical-align:top}
   th{width:32%;background:#f6f6f6;font-weight:600}.actions{margin-bottom:20px;display:flex;gap:8px;flex-wrap:wrap}
   button{padding:9px 13px;border:1px solid #bbb;border-radius:6px;background:white;cursor:pointer;font-weight:600}
   #shareStatus{font-size:12px;color:#555;align-self:center}
-  @media print{.actions{display:none}body{margin:16mm}th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  @media print{.actions{display:none}body{margin:14mm}.brand{break-inside:avoid}th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style>
 </head><body>
 <div class="actions"><button onclick="window.print()">Imprimir / Salvar PDF</button><button onclick="shareDossier()">Compartilhar</button><span id="shareStatus"></span></div>
-<h1>${escapeHtml(title)}</h1><div class="meta">Gerado pelo ExportaTrust</div>
+<header class="brand"><div class="brand-left"><div class="mark">ET</div><div><b>ExportaTrust</b><small>Trade & Compliance Intelligence</small></div></div><div class="doc-meta"><strong>${dossierType}</strong><span>Emitido em ${escapeHtml(issuedAt)}</span><br><span>ID: ${escapeHtml(id)}</span></div></header>
+<h1>${escapeHtml(title)}</h1><div class="subtitle">Dossiê cadastral gerado a partir dos dados oficiais disponíveis no cadastro mestre.</div>
 <table>${fields.map((field) => `<tr><th>${escapeHtml(field.label)}</th><td>${escapeHtml(displayValue(field.value)).replace(/\n/g,"<br>")}</td></tr>`).join("")}</table>
 <script>
 const dossierTitle=${serializedTitle}; const dossierText=${serializedText};
