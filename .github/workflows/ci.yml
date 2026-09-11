@@ -7,6 +7,7 @@ on:
       - develop
   push:
     branches:
+      - main
       - develop
   workflow_dispatch:
 
@@ -41,3 +42,14 @@ jobs:
 
       - name: Build and run automated tests
         run: npm test
+
+      - name: Upload production-ready Sites artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: exportatrust-sites-${{ github.sha }}
+          path: |
+            dist/
+            .openai/hosting.json
+          if-no-files-found: error
+          retention-days: 14
