@@ -3968,9 +3968,6 @@ function SecurityGovernanceModule({ openIntegrations }: { openIntegrations: () =
 
 function IntegrationsModule() {
   const [integrations, setIntegrations] = useState<IntegrationStatusRecord[]>([]);
-  const [asanaImport, setAsanaImport] = useState<AsanaImportData | null>(null);
-  const [agentBrief, setAgentBrief] = useState<AgentBriefData | null>(null);
-  const [privateAgent, setPrivateAgent] = useState<PrivateAgentStatus | null>(null);
   const [gmail, setGmail] = useState<GmailStatusData | null>(null);
   const [gmailStatusError, setGmailStatusError] = useState("");
   const [showGmailConfig, setShowGmailConfig] = useState(false);
@@ -3987,39 +3984,37 @@ function IntegrationsModule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
+
   useEffect(() => {
     let activeRequest = true;
     fetch(`/api/integrations?t=${Date.now()}`, { cache: "no-store" })
       .then(async (response) => {
         const data = await response.json() as { integrations?: IntegrationStatusRecord[]; error?: string };
         if (!response.ok) throw new Error(data.error || "Não foi possível verificar as integrações.");
-        if (activeRequest) { setIntegrations(data.integrations ?? []); setError(""); }
+        if (activeRequest) {
+          setIntegrations((data.integrations ?? []).filter((item) => ["data", "intelligence", "eudr"].includes(item.category)));
+          setError("");
+        }
       })
       .catch((reason) => { if (activeRequest) setError(reason instanceof Error ? reason.message : "Integrações indisponíveis."); })
       .finally(() => { if (activeRequest) setLoading(false); });
     return () => { activeRequest = false; };
   }, [reload]);
+
   useEffect(() => {
     let activeRequest = true;
-    Promise.all([
-      fetch(`/api/asana-import?t=${Date.now()}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
-      fetch(`/api/agent-brief?t=${Date.now()}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
-      fetch(`/api/agent/status?t=${Date.now()}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
-      fetch(`/api/integrations/gmail/status?t=${Date.now()}`, { cache: "no-store" }).then(async (response) => {
+    fetch(`/api/integrations/gmail/status?t=${Date.now()}`, { cache: "no-store" })
+      .then(async (response) => {
         const data = await response.json() as GmailStatusData & { error?: string };
         if (!response.ok) throw new Error(data.error || "Não foi possível verificar o Gmail.");
-        return data;
-      }),
-    ]).then(([asanaData, briefData, privateAgentData, gmailData]) => {
-      if (!activeRequest) return;
-      setAsanaImport(asanaData as AsanaImportData | null);
-      setAgentBrief(briefData as AgentBriefData | null);
-      setPrivateAgent(privateAgentData as PrivateAgentStatus | null);
-      setGmail(gmailData as GmailStatusData | null);
-      setGmailStatusError("");
-    }).catch((reason) => setGmailStatusError(reason instanceof Error ? reason.message : "Não foi possível verificar o Gmail."));
+        if (!activeRequest) return;
+        setGmail(data);
+        setGmailStatusError("");
+      })
+      .catch((reason) => { if (activeRequest) setGmailStatusError(reason instanceof Error ? reason.message : "Não foi possível verificar o Gmail."); });
     return () => { activeRequest = false; };
   }, [reload]);
+
   async function runGmailAction(action: "sync" | "disconnect") {
     setGmailAction(action);
     setGmailNotice("");
@@ -4030,79 +4025,109 @@ function IntegrationsModule() {
       setGmailNotice(data.message || (action === "disconnect" ? "Gmail desconectado com segurança." : "Sincronização concluída."));
       if (action === "sync") setGmailSyncReport(data.report ?? []);
       setReload((value) => value + 1);
-    } catch (reason) { setGmailNotice(reason instanceof Error ? reason.message : "Falha na integração Gmail."); }
-    finally { setGmailAction(""); }
+    } catch (reason) {
+      setGmailNotice(reason instanceof Error ? reason.message : "Falha na integração Gmail.");
+    } finally {
+      setGmailAction("");
+    }
   }
+
   async function saveGmailCredentials(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setGmailAction("config");
     setGmailNotice("");
     try {
-      const response = await fetch("/api/integrations/gmail/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(gmailConfig) });
+      const response = await fetch("/api/integrations/gmail/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(gmailConfig),
+      });
       const data = await response.json() as { error?: string; clientIdMasked?: string };
       if (!response.ok) throw new Error(data.error || "Não foi possível salvar as credenciais.");
       setGmailConfig({ clientId: "", clientSecret: "" });
       setGmailNotice(`Credenciais protegidas e salvas${data.clientIdMasked ? ` (${data.clientIdMasked})` : ""}. Agora clique em Conectar Gmail.`);
       setReload((value) => value + 1);
-    } catch (reason) { setGmailNotice(reason instanceof Error ? reason.message : "Falha ao salvar as credenciais."); }
-    finally { setGmailAction(""); }
+    } catch (reason) {
+      setGmailNotice(reason instanceof Error ? reason.message : "Falha ao salvar as credenciais.");
+    } finally {
+      setGmailAction("");
+    }
   }
+
   const ready = integrations.filter((item) => item.state === "operational" || item.state === "sandbox").length;
   const credentials = integrations.filter((item) => item.state === "credential_required").length;
-  const groups: Array<[IntegrationStatusRecord["category"], string]> = [["data", "Dados oficiais & geoespacial"], ["intelligence", "OCR & inteligência documental"], ["agents", "Agent Discovery"], ["eudr", "EUDR Information System"], ["payments", "Pagamentos"]];
+  const groups: Array<[IntegrationStatusRecord["category"], string]> = [
+    ["data", "Dados oficiais & geoespacial"],
+    ["intelligence", "OCR & inteligência documental"],
+    ["eudr", "EUDR Information System"],
+  ];
+
   return <section className="module-page integrations-page">
-    <header className="module-header"><div><p className="eyebrow">INFRAESTRUTURA OPERACIONAL</p><h2>Integrações & Pagamentos</h2><p>Estado real dos conectores. Credenciais e chaves ficam somente no servidor; nenhum segredo é armazenado no navegador ou no banco do app.</p></div><button className="primary" onClick={() => { setLoading(true); setReload((value) => value + 1); }}>Verificar agora ↻</button></header>
-    <div className="module-stats integration-stats"><article className="module-stat"><strong>{integrations.length}</strong><span>conectores instalados</span></article><article className="module-stat"><strong>{ready}</strong><span>operacionais / sandbox</span></article><article className="module-stat"><strong>{credentials}</strong><span>aguardando credencial</span></article><article className="module-stat"><strong>0</strong><span>provedores demo</span></article></div>
+    <header className="module-header">
+      <div><p className="eyebrow">INTEGRAÇÕES OPERACIONAIS</p><h2>Conectores úteis ao processo</h2><p>Somente integrações que apoiam diretamente documentos, dados oficiais, EUDR e comunicação operacional.</p></div>
+      <button className="primary" onClick={() => { setLoading(true); setReload((value) => value + 1); }}>Verificar agora ↻</button>
+    </header>
+
+    <div className="module-stats integration-stats">
+      <article className="module-stat"><strong>{integrations.length}</strong><span>conectores operacionais</span></article>
+      <article className="module-stat"><strong>{ready}</strong><span>operacionais / sandbox</span></article>
+      <article className="module-stat"><strong>{credentials}</strong><span>aguardando credencial</span></article>
+    </div>
+
     {loading && <div className="panel integration-loading">Verificando conectores no servidor…</div>}
     {error && <div className="panel integration-error"><b>Falha ao verificar integrações</b><span>{error}</span><button onClick={() => { setLoading(true); setReload((value) => value + 1); }}>Tentar novamente</button></div>}
+
     <section className="panel gmail-integration-card">
-      <div className="gmail-integration-copy"><p className="eyebrow">GMAIL API · OAUTH 2.0</p><h3>{gmail?.connected ? "Caixa postal conectada" : "Conectar e-mail operacional"}</h3><p>{gmail?.connected ? `Conta ${gmail.connection?.gmailAddress || "Google Workspace"}. O agente lê mensagens e anexos, identifica a operação e envia correspondências incertas para revisão.` : gmail?.configured ? "As credenciais estão prontas. Autorize a conta que o ExportaTrust deverá acompanhar." : "A API está instalada, mas as credenciais ainda precisam ser disponibilizadas no ambiente do ExportaTrust."}</p>{gmail?.connection?.lastSyncAt && <small>Última sincronização: {new Date(gmail.connection.lastSyncAt).toLocaleString("pt-BR")}</small>}{gmail?.connection?.lastError && <small className="gmail-error">Última falha: {gmail.connection.lastError}</small>}{gmailNotice && <div className="gmail-notice">{gmailNotice}</div>}</div>
-      <div className="gmail-integration-actions">{gmail?.connected ? <><span className="gmail-connected">✓ CONECTADO</span><button className="primary" disabled={!!gmailAction} onClick={() => runGmailAction("sync")}>{gmailAction === "sync" ? "Verificando histórico…" : "Sincronizar processos prioritários"}</button><button className="secondary" disabled={!!gmailAction} onClick={() => runGmailAction("disconnect")}>{gmailAction === "disconnect" ? "Desconectando…" : "Desconectar"}</button></> : <><span className={gmail?.configured ? "gmail-ready" : "gmail-waiting"}>{gmail?.configured ? "PRONTO PARA AUTORIZAR" : "AGUARDANDO CREDENCIAIS"}</span>{!gmail?.configured && gmail?.canConfigure && <button className="secondary" type="button" onClick={() => setShowGmailConfig((value) => !value)}>{showGmailConfig ? "Fechar configuração" : "Incluir Gmail"}</button>}<a className={`gmail-connect-button ${gmail?.configured ? "" : "disabled"}`} href={gmail?.configured ? "/api/integrations/gmail/connect" : undefined}>Conectar Gmail</a></>}</div>
+      <div className="gmail-integration-copy">
+        <p className="eyebrow">GMAIL API · OAUTH 2.0</p>
+        <h3>{gmail?.connected ? "Caixa postal conectada" : "Conectar e-mail operacional"}</h3>
+        <p>{gmail?.connected ? `Conta ${gmail.connection?.gmailAddress || "Google Workspace"}. O agente lê mensagens e anexos, identifica a operação e envia correspondências incertas para revisão.` : gmail?.configured ? "As credenciais estão prontas. Autorize a conta que o ExportaTrust deverá acompanhar." : "A integração está instalada, mas as credenciais ainda precisam ser disponibilizadas no ambiente do ExportaTrust."}</p>
+        {gmail?.connection?.lastSyncAt && <small>Última sincronização: {new Date(gmail.connection.lastSyncAt).toLocaleString("pt-BR")}</small>}
+        {gmail?.connection?.lastError && <small className="gmail-error">Última falha: {gmail.connection.lastError}</small>}
+        {gmailNotice && <div className="gmail-notice">{gmailNotice}</div>}
+      </div>
+      <div className="gmail-integration-actions">
+        {gmail?.connected ? <>
+          <span className="gmail-connected">✓ CONECTADO</span>
+          <button className="primary" disabled={!!gmailAction} onClick={() => runGmailAction("sync")}>{gmailAction === "sync" ? "Verificando histórico…" : "Sincronizar processos prioritários"}</button>
+          <button className="secondary" disabled={!!gmailAction} onClick={() => runGmailAction("disconnect")}>{gmailAction === "disconnect" ? "Desconectando…" : "Desconectar"}</button>
+        </> : <>
+          <span className={gmail?.configured ? "gmail-ready" : "gmail-waiting"}>{gmail?.configured ? "PRONTO PARA AUTORIZAR" : "AGUARDANDO CREDENCIAIS"}</span>
+          {!gmail?.configured && gmail?.canConfigure && <button className="secondary" type="button" onClick={() => setShowGmailConfig((value) => !value)}>{showGmailConfig ? "Fechar configuração" : "Incluir Gmail"}</button>}
+          <a className={`gmail-connect-button ${gmail?.configured ? "" : "disabled"}`} href={gmail?.configured ? "/api/integrations/gmail/connect" : undefined}>Conectar Gmail</a>
+        </>}
+      </div>
     </section>
-    {!!gmailSyncReport.length && <section className="panel gmail-sync-report"><header><div><p className="eyebrow">VARREDURA PRIORITÁRIA</p><h3>Resultado por processo</h3></div><span>{gmailSyncReport.reduce((total, item) => total + item.messagesFound, 0)} E-MAIL(S)</span></header><div>{gmailSyncReport.map((item) => <article key={item.reference} className={!item.operationFound || !item.messagesFound ? "attention" : "ok"}><strong>{item.reference}</strong><span>{!item.operationFound ? "Processo não localizado no ExportaTrust" : item.messagesFound ? `${item.messagesFound} e-mail(s) · ${item.messagesImported} novo(s) · ${item.attachmentsImported} anexo(s)` : "Nenhum e-mail localizado"}</span><small>{item.lastMessageAt ? `Último: ${new Date(item.lastMessageAt).toLocaleString("pt-BR")}` : item.alreadySynchronized ? `${item.alreadySynchronized} já sincronizado(s)` : "Requer conferência"}</small></article>)}</div></section>}
+
+    {!!gmailSyncReport.length && <section className="panel gmail-sync-report">
+      <header><div><p className="eyebrow">VARREDURA PRIORITÁRIA</p><h3>Resultado por processo</h3></div><span>{gmailSyncReport.reduce((total, item) => total + item.messagesFound, 0)} E-MAIL(S)</span></header>
+      <div>{gmailSyncReport.map((item) => <article key={item.reference} className={!item.operationFound || !item.messagesFound ? "attention" : "ok"}>
+        <strong>{item.reference}</strong>
+        <span>{!item.operationFound ? "Processo não localizado no ExportaTrust" : item.messagesFound ? `${item.messagesFound} e-mail(s) · ${item.messagesImported} novo(s) · ${item.attachmentsImported} anexo(s)` : "Nenhum e-mail localizado"}</span>
+        <small>{item.lastMessageAt ? `Último: ${new Date(item.lastMessageAt).toLocaleString("pt-BR")}` : item.alreadySynchronized ? `${item.alreadySynchronized} já sincronizado(s)` : "Requer conferência"}</small>
+      </article>)}</div>
+    </section>}
+
     {gmailStatusError && <div className="panel integration-error"><b>Falha ao carregar a configuração do Gmail</b><span>{gmailStatusError}</span><button onClick={() => setReload((value) => value + 1)}>Tentar novamente</button></div>}
+
     {!gmail?.configured && gmail?.canConfigure && showGmailConfig && <form className="panel gmail-config-panel" onSubmit={saveGmailCredentials} autoComplete="off">
       <header><div><p className="eyebrow">CONFIGURAÇÃO SEGURA</p><h3>Credenciais do Google Cloud</h3><p>Copie os dois valores do cliente OAuth criado no Google. O Client Secret será criptografado antes de ser armazenado e nunca voltará a aparecer nesta tela.</p></div><span>SOMENTE ADMINISTRADOR</span></header>
       <label>Google Client ID<input type="text" value={gmailConfig.clientId} onChange={(event) => setGmailConfig((current) => ({ ...current, clientId: event.target.value }))} placeholder="000000000000-xxxx.apps.googleusercontent.com" required spellCheck={false} /></label>
-      <label>Google Client Secret<input type="password" value={gmailConfig.clientSecret} onChange={(event) => setGmailConfig((current) => ({ ...current, clientSecret: event.target.value }))} placeholder="Cole o segredo diretamente aqui" required spellCheck={false} /></label>
+      <label>Google Client Secret<input type="password" value={gmailConfig.clientSecret} onChange={(event) => setGmailConfig((current) => ({ ...current, clientSecret: event.target.value }))} placeholder="Cole o segredo diretamente aqui" required /></label>
       <div className="gmail-config-security"><span>🔒</span><p><b>Proteção ativa</b><small>Não envie essas chaves por e-mail ou chat. Salve-as somente por este formulário.</small></p></div>
       <button className="primary" disabled={gmailAction === "config"}>{gmailAction === "config" ? "Criptografando e salvando…" : "Salvar credenciais com segurança"}</button>
     </form>}
+
     {gmail?.config && gmail?.canConfigure && <section className="panel gmail-config-summary"><div><p className="eyebrow">CREDENCIAL PROTEGIDA</p><h3>{gmail.config.clientIdMasked}</h3><small>URI: {gmail.config.redirectUri}</small></div><span>✓ SECRET ARMAZENADO</span></section>}
-    <section className="panel migration-bridge">
-      <header><div><p className="eyebrow">MIGRAÇÃO CONTROLADA</p><h3>Asana · VLP EXPORTAÇÃO</h3><p>Somente este projeto é aceito. Tarefas entram primeiro em uma fila de revisão; modelos, pré-operações, concluídos e itens de FINALIZADO/CANCELADO são separados automaticamente.</p></div><span>FONTE DELIMITADA</span></header>
-      <div className="migration-metrics">
-        <article><strong>{asanaImport?.summary.total ?? 0}</strong><span>itens preparados</span></article>
-        <article><strong>{asanaImport?.summary.review ?? 0}</strong><span>aguardando revisão</span></article>
-        <article><strong>{asanaImport?.summary.missingOwner ?? 0}</strong><span>sem responsável</span></article>
-        <article><strong>{asanaImport?.summary.missingDueDate ?? 0}</strong><span>sem prazo</span></article>
-      </div>
-      <div className="migration-map" role="table" aria-label="Mapeamento Asana para Export Control">
-        <div role="row"><b role="cell">PEDIDO NOVO / ASSINATURA</b><span role="cell">Pedido confirmado</span></div>
-        <div role="row"><b role="cell">EM PRODUÇÃO</b><span role="cell">Produção</span></div>
-        <div role="row"><b role="cell">EMBARQUE</b><span role="cell">Booking / logística</span></div>
-        <div role="row"><b role="cell">DOCUMENTAÇÃO</b><span role="cell">Set documental</span></div>
-        <div role="row"><b role="cell">PÓS-VENDA</b><span role="cell">Em trânsito / chegada</span></div>
-      </div>
-      <footer><span>Projeto autorizado: <b>{asanaImport?.project.name ?? "VLP EXPORTAÇÃO"}</b></span><span>Importação real somente após revisão humana</span></footer>
-    </section>
-    <section className="panel personal-agent-bridge"><div><p className="eyebrow">AGENTE PARTICULAR</p><h3>API protegida para Gmail, Asana e automações</h3><p>Infraestrutura server-side em modo simulado: eventos externos entram por Bearer token, documentos são classificados por operação e ações sensíveis vão para aprovação humana.</p></div><div className="agent-brief-status"><span>{privateAgent?.api.mode ?? "SIMULATED_EVENTS_ONLY"}</span><strong>{privateAgent?.api.active ? "API ATIVA" : "VERIFICANDO"}</strong><small>Token integral nunca é exibido no painel</small><code>/api/agent/*</code></div></section>
-    <section className="private-agent-dashboard">
-      <article><span>Eventos processados</span><strong>{privateAgent?.metrics.eventsProcessed ?? 0}</strong><small>{privateAgent?.metrics.eventsInReview ?? 0} em revisão</small></article>
-      <article className={(privateAgent?.metrics.approvalsPending ?? 0) ? "attention" : ""}><span>Aprovações humanas</span><strong>{privateAgent?.metrics.approvalsPending ?? 0}</strong><small>envio, financeiro, conclusão e bancos</small></article>
-      <article><span>Documentos do agente</span><strong>{privateAgent?.metrics.documentsProcessed ?? 0}</strong><small>classificação por STAGE</small></article>
-      <article><span>Último evento</span><strong>{privateAgent?.lastEvent?.source ?? "—"}</strong><small>{privateAgent?.lastEvent?.matchConfidence ? `match ${privateAgent.lastEvent.matchConfidence}` : "sem evento recebido"}</small></article>
-    </section>
-    <section className="panel agent-api-policy"><header><div><p className="eyebrow">FASE API — AGENTE PARTICULAR</p><h3>Contrato técnico implantado</h3><p>Primeiro testamos com eventos simulados e dados controlados. Gmail e Asana reais ficam fora desta versão até validação end-to-end.</p></div><span>HUMAN-IN-THE-LOOP</span></header><div>{(privateAgent?.endpoints ?? ["/api/agent/inbox-events", "/api/agent/operations", "/api/agent/daily-brief", "/api/agent/approvals"]).map((endpoint) => <code key={endpoint}>{endpoint}</code>)}</div></section>
+
     {!loading && !error && groups.map(([category, title]) => {
       const rows = integrations.filter((item) => item.category === category);
       if (!rows.length) return null;
       return <section className="integration-group" key={category}><header><h3>{title}</h3><span>{rows.length}</span></header><div className="integration-grid">{rows.map((item) => <article className="panel integration-card" key={item.id}>
         <div className="integration-card-head"><span className={`integration-state ${item.state}`}>{item.label}</span><small>{item.provider}</small></div>
         <h3>{item.name}</h3><p>{item.detail}</p>
-        <footer><span>{item.live ? "● CONEXÃO REAL" : item.state === "sandbox" ? "◐ AMBIENTE CONTROLADO" : "○ SEM TRANSAÇÃO REAL"}</span><code>{item.id}</code></footer>
+        <footer><span>{item.live ? "● CONEXÃO REAL" : item.state === "sandbox" ? "◐ AMBIENTE CONTROLADO" : "○ SEM TRANSAÇÃO REAL"}</span></footer>
       </article>)}</div></section>;
     })}
-    <div className="panel integration-policy"><b>Política de segurança financeira</b><p>Stripe usa Checkout hospedado para cartão/Pix. x402 nasce em Base testnet e só muda para mainnet por configuração explícita. Jobs externos continuam sujeitos ao nível de autonomia, aprovação humana, limite por transação, limite diário e allow/block list do Agent Control.</p></div>
   </section>;
 }
