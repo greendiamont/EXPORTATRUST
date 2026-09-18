@@ -43,8 +43,10 @@ function translateInterface(root: Node, language: Language) {
   }
 }
 
-const nav = ["Dashboard", "Processos", "Portal Cliente", "Riscos", "Relatórios", "Segurança"];
+const nav = ["Dashboard", "Processos", "Relatórios"];
 const protectedModules = ["Integrações"];
+const SHOW_ENVIRONMENTAL_NEWS = false;
+const SHOW_LEGACY_TRACKING = false;
 const brazilStates = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
 
 async function openSecureDocument(documentId: number, documentType: "operation" | "forest", inline = false) {
@@ -1263,7 +1265,7 @@ export default function Home({ initialData }: { initialData: InitialAppData }) {
           )}
           </>}
 
-          {active === "Dashboard" && <EnvironmentalNews language={language} />}
+          {SHOW_ENVIRONMENTAL_NEWS && active === "Dashboard" && <EnvironmentalNews language={language} />}
 
           {active === "Florestas" && <>
           {forestLinkOperation && <section className="forest-link-banner">
@@ -3513,7 +3515,7 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
           </section>
         </section>}
         {selected.code === "BOOKING" && <section className="booking-stage-fields">
-          <header><div><p className="eyebrow">ETAPA 07 · DADOS DO BOOKING</p><h4>Booking, BL e contêineres utilizados</h4><p>Estes campos alimentam automaticamente o Tracking Assistido, Gmail, Shipment Advice e busca de documentos.</p></div><span>{bookingDraft.bookingNumber || bookingDraft.containerNumbers ? "Dados informados" : "Pendente"}</span></header>
+          <header><div><p className="eyebrow">ETAPA 07 · DADOS DO BOOKING</p><h4>Booking, BL e contêineres utilizados</h4><p>Estes campos alimentam Gmail, Shipment Advice, busca de documentos e a consulta externa no site oficial do armador.</p></div><span>{bookingDraft.bookingNumber || bookingDraft.containerNumbers ? "Dados informados" : "Pendente"}</span></header>
           <div>
             <label>Armador / operador logístico<input value={bookingDraft.carrier} onChange={(event) => setBookingDraft({ ...bookingDraft, carrier: event.target.value })} placeholder="Ex.: Maersk, MSC, CMA CGM, Hapag-Lloyd" /></label>
             <label>Booking Number<input value={bookingDraft.bookingNumber} onChange={(event) => setBookingDraft({ ...bookingDraft, bookingNumber: event.target.value })} placeholder="Número do booking confirmado" /></label>
@@ -3524,7 +3526,7 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
             <label>Porto/local de embarque<input value={bookingDraft.portOfLoading} onChange={(event) => setBookingDraft({ ...bookingDraft, portOfLoading: event.target.value })} /></label>
             <label>Porto/local de destino<input value={bookingDraft.portOfDischarge} onChange={(event) => setBookingDraft({ ...bookingDraft, portOfDischarge: event.target.value })} /></label>
           </div>
-          <button className="primary" disabled={Boolean(action)} onClick={saveBookingLogistics}>{action === "booking-logistics" ? "Salvando booking…" : "Salvar dados do booking e containers"}</button>
+          <button className="primary" disabled={Boolean(action)} onClick={saveBookingLogistics}>{action === "booking-logistics" ? "Salvando booking…" : "Salvar dados do booking e containers"}</button>{data.trackingProvider.assisted.officialUrl && <a className="tracking-open-workspace" href={data.trackingProvider.assisted.officialUrl} target="_blank" rel="noreferrer">Consultar carga no site oficial do armador ↗</a>}
         </section>}
         <div className="export-editor-actions"><button disabled={Boolean(action)} onClick={() => saveMilestone()}>Salvar atualização</button><button className="primary" disabled={Boolean(action) || selected.status === "Concluído"} onClick={() => saveMilestone("Concluído")}>Concluir etapa e notificar cliente ✓</button></div>
 
@@ -3552,7 +3554,7 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
           <label>Cliente<input value={settings.customerName} onChange={(event) => setSettings({ ...settings, customerName: event.target.value })} placeholder={operation.euImporter} /></label>
           <label>E-mail do cliente<input type="email" value={settings.customerEmail} onChange={(event) => setSettings({ ...settings, customerEmail: event.target.value })} placeholder="logistics@customer.com" /></label>
           <label>Referência do cliente<input value={settings.customerReference} onChange={(event) => setSettings({ ...settings, customerReference: event.target.value })} placeholder="PO / customer order" /></label>
-          <div className="communication-inline"><label>Tracking marítimo a cada<input type="number" min="1" max="90" value={settings.trackingIntervalDays} onChange={(event) => setSettings({ ...settings, trackingIntervalDays: Number(event.target.value) })} /><small>dias · define a próxima rotina</small></label><label className="communication-toggle"><input type="checkbox" checked={settings.notificationsEnabled} onChange={(event) => setSettings({ ...settings, notificationsEnabled: event.target.checked })} /><span>Notificar ao concluir etapas</span></label></div>
+          <div className="communication-inline"><label className="communication-toggle"><input type="checkbox" checked={settings.notificationsEnabled} onChange={(event) => setSettings({ ...settings, notificationsEnabled: event.target.checked })} /><span>Notificar ao concluir etapas</span></label></div>
           <button className="primary" disabled={Boolean(action)} onClick={() => post({ action: "settings", ...settings }, "Preferências de comunicação salvas.")}>Salvar comunicação</button>
           <button onClick={() => setPreviewMessage(previewMessage ? null : { subject: previewSubject, body: previewBody })}>{previewMessage ? "Fechar prévia" : "Ver prévia do e-mail"}</button>
           {!data.emailDelivery.ready && <p className="integration-warning"><b>Envio oficial bloqueado.</b> O envio externo está bloqueado porque o Gmail ou o remetente transacional ainda não foi configurado.</p>}
@@ -3576,16 +3578,16 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
           </div>}
         </section>
 
-        <section className="tracking-card panel">
+        {SHOW_LEGACY_TRACKING && <section className="tracking-card panel">
           <header><div><p className="eyebrow">SHIPMENT TRACKING</p><h3>{currentOperation.bookingNumber || currentOperation.billOfLadingNumber || "Referência pendente"}</h3></div><span>{data.trackingProvider.configured ? "LIVE" : "FREE"}</span></header>
           {latestTracking ? <article><b>{latestTracking.status}</b><span>{latestTrackingPosition.label}</span><p>{latestTracking.details}</p><small>Consultado em {formatDate(latestTracking.checkedAt)} · próximo {formatDate(latestTracking.nextCheckAt)}</small></article> : <p>Nenhuma consulta de tracking registrada.</p>}
           <a className="tracking-open-workspace" href="#shipment-tracking">Abrir mapa e histórico ↓</a>
           {!data.trackingProvider.configured && <small>Modo assistido free ativo: abrir site oficial do armador e registrar o status manualmente.</small>}
-        </section>
+        </section>}
       </aside>
     </div>
 
-    <section id="shipment-tracking" className="shipment-tracking-workspace panel">
+    {SHOW_LEGACY_TRACKING && <section id="shipment-tracking" className="shipment-tracking-workspace panel">
       <header><div><p className="eyebrow">SHIPMENT TRACKING · FREE ASSISTED</p><h3>Posição da carga e comunicação ao cliente</h3><p>{currentOperation.containerNumbers || currentOperation.billOfLadingNumber || currentOperation.bookingNumber || "Cadastre contêiner, BL ou booking"} · {currentOperation.portOfLoading || "Origem"} → {currentOperation.portOfDischarge || "Destino"}</p></div><span className={data.trackingProvider.configured ? "active" : "pending"}>{data.trackingProvider.configured ? "ShipsGo disponível" : "Sem consumo de crédito"}</span></header>
       <div className="shipment-tracking-layout">
         <div className="shipment-map">
@@ -3613,7 +3615,8 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
         </aside>
       </div>
       <footer>O modo assistido free não consome créditos: ele abre o site oficial do armador e registra no ExportaTrust o status conferido por você. ShipsGo continua disponível apenas como automação premium quando houver crédito/API.</footer>
-    </section>
+    </section>}
+
 
     {previewMessage && <section className="email-preview-panel panel">
       <header><div><p className="eyebrow">PRÉVIA EXATA DO E-MAIL</p><h3>Como o cliente receberá</h3></div><button onClick={() => setPreviewMessage(null)}>Fechar ×</button></header>
