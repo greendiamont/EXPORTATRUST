@@ -37,11 +37,14 @@ function decodeName(value: string | null, encoding: string | null) {
 async function identity() {
   const requestHeaders = await headers();
   const host = requestHeaders.get("host") ?? "";
-  const email = requestHeaders.get("oai-authenticated-user-email")?.trim().toLowerCase() ?? "";
-  const fullName = decodeName(requestHeaders.get("oai-authenticated-user-full-name"), requestHeaders.get("oai-authenticated-user-full-name-encoding"));
+  const chatGPTEmail = requestHeaders.get("oai-authenticated-user-email")?.trim().toLowerCase() ?? "";
+  const chatGPTFullName = decodeName(requestHeaders.get("oai-authenticated-user-full-name"), requestHeaders.get("oai-authenticated-user-full-name-encoding"));
+  const accessEmail = requestHeaders.get("x-exportatrust-authenticated-user-email")?.trim().toLowerCase() ?? "";
+  const accessName = requestHeaders.get("x-exportatrust-authenticated-user-name")?.trim() ?? "";
   const preview = host.includes("terminal.local") || host.includes("localhost") || host.includes("127.0.0.1");
-  if (email) return { email, fullName: fullName || email, preview: false };
-  if (preview) return { email: "preview-admin@exportatrust.local", fullName: "Administrador de teste", preview: true };
+  if (chatGPTEmail) return { email: chatGPTEmail, fullName: chatGPTFullName || chatGPTEmail, preview: false, provider: "chatgpt-siwc" };
+  if (accessEmail) return { email: accessEmail, fullName: accessName || accessEmail, preview: false, provider: "cloudflare-access" };
+  if (preview) return { email: "preview-admin@exportatrust.local", fullName: "Administrador de teste", preview: true, provider: "preview" };
   return null;
 }
 
@@ -100,8 +103,8 @@ export async function getSecurityContext(): Promise<SecurityContext | null> {
   await ensureSecurityTables();
   const db = await getDb();
   let [user] = await db.select().from(appUsers).where(eq(appUsers.email, person.email)).limit(1);
-  if (!user) [user] = await db.insert(appUsers).values({ email: person.email, fullName: person.fullName, identityProvider: person.preview ? "preview" : "chatgpt-siwc", lastLoginAt: new Date().toISOString() }).returning();
-  else await db.update(appUsers).set({ fullName: person.fullName || user.fullName, lastLoginAt: new Date().toISOString() }).where(eq(appUsers.id, user.id));
+  if (!user) [user] = await db.insert(appUsers).values({ email: person.email, fullName: person.fullName, identityProvider: person.provider, lastLoginAt: new Date().toISOString() }).returning();
+  else await db.update(appUsers).set({ fullName: person.fullName || user.fullName, identityProvider: person.provider, lastLoginAt: new Date().toISOString() }).where(eq(appUsers.id, user.id));
   const requestHeaders = await headers();
   const requestedOrganizationId = activeOrganizationFromCookie(requestHeaders.get("cookie"));
   const memberships = await db.select().from(organizationMemberships).where(and(eq(organizationMemberships.userId, user.id), eq(organizationMemberships.status, "Ativo"))).orderBy(organizationMemberships.id).limit(100);
