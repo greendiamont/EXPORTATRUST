@@ -17,6 +17,10 @@ interface Env {
 interface ExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException(): void;
+  access?: {
+    aud?: string;
+    getIdentity(): Promise<{ email?: string; name?: string } | null>;
+  };
 }
 
 // Image security config. SVG sources with .svg extension auto-skip the
@@ -40,7 +44,20 @@ const worker = {
       }, allowedWidths);
     }
 
-    return handler.fetch(request, env, ctx);
+    let appRequest = request;
+
+    if (ctx.access) {
+      const identity = await ctx.access.getIdentity();
+      const email = identity?.email?.trim().toLowerCase();
+      if (email) {
+        appRequest = new Request(request);
+        appRequest.headers.set("x-exportatrust-authenticated-user-email", email);
+        appRequest.headers.set("x-exportatrust-authenticated-user-name", identity?.name?.trim() || email);
+        appRequest.headers.set("x-exportatrust-auth-provider", "cloudflare-access");
+      }
+    }
+
+    return handler.fetch(appRequest, env, ctx);
   },
 };
 
