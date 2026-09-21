@@ -157,3 +157,32 @@ Segurança do inventário:
 - R2 operations: LIST
 
 Este snapshot passa a ser a referência quantitativa para validar a futura cópia externa. Qualquer migração deverá preservar, no mínimo, essas contagens e a integridade dos documentos associados.
+
+
+## Verificação do backup da Fase 1
+
+Endpoint somente leitura:
+
+`GET /api/admin/migration-backup-status`
+
+O endpoint:
+- localiza o último `backup_snapshots` da organização;
+- lê o objeto correspondente no R2;
+- recalcula SHA-256;
+- compara com o hash registrado no D1;
+- valida que o backup pertence à organização ativa;
+- lê `schemaVersion`;
+- conta os arrays presentes no payload portátil;
+- não restaura nada;
+- não grava nada no D1/R2.
+
+Links operacionais existentes:
+- Exportação JSON portátil: `/api/security?export=1`
+- Arquivo TAR completo com documentos originais: `/api/security?export=archive`
+
+A Fase 1 deve ser concluída somente após:
+1. inventário D1/R2 validado;
+2. último backup com `hashMatches: true`;
+3. payload com `payloadValid: true`;
+4. exportação integral disponível;
+5. snapshot quantitativo registrado no GitHub.
