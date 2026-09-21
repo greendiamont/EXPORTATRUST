@@ -15,8 +15,8 @@
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
     "build:external:staging": "EXPORTATRUST_EXTERNAL=1 CLOUDFLARE_ENV=staging vinext build",
-    "deploy:external:staging": "npm run build:external:staging && wrangler deploy --config wrangler.external.jsonc --env staging",
-    "deploy:external:production": "EXPORTATRUST_EXTERNAL=1 CLOUDFLARE_ENV=production vinext build && wrangler deploy --config wrangler.external.jsonc --env production"
+    "deploy:external:staging": "npm run build:external:staging && wrangler deploy",
+    "deploy:external:production": "EXPORTATRUST_EXTERNAL=1 CLOUDFLARE_ENV=production vinext build && wrangler deploy"
   },
   "dependencies": {
     "@coinbase/cdp-sdk": "^1.55.0",
