@@ -12,12 +12,15 @@
       },
       "d1_databases": [
         {
-          "binding": "DB"
+          "binding": "DB",
+          "database_name": "exportatrust-staging-db",
+          "database_id": "91ec1443-d33b-4fc1-9b63-d457cde514b9"
         }
       ],
       "r2_buckets": [
         {
-          "binding": "BUCKET"
+          "binding": "BUCKET",
+          "bucket_name": "exportatrust-staging-files"
         }
       ]
     },
