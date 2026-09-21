@@ -34,7 +34,7 @@ async function inventoryD1(database: D1Database) {
 
   return {
     tableCount: tables.length,
-    totalRows: tables.reduce((sum, table) => sum + (typeof table.rows === "number" ? table.rows : 0),
+    totalRows: tables.reduce((sum, table) => sum + (typeof table.rows === "number" ? table.rows : 0), 0),
     tables,
   };
 }
