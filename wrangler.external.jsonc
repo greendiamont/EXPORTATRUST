@@ -1,0 +1,41 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "exportatrust-external",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-09-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "env": {
+    "staging": {
+      "name": "exportatrust-staging",
+      "vars": {
+        "APP_ENV": "staging"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "BUCKET"
+        }
+      ]
+    },
+    "production": {
+      "name": "exportatrust-production",
+      "vars": {
+        "APP_ENV": "production"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "BUCKET"
+        }
+      ]
+    }
+  }
+}
