@@ -12,20 +12,29 @@ function safeIdentifier(value: string) {
 
 async function inventoryD1(database: D1Database) {
   const tableResult = await database
-    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+    .prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name")
     .all<TableRow>();
 
   const tables = [];
   for (const row of tableResult.results ?? []) {
     const tableName = row.name;
     const identifier = safeIdentifier(tableName);
-    const count = await database.prepare(`SELECT COUNT(*) AS count FROM ${identifier}`).first<CountRow>();
-    tables.push({ name: tableName, rows: Number(count?.count ?? 0) });
+    try {
+      const count = await database.prepare(`SELECT COUNT(*) AS count FROM ${identifier}`).first<CountRow>();
+      tables.push({ name: tableName, rows: Number(count?.count ?? 0), status: "ok" });
+    } catch (error) {
+      tables.push({
+        name: tableName,
+        rows: null,
+        status: "unreadable",
+        error: error instanceof Error ? error.message : "D1 table not readable",
+      });
+    }
   }
 
   return {
     tableCount: tables.length,
-    totalRows: tables.reduce((sum, table) => sum + table.rows, 0),
+    totalRows: tables.reduce((sum, table) => sum + (typeof table.rows === "number" ? table.rows : 0), 0),
     tables,
   };
 }
