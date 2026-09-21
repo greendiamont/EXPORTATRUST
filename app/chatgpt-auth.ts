@@ -18,21 +18,34 @@ const CALLBACK_PATH = "/callback";
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
-  const email = requestHeaders.get(USER_EMAIL_HEADER);
-  if (!email) return null;
+  const chatGPTEmail = requestHeaders.get(USER_EMAIL_HEADER)?.trim().toLowerCase() ?? "";
+  const accessEmail = requestHeaders.get("x-exportatrust-authenticated-user-email")?.trim().toLowerCase() ?? "";
 
-  const encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get(USER_FULL_NAME_ENCODING_HEADER) === PERCENT_ENCODED_UTF8
-      ? safeDecodeURIComponent(encodedFullName)
-      : null;
+  if (chatGPTEmail) {
+    const encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
+    const fullName =
+      encodedFullName &&
+      requestHeaders.get(USER_FULL_NAME_ENCODING_HEADER) === PERCENT_ENCODED_UTF8
+        ? safeDecodeURIComponent(encodedFullName)
+        : null;
 
-  return {
-    displayName: fullName ?? email,
-    email,
-    fullName,
-  };
+    return {
+      displayName: fullName ?? chatGPTEmail,
+      email: chatGPTEmail,
+      fullName,
+    };
+  }
+
+  if (accessEmail) {
+    const fullName = requestHeaders.get("x-exportatrust-authenticated-user-name")?.trim() || null;
+    return {
+      displayName: fullName ?? accessEmail,
+      email: accessEmail,
+      fullName,
+    };
+  }
+
+  return null;
 }
 
 export async function requireChatGPTUser(
