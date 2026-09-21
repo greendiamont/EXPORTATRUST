@@ -84,3 +84,17 @@ Na primeira implantação externa:
 4. obter URL `*.workers.dev`;
 5. validar que a aplicação abre;
 6. somente depois importar uma cópia do histórico.
+
+
+## Deploy via Cloudflare Builds
+
+Quando o build usa o Cloudflare Vite plugin, o arquivo `wrangler.external.jsonc` é a configuração de entrada. O build gera uma configuração de saída que referencia os artefatos compilados do vinext.
+
+Por isso, no painel Cloudflare:
+
+- Build command: `npm run build:external:staging`
+- Deploy command: `npx wrangler deploy`
+
+Não usar `--config wrangler.external.jsonc --env staging` no deploy. O ambiente já foi aplicado durante o build por `CLOUDFLARE_ENV=staging`.
+
+Isso evita que Wrangler tente recompilar `worker/index.ts` e falhe nos imports virtuais do vinext.
