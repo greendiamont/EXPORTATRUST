@@ -1,40 +1,88 @@
 import { requireSecurityContext } from "../../../../lib/security";
 
-type TableRow = { name: string };
 type CountRow = { count: number };
 
-function safeIdentifier(value: string) {
-  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) {
-    throw new Error(`Invalid SQLite identifier: ${value}`);
-  }
-  return `"${value.replaceAll('"', '""')}"`;
-}
+const KNOWN_APP_TABLES = [
+  "organizations",
+  "app_users",
+  "organization_memberships",
+  "rural_properties",
+  "forest_documents",
+  "suppliers",
+  "product_traceability_catalog",
+  "importer_clients",
+  "master_products",
+  "deduplication_queue",
+  "operations",
+  "operation_documents",
+  "operation_stage_settings",
+  "operation_partners",
+  "exception_actions",
+  "industrial_plans",
+  "agent_services",
+  "agent_operation_settings",
+  "agent_jobs",
+  "agent_ledger",
+  "agent_reputation",
+  "agent_credentials",
+  "agent_events",
+  "operation_timeline",
+  "agent_approvals",
+  "payment_transactions",
+  "export_control_settings",
+  "export_milestones",
+  "operation_tasks",
+  "client_notifications",
+  "shipment_advices",
+  "shipment_tracking_events",
+  "country_compliance_checks",
+  "asana_import_candidates",
+  "audit_logs",
+  "document_access_tokens",
+  "backup_snapshots",
+  "pdf_integrity_records",
+  "legal_acceptances",
+  "system_events",
+  "gmail_connections",
+  "google_oauth_states",
+  "gmail_oauth_configs"
+] as const;
 
 async function inventoryD1(database: D1Database) {
-  const tableResult = await database
-    .prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name")
-    .all<TableRow>();
+  const tables: Array<{
+    name: string;
+    rows: number | null;
+    status: "ok" | "missing-or-unreadable";
+    error?: string;
+  }> = [];
 
-  const tables = [];
-  for (const row of tableResult.results ?? []) {
-    const tableName = row.name;
-    const identifier = safeIdentifier(tableName);
+  for (const tableName of KNOWN_APP_TABLES) {
     try {
-      const count = await database.prepare(`SELECT COUNT(*) AS count FROM ${identifier}`).first<CountRow>();
-      tables.push({ name: tableName, rows: Number(count?.count ?? 0), status: "ok" });
+      const result = await database.prepare(`SELECT COUNT(*) AS count FROM "${tableName}"`).first<CountRow>();
+      tables.push({
+        name: tableName,
+        rows: Number(result?.count ?? 0),
+        status: "ok",
+      });
     } catch (error) {
       tables.push({
         name: tableName,
         rows: null,
-        status: "unreadable",
+        status: "missing-or-unreadable",
         error: error instanceof Error ? error.message : "D1 table not readable",
       });
     }
   }
 
+  const readable = tables.filter((table) => table.status === "ok");
+  const unreadable = tables.filter((table) => table.status !== "ok");
+
   return {
-    tableCount: tables.length,
-    totalRows: tables.reduce((sum, table) => sum + (typeof table.rows === "number" ? table.rows : 0), 0),
+    source: "known-app-table-allowlist",
+    expectedTableCount: KNOWN_APP_TABLES.length,
+    readableTableCount: readable.length,
+    unreadableTableCount: unreadable.length,
+    totalRows: readable.reduce((sum, table) => sum + (table.rows ?? 0), 0),
     tables,
   };
 }
@@ -48,9 +96,11 @@ async function inventoryR2(bucket: R2Bucket) {
 
   for (let pageNumber = 0; pageNumber < 100; pageNumber += 1) {
     const page = await bucket.list({ limit: 1000, cursor });
+
     for (const object of page.objects) {
       objectCount += 1;
       totalBytes += object.size;
+
       const prefix = object.key.split("/")[0] || "(root)";
       const current = prefixes.get(prefix) ?? { objects: 0, bytes: 0 };
       current.objects += 1;
@@ -86,22 +136,35 @@ async function inventoryR2(bucket: R2Bucket) {
   };
 }
 
+function errorText(error: unknown) {
+  return error instanceof Error ? error.message : "Unknown inventory error";
+}
+
 export async function GET() {
   try {
     const context = await requireSecurityContext("export");
     const { env } = await import("cloudflare:workers");
 
-    if (!env.DB) {
-      return Response.json({ error: "D1 binding DB indisponível." }, { status: 503 });
-    }
-    if (!env.BUCKET) {
-      return Response.json({ error: "R2 binding BUCKET indisponível." }, { status: 503 });
-    }
+    const d1 = env.DB
+      ? await inventoryD1(env.DB).catch((error) => ({
+          status: "error" as const,
+          error: errorText(error),
+          source: "known-app-table-allowlist",
+        }))
+      : {
+          status: "unavailable" as const,
+          error: "D1 binding DB indisponível.",
+        };
 
-    const [d1, r2] = await Promise.all([
-      inventoryD1(env.DB),
-      inventoryR2(env.BUCKET),
-    ]);
+    const r2 = env.BUCKET
+      ? await inventoryR2(env.BUCKET).catch((error) => ({
+          status: "error" as const,
+          error: errorText(error),
+        }))
+      : {
+          status: "unavailable" as const,
+          error: "R2 binding BUCKET indisponível.",
+        };
 
     return Response.json({
       generatedAt: new Date().toISOString(),
@@ -109,6 +172,12 @@ export async function GET() {
         repository: "greendiamont/EXPORTATRUST",
         branch: "main",
         commit: "fbfd2f5b99cf9112ef5ea11c9265f01d5bde587b",
+      },
+      runtime: {
+        inventoryVersion: 3,
+        schemaIntrospection: false,
+        d1Binding: Boolean(env.DB),
+        r2Binding: Boolean(env.BUCKET),
       },
       organization: {
         id: context.organizationId,
@@ -120,6 +189,8 @@ export async function GET() {
       safety: {
         mode: "read-only",
         destructiveActions: false,
+        statements: ["SELECT COUNT(*)"],
+        r2Operations: ["LIST"],
       },
     }, {
       headers: {
@@ -129,8 +200,13 @@ export async function GET() {
     });
   } catch (error) {
     if (error instanceof Response) return error;
+
     return Response.json({
-      error: error instanceof Error ? error.message : "Falha ao gerar inventário de migração.",
+      error: errorText(error),
+      diagnostic: {
+        stage: "authentication-or-runtime-binding",
+        inventoryVersion: 3,
+      },
     }, { status: 500 });
   }
 }
