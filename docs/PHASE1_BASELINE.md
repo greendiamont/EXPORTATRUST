@@ -30,7 +30,7 @@ Foi criada a rota:
 
 `GET /api/admin/migration-inventory`
 
-Permissão exigida: `backup` (administrador).
+Permissão exigida: `export` (perfil autorizado a exportar os dados da organização).
 
 A rota:
 - lista as tabelas SQLite/D1;
