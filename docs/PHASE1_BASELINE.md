@@ -97,3 +97,63 @@ Falhas são isoladas:
 - nenhuma introspecção de tabelas internas do Cloudflare é executada.
 
 Isto mantém o endpoint estritamente somente leitura e compatível com o objetivo da Fase 1.
+
+
+## Inventário real capturado em produção
+
+Captura: 2026-09-21T20:27:19.990Z
+
+Runtime:
+- inventoryVersion: 3
+- schemaIntrospection: false
+- D1 binding: ativo
+- R2 binding: ativo
+- organização: ExportaTrust (id 1)
+
+D1:
+- 43 tabelas esperadas
+- 43 tabelas legíveis
+- 0 tabelas ilegíveis
+- 2.678 registros totais
+
+Contagens críticas:
+- organizations: 1
+- app_users: 2
+- organization_memberships: 2
+- suppliers: 9
+- importer_clients: 11
+- master_products: 3
+- operations: 16
+- rural_properties: 3
+- operation_documents: 395
+- forest_documents: 2
+- operation_partners: 2
+- export_control_settings: 11
+- export_milestones: 210
+- operation_tasks: 167
+- shipment_advices: 10
+- shipment_tracking_events: 7
+- audit_logs: 695
+- backup_snapshots: 20
+- gmail_connections: 1
+- gmail_oauth_configs: 1
+
+R2:
+- 436 objetos
+- 156.092.098 bytes
+- inventário completo: true
+
+Prefixos principais observados:
+- operations: 267 objetos / 109.567.329 bytes
+- organizations: 127 objetos / 30.090.379 bytes
+- backups: 21 objetos / 9.840.231 bytes
+- audit-anchors: 19 objetos
+- forests: 2 objetos / 589.555 bytes
+
+Segurança do inventário:
+- mode: read-only
+- destructiveActions: false
+- statements: SELECT COUNT(*)
+- R2 operations: LIST
+
+Este snapshot passa a ser a referência quantitativa para validar a futura cópia externa. Qualquer migração deverá preservar, no mínimo, essas contagens e a integridade dos documentos associados.
