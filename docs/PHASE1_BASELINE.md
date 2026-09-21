@@ -80,3 +80,20 @@ A Fase 1 só será considerada concluída quando tivermos:
 4. contagens críticas revisadas;
 5. procedimento de export/backup documentado;
 6. nenhuma alteração destrutiva realizada.
+
+
+## Diagnóstico de compatibilidade D1 no ChatGPT Sites
+
+O inventário não deve depender de introspecção de catálogo (`sqlite_schema`, `sqlite_master` ou `PRAGMA table_list`) no runtime gerenciado.
+
+Embora o D1 padrão documente essas consultas, o ambiente hospedado pode aplicar controles adicionais e retornar `SQLITE_AUTH`.
+
+A versão 3 do inventário usa uma allowlist derivada de `db/schema.ts` e executa somente `SELECT COUNT(*)` contra tabelas conhecidas do ExportaTrust.
+
+Falhas são isoladas:
+- uma tabela ausente/protegida vira `missing-or-unreadable`;
+- falha no D1 não impede o bloco R2 de responder;
+- falha no R2 não impede o bloco D1 de responder;
+- nenhuma introspecção de tabelas internas do Cloudflare é executada.
+
+Isto mantém o endpoint estritamente somente leitura e compatível com o objetivo da Fase 1.
