@@ -79,7 +79,7 @@ async function inventoryR2(bucket: R2Bucket) {
 
 export async function GET() {
   try {
-    const context = await requireSecurityContext("backup");
+    const context = await requireSecurityContext("export");
     const { env } = await import("cloudflare:workers");
 
     if (!env.DB) {
