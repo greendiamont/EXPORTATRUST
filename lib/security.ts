@@ -39,11 +39,16 @@ async function identity() {
   const host = requestHeaders.get("host") ?? "";
   const chatGPTEmail = requestHeaders.get("oai-authenticated-user-email")?.trim().toLowerCase() ?? "";
   const chatGPTFullName = decodeName(requestHeaders.get("oai-authenticated-user-full-name"), requestHeaders.get("oai-authenticated-user-full-name-encoding"));
-  const accessEmail = requestHeaders.get("x-exportatrust-authenticated-user-email")?.trim().toLowerCase() ?? "";
-  const accessName = requestHeaders.get("x-exportatrust-authenticated-user-name")?.trim() ?? "";
+  const bridgedAccessEmail = requestHeaders.get("x-exportatrust-authenticated-user-email")?.trim().toLowerCase() ?? "";
+  const bridgedAccessName = requestHeaders.get("x-exportatrust-authenticated-user-name")?.trim() ?? "";
+  const accessJwt = requestHeaders.get("cf-access-jwt-assertion")?.trim() ?? "";
+  const nativeAccessEmail = accessJwt
+    ? requestHeaders.get("cf-access-authenticated-user-email")?.trim().toLowerCase() ?? ""
+    : "";
   const preview = host.includes("terminal.local") || host.includes("localhost") || host.includes("127.0.0.1");
   if (chatGPTEmail) return { email: chatGPTEmail, fullName: chatGPTFullName || chatGPTEmail, preview: false, provider: "chatgpt-siwc" };
-  if (accessEmail) return { email: accessEmail, fullName: accessName || accessEmail, preview: false, provider: "cloudflare-access" };
+  if (bridgedAccessEmail) return { email: bridgedAccessEmail, fullName: bridgedAccessName || bridgedAccessEmail, preview: false, provider: "cloudflare-access" };
+  if (nativeAccessEmail) return { email: nativeAccessEmail, fullName: nativeAccessEmail, preview: false, provider: "cloudflare-access" };
   if (preview) return { email: "preview-admin@exportatrust.local", fullName: "Administrador de teste", preview: true, provider: "preview" };
   return null;
 }
