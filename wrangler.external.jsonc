@@ -15,7 +15,7 @@
           "binding": "DB",
           "database_name": "exportatrust-staging-db-v2",
           "database_id": "c3ca15f4-4a40-477f-8ee8-7913591c7d29",
-          "migrations_dir": "./drizzle"
+          "migrations_dir": "drizzle"
         }
       ],
       "r2_buckets": [
