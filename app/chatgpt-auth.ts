@@ -19,7 +19,11 @@ const CALLBACK_PATH = "/callback";
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
   const chatGPTEmail = requestHeaders.get(USER_EMAIL_HEADER)?.trim().toLowerCase() ?? "";
-  const accessEmail = requestHeaders.get("x-exportatrust-authenticated-user-email")?.trim().toLowerCase() ?? "";
+  const bridgedAccessEmail = requestHeaders.get("x-exportatrust-authenticated-user-email")?.trim().toLowerCase() ?? "";
+  const accessJwt = requestHeaders.get("cf-access-jwt-assertion")?.trim() ?? "";
+  const nativeAccessEmail = accessJwt
+    ? requestHeaders.get("cf-access-authenticated-user-email")?.trim().toLowerCase() ?? ""
+    : "";
 
   if (chatGPTEmail) {
     const encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
@@ -36,12 +40,20 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
     };
   }
 
-  if (accessEmail) {
+  if (bridgedAccessEmail) {
     const fullName = requestHeaders.get("x-exportatrust-authenticated-user-name")?.trim() || null;
     return {
-      displayName: fullName ?? accessEmail,
-      email: accessEmail,
+      displayName: fullName ?? bridgedAccessEmail,
+      email: bridgedAccessEmail,
       fullName,
+    };
+  }
+
+  if (nativeAccessEmail) {
+    return {
+      displayName: nativeAccessEmail,
+      email: nativeAccessEmail,
+      fullName: null,
     };
   }
 
