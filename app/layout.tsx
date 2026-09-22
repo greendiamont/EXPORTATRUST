@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ExportaTrust · Export Control & EUDR",
+  title: "ExportaTrust",
   description: "Torre de controle de pedidos de exportação, supply chain, rastreabilidade e due diligence EUDR.",
   robots: { index: false, follow: false },
   other: {

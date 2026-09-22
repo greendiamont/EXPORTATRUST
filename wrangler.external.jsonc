@@ -13,8 +13,8 @@
       "d1_databases": [
         {
           "binding": "DB",
-          "database_name": "exportatrust-staging-db",
-          "database_id": "91ec1443-d33b-4fc1-9b63-d457cde514b9"
+          "database_name": "exportatrust-staging-db-v2",
+          "database_id": "c3ca15f4-4a40-477f-8ee8-7913591c7d29"
         }
       ],
       "r2_buckets": [
