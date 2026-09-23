@@ -13,8 +13,8 @@
       "d1_databases": [
         {
           "binding": "DB",
-          "database_name": "exportatrust-staging-db-v2",
-          "database_id": "c3ca15f4-4a40-477f-8ee8-7913591c7d29",
+          "database_name": "exportatrust-staging-db-v3",
+          "database_id": "9c619b55-0cfc-4ed0-bdd6-4ed51c116c6d",
           "migrations_dir": "drizzle"
         }
       ],
