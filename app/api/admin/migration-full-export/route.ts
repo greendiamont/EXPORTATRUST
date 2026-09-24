@@ -53,10 +53,6 @@ function errorText(error: unknown) {
 export async function GET() {
   try {
     const context = await requireSecurityContext("export");
-    if (!["administrador", "auditor"].includes(context.role)) {
-      return Response.json({ error: "Exportação integral restrita a administrador ou auditor." }, { status: 403 });
-    }
-
     const { env } = await import("cloudflare:workers");
     if (!env.DB) {
       return Response.json({ error: "D1 binding DB indisponível." }, { status: 503 });
