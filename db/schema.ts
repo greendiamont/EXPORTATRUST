@@ -118,6 +118,7 @@ export const importerClients = sqliteTable("importer_clients", {
   preferredPort: text("preferred_port").notNull().default(""),
   paymentTerms: text("payment_terms").notNull().default(""),
   documentRequirements: text("document_requirements").notNull().default(""),
+  bankDetails: text("bank_details").notNull().default(""),
   dataStatus: text("data_status").notNull().default("Pendente"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
