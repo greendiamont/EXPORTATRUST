@@ -19,8 +19,11 @@ async function requireStaging() {
 
 function decodeJsonHeader(value: string | null) {
   if (!value) return {};
-  const text = atob(value.replaceAll("-", "+").replaceAll("_", "/"));
-  return JSON.parse(text) as Record<string, unknown>;
+  let normalized = value.replaceAll("-", "+").replaceAll("_", "/");
+  while (normalized.length % 4) normalized += "=";
+  const binary = atob(normalized);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>;
 }
 
 async function listAll(bucket: R2Bucket) {
@@ -148,6 +151,7 @@ export async function POST(request: Request) {
 
       const httpMetadata = decodeJsonHeader(request.headers.get("x-exportatrust-http-metadata"));
       const customMetadata = decodeJsonHeader(request.headers.get("x-exportatrust-custom-metadata")) as Record<string, string>;
+      if (!request.body) return Response.json({ error: "Corpo do arquivo ausente." }, { status: 400 });
       const result = await env.BUCKET.put(key, request.body, {
         httpMetadata: httpMetadata as R2HTTPMetadata,
         customMetadata,
