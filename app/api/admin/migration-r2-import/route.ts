@@ -44,14 +44,14 @@ export async function GET() {
     return new Response(`<!doctype html><html><head><meta charset="utf-8"><title>ExportaTrust · Import R2</title></head>
 <body style="font-family:system-ui;max-width:900px;margin:40px auto;padding:0 20px">
 <h1>Importação integral R2 · Staging</h1>
-<p>Extraia o arquivo TAR baixado da produção. Depois selecione a pasta extraída abaixo. O navegador localizará o manifesto e enviará os objetos um a um, preservando a chave R2 original.</p>
-<input id="folder" type="file" webkitdirectory multiple>
-<button id="scan">Validar pasta</button>
+<p>Selecione diretamente o arquivo <strong>.tar</strong> baixado da produção. O navegador lerá o TAR localmente, localizará o manifesto e enviará os objetos um a um, preservando a chave R2 original.</p>
+<input id="tar" type="file" accept=".tar,application/x-tar">
+<button id="scan">Validar TAR</button>
 <button id="upload" disabled>Importar arquivos no R2</button>
 <button id="check" disabled>Validar destino</button>
 <pre id="out" style="white-space:pre-wrap;background:#f5f5f5;padding:16px;min-height:120px"></pre>
 <script>
-const folder=document.getElementById('folder'), out=document.getElementById('out');
+const tarInput=document.getElementById('tar'), out=document.getElementById('out');
 const upload=document.getElementById('upload'), check=document.getElementById('check');
 let manifest=null, fileMap=new Map();
 
@@ -60,34 +60,65 @@ function b64url(obj){
   let bin=''; for(const b of bytes) bin+=String.fromCharCode(b);
   return btoa(bin).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');
 }
-function findBySuffix(files,suffix){
-  return files.find(f=>f.webkitRelativePath===suffix || f.webkitRelativePath.endsWith('/'+suffix));
+function readString(bytes,start,len){
+  return new TextDecoder().decode(bytes.slice(start,start+len)).replace(/\0.*$/,'').trim();
+}
+function readOctal(bytes,start,len){
+  const s=readString(bytes,start,len).trim();
+  return s ? parseInt(s,8) : 0;
+}
+async function parseTar(file){
+  const buf=new Uint8Array(await file.arrayBuffer());
+  const entries=[];
+  let offset=0;
+  while(offset+512<=buf.length){
+    const header=buf.slice(offset,offset+512);
+    if(header.every(b=>b===0)) break;
+    const name=readString(header,0,100);
+    const size=readOctal(header,124,12);
+    const dataStart=offset+512;
+    const dataEnd=dataStart+size;
+    if(!name || dataEnd>buf.length) throw new Error('TAR inválido ou truncado.');
+    entries.push({name,size,blob:new Blob([buf.slice(dataStart,dataEnd)])});
+    offset=dataStart+Math.ceil(size/512)*512;
+  }
+  return entries;
 }
 document.getElementById('scan').onclick=async()=>{
   try{
-    const files=[...folder.files];
-    const mf=findBySuffix(files,'exportatrust-r2-manifest.json');
-    if(!mf) throw new Error('Manifesto exportatrust-r2-manifest.json não encontrado.');
-    manifest=JSON.parse(await mf.text());
+    const file=tarInput.files[0];
+    if(!file) throw new Error('Selecione o arquivo .tar.');
+    out.textContent='Lendo e validando TAR...';
+    const entries=await parseTar(file);
+    const mf=entries.find(e=>e.name==='exportatrust-r2-manifest.json');
+    if(!mf) throw new Error('Manifesto exportatrust-r2-manifest.json não encontrado dentro do TAR.');
+    manifest=JSON.parse(await mf.blob.text());
     if(manifest.format!=='ExportaTrust Full R2 Export v1') throw new Error('Formato de manifesto inválido.');
-    fileMap=new Map();
-    let missing=[];
+    fileMap=new Map(entries.filter(e=>e.name.startsWith('objects/')).map(e=>[e.name,e.blob]));
+    const missing=[];
     for(const item of manifest.objects){
-      const f=findBySuffix(files,item.archivePath);
-      if(!f) missing.push(item.archivePath);
-      else if(f.size!==item.size) missing.push(item.archivePath+' (tamanho divergente)');
-      else fileMap.set(item.archivePath,f);
+      const b=fileMap.get(item.archivePath);
+      if(!b) missing.push(item.archivePath);
+      else if(b.size!==item.size) missing.push(item.archivePath+' (tamanho divergente)');
     }
-    out.textContent=JSON.stringify({ok:missing.length===0,objectCount:manifest.objectCount,totalBytes:manifest.totalBytes,filesFound:fileMap.size,missing:missing.slice(0,20)},null,2);
-    upload.disabled=missing.length!==0;
+    const totalObjectBytes=[...fileMap.values()].reduce((sum,b)=>sum+b.size,0);
+    out.textContent=JSON.stringify({
+      ok:missing.length===0 && fileMap.size===manifest.objectCount && totalObjectBytes===manifest.totalBytes,
+      objectCount:manifest.objectCount,
+      totalBytes:manifest.totalBytes,
+      filesFound:fileMap.size,
+      bytesFound:totalObjectBytes,
+      missing:missing.slice(0,20)
+    },null,2);
+    upload.disabled=!(missing.length===0 && fileMap.size===manifest.objectCount && totalObjectBytes===manifest.totalBytes);
     check.disabled=true;
-  }catch(e){out.textContent=String(e);upload.disabled=true;check.disabled=true;}
+  }catch(e){out.textContent='Erro: '+(e&&e.message?e.message:String(e));upload.disabled=true;check.disabled=true;}
 };
 
 async function putOne(item,file){
   const url='/api/admin/migration-r2-import?action=put&key='+encodeURIComponent(item.key)+'&size='+item.size;
   const res=await fetch(url,{method:'POST',headers:{
-    'content-type':(item.httpMetadata&&item.httpMetadata.contentType)||file.type||'application/octet-stream',
+    'content-type':(item.httpMetadata&&item.httpMetadata.contentType)||'application/octet-stream',
     'x-exportatrust-http-metadata':b64url(item.httpMetadata||{}),
     'x-exportatrust-custom-metadata':b64url(item.customMetadata||{})
   },body:file});
@@ -121,7 +152,7 @@ check.onclick=async()=>{
   const res=await fetch('/api/admin/migration-r2-import?action=validate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(manifest)});
   out.textContent=await res.text();
 };
-</script></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+</script></body></html>` { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
   } catch (error) {
     if (error instanceof Response) return error;
     return Response.json({ error: errorText(error) }, { status: 500 });
