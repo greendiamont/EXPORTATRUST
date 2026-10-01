@@ -61,26 +61,30 @@ function b64url(obj){
   return btoa(bin).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');
 }
 function readString(bytes,start,len){
-  return new TextDecoder().decode(bytes.slice(start,start+len)).replace(/\0.*$/,'').trim();
+  const raw=new TextDecoder().decode(bytes.slice(start,start+len));
+  const zero=raw.indexOf(String.fromCharCode(0));
+  return (zero>=0?raw.slice(0,zero):raw).trim();
 }
 function readOctal(bytes,start,len){
   const s=readString(bytes,start,len).trim();
   return s ? parseInt(s,8) : 0;
 }
 async function parseTar(file){
-  const buf=new Uint8Array(await file.arrayBuffer());
   const entries=[];
   let offset=0;
-  while(offset+512<=buf.length){
-    const header=buf.slice(offset,offset+512);
+  let index=0;
+  while(offset+512<=file.size){
+    const header=new Uint8Array(await file.slice(offset,offset+512).arrayBuffer());
     if(header.every(b=>b===0)) break;
     const name=readString(header,0,100);
     const size=readOctal(header,124,12);
     const dataStart=offset+512;
     const dataEnd=dataStart+size;
-    if(!name || dataEnd>buf.length) throw new Error('TAR inválido ou truncado.');
-    entries.push({name,size,blob:new Blob([buf.slice(dataStart,dataEnd)])});
+    if(!name || !Number.isFinite(size) || size<0 || dataEnd>file.size) throw new Error('TAR inválido ou truncado.');
+    entries.push({name,size,blob:file.slice(dataStart,dataEnd)});
     offset=dataStart+Math.ceil(size/512)*512;
+    index++;
+    if(index%50===0) out.textContent='Lendo TAR... '+index+' entradas encontradas';
   }
   return entries;
 }
@@ -88,7 +92,7 @@ document.getElementById('scan').onclick=async()=>{
   try{
     const file=tarInput.files[0];
     if(!file) throw new Error('Selecione o arquivo .tar.');
-    out.textContent='Lendo e validando TAR...';
+    out.textContent='Lendo e validando TAR... aguarde alguns segundos.';
     const entries=await parseTar(file);
     const mf=entries.find(e=>e.name==='exportatrust-r2-manifest.json');
     if(!mf) throw new Error('Manifesto exportatrust-r2-manifest.json não encontrado dentro do TAR.');
