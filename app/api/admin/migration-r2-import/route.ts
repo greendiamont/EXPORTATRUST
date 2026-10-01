@@ -152,7 +152,7 @@ check.onclick=async()=>{
   const res=await fetch('/api/admin/migration-r2-import?action=validate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(manifest)});
   out.textContent=await res.text();
 };
-</script></body></html>` { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+</script></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
   } catch (error) {
     if (error instanceof Response) return error;
     return Response.json({ error: errorText(error) }, { status: 500 });
