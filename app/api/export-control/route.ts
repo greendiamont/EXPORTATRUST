@@ -5,6 +5,7 @@ import { addDays, canApproveShipment, countryRequirements, EXPORT_ORDER_MILESTON
 import { gmailDeliveryConfiguration, sendGmailEmail } from "../../../lib/gmail-integration";
 import { audit, requireSecurityContext } from "../../../lib/security";
 import { encodeTrackingLocation, freeTrackingGuide, shipsGoConfiguration, trackOceanShipment } from "../../../lib/shipsgo";
+import { buildDocx, docxParagraph, docxTable, docxTwoColumnBlock, safeDocxFileName } from "../../../lib/simple-docx";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Erro inesperado";
@@ -171,26 +172,42 @@ ANY CLAIM NEED TO BE ADVISED WITHIN MAXIMUM 15 DAYS AFTER ARRIVAL AND FULL QUANT
 
 type OrderItem = { species: string; quality: string; size: string; volume: number; unitPrice: number };
 type SupplierOrder = { tradingName?: string; currency?: string; incoterm?: string; paymentTerms?: string; notes?: string; items?: OrderItem[] };
+type PackingItem = { description: string; cbm: number; totalPcs: number; piecesPerPackage: number; packages: number; length: number; width: number; thickness: number; grossWeight: number; netWeight: number };
+type PackingList = { consigneeName?: string; netWeight?: number; grossWeight?: number; packages?: number; marks?: string; containerReference?: string; items?: PackingItem[] };
 
 function parsedOrderDetails(operation: typeof operations.$inferSelect) {
   const fallbackItems = [{ species: operation.species || operation.rawMaterial || "Taeda Pine", quality: operation.product, size: operation.lotCodes || "As per order", volume: operation.volumeM3 || operation.quantity || 0, unitPrice: operation.volumeM3 || operation.quantity ? operation.commercialValue / (operation.volumeM3 || operation.quantity) : 0 }];
   try {
-    const parsed = JSON.parse(operation.supplyChainNotes || "{}") as { orderItems?: OrderItem[]; paymentTerms?: string; orderNotes?: string; supplierOrder?: SupplierOrder };
+    const parsed = JSON.parse(operation.supplyChainNotes || "{}") as { orderItems?: OrderItem[]; paymentTerms?: string; orderNotes?: string; supplierOrder?: SupplierOrder; packingList?: PackingList };
     const supplierItems = Array.isArray(parsed.supplierOrder?.items) && parsed.supplierOrder.items.length ? parsed.supplierOrder.items : fallbackItems;
+    const packingItems = Array.isArray(parsed.packingList?.items) ? parsed.packingList!.items!.map((item) => ({
+      description: String(item.description ?? ""),
+      cbm: safeNumber(item.cbm),
+      totalPcs: safeNumber(item.totalPcs),
+      piecesPerPackage: safeNumber(item.piecesPerPackage),
+      packages: safeNumber(item.packages),
+      length: safeNumber(item.length),
+      width: safeNumber(item.width),
+      thickness: safeNumber(item.thickness),
+      grossWeight: safeNumber(item.grossWeight),
+      netWeight: safeNumber(item.netWeight),
+    })) : [];
     return {
       items: Array.isArray(parsed.orderItems) && parsed.orderItems.length ? parsed.orderItems : fallbackItems,
       paymentTerms: String(parsed.paymentTerms ?? "").trim(),
       notes: String(parsed.orderNotes ?? "").trim() || DEFAULT_ORDER_NOTES,
       supplierOrder: { ...parsed.supplierOrder, items: supplierItems },
+      packingList: { ...parsed.packingList, items: packingItems },
     };
   } catch {
-    return { items: fallbackItems, paymentTerms: "", notes: operation.supplyChainNotes || DEFAULT_ORDER_NOTES, supplierOrder: { items: fallbackItems } };
+    return { items: fallbackItems, paymentTerms: "", notes: operation.supplyChainNotes || DEFAULT_ORDER_NOTES, supplierOrder: { items: fallbackItems }, packingList: { items: [] } };
   }
 }
 
 function documentTitle(type: string) {
   if (type === "purchase-invoice") return "PURCHASE INVOICE";
   if (type === "supplier-po") return "PEDIDO DE COMPRA";
+  if (type === "packing-list") return "PACKING LIST";
   return "SALES ORDER";
 }
 
