@@ -451,6 +451,8 @@ type ClientNotificationRecord = { id: number; milestoneCode: string; recipient: 
 type TrackingEventRecord = { id: number; source: string; status: string; location: string; eta: string; details: string; checkedAt: string; nextCheckAt: string };
 type OrderItemDraft = { species: string; quality: string; size: string; volume: string; unitPrice: string };
 type SupplierOrderDraft = { tradingName: string; currency: string; incoterm: string; paymentTerms: string; notes: string };
+type PackingItemDraft = { description: string; cbm: string; totalPcs: string; piecesPerPackage: string; packages: string; length: string; width: string; thickness: string; grossWeight: string; netWeight: string };
+type PackingListDraft = { consigneeName: string; netWeight: string; grossWeight: string; packages: string; marks: string; containerReference: string };
 type ExportControlData = {
   operation: OperationRecord;
   settings: { customerName: string; customerEmail: string; customerReference: string; notificationsEnabled: boolean; trackingIntervalDays: number; nextTrackingAt: string | null; emailProviderStatus: string };
@@ -508,16 +510,50 @@ function parseOrderDetails(operation: OperationRecord) {
   const fallbackItem = { species: operation.species || "", quality: operation.product || "", size: operation.lotCodes || "", volume: String(operation.volumeM3 || operation.quantity || ""), unitPrice: operation.volumeM3 || operation.quantity ? String(Number(operation.commercialValue || 0) / Number(operation.volumeM3 || operation.quantity)) : "" };
   const fallbackSupplierOrder = { tradingName: operation.exporterName || "", currency: operation.currency || "USD", incoterm: operation.incoterm || "FOB", paymentTerms: "", notes: "", items: [fallbackItem] };
   try {
-    const parsed = JSON.parse(operation.supplyChainNotes || "{}") as { orderItems?: Array<{ species?: string; quality?: string; size?: string; volume?: number; unitPrice?: number }>; paymentTerms?: string; orderNotes?: string; supplierOrder?: SupplierOrderDraft & { items?: Array<{ species?: string; quality?: string; size?: string; volume?: number; unitPrice?: number }> } };
+    const parsed = JSON.parse(operation.supplyChainNotes || "{}") as { orderItems?: Array<{ species?: string; quality?: string; size?: string; volume?: number; unitPrice?: number }>; paymentTerms?: string; orderNotes?: string; supplierOrder?: SupplierOrderDraft & { items?: Array<{ species?: string; quality?: string; size?: string; volume?: number; unitPrice?: number }> }; packingList?: PackingListDraft & { items?: Array<{ description?: string; cbm?: number; totalPcs?: number; piecesPerPackage?: number; packages?: number; length?: number; width?: number; thickness?: number; grossWeight?: number; netWeight?: number }> } };
     const items = Array.isArray(parsed.orderItems) && parsed.orderItems.length
       ? parsed.orderItems.map((item) => ({ species: String(item.species ?? ""), quality: String(item.quality ?? ""), size: String(item.size ?? ""), volume: item.volume ? String(item.volume) : "", unitPrice: item.unitPrice ? String(item.unitPrice) : "" }))
       : [fallbackItem];
     const supplierItems = Array.isArray(parsed.supplierOrder?.items) && parsed.supplierOrder.items.length
       ? parsed.supplierOrder.items.map((item) => ({ species: String(item.species ?? ""), quality: String(item.quality ?? ""), size: String(item.size ?? ""), volume: item.volume ? String(item.volume) : "", unitPrice: item.unitPrice ? String(item.unitPrice) : "" }))
       : items;
-    return { items, paymentTerms: String(parsed.paymentTerms ?? ""), orderNotes: String(parsed.orderNotes ?? "") || defaultOrderNotes, supplierOrder: { ...fallbackSupplierOrder, ...parsed.supplierOrder, items: supplierItems } };
+    const packingItems = Array.isArray(parsed.packingList?.items)
+      ? parsed.packingList.items.map((item) => ({
+          description: String(item.description ?? ""),
+          cbm: item.cbm ? String(item.cbm) : "",
+          totalPcs: item.totalPcs ? String(item.totalPcs) : "",
+          piecesPerPackage: item.piecesPerPackage ? String(item.piecesPerPackage) : "",
+          packages: item.packages ? String(item.packages) : "",
+          length: item.length ? String(item.length) : "",
+          width: item.width ? String(item.width) : "",
+          thickness: item.thickness ? String(item.thickness) : "",
+          grossWeight: item.grossWeight ? String(item.grossWeight) : "",
+          netWeight: item.netWeight ? String(item.netWeight) : "",
+        }))
+      : [];
+    return {
+      items,
+      paymentTerms: String(parsed.paymentTerms ?? ""),
+      orderNotes: String(parsed.orderNotes ?? "") || defaultOrderNotes,
+      supplierOrder: { ...fallbackSupplierOrder, ...parsed.supplierOrder, items: supplierItems },
+      packingList: {
+        consigneeName: String(parsed.packingList?.consigneeName ?? operation.euImporter ?? ""),
+        netWeight: parsed.packingList?.netWeight ? String(parsed.packingList.netWeight) : "",
+        grossWeight: parsed.packingList?.grossWeight ? String(parsed.packingList.grossWeight) : "",
+        packages: parsed.packingList?.packages ? String(parsed.packingList.packages) : "",
+        marks: String(parsed.packingList?.marks ?? "MADE IN BRAZIL"),
+        containerReference: String(parsed.packingList?.containerReference ?? operation.containerNumbers ?? ""),
+        items: packingItems,
+      },
+    };
   } catch {
-    return { items: [fallbackItem], paymentTerms: "", orderNotes: operation.supplyChainNotes || defaultOrderNotes, supplierOrder: fallbackSupplierOrder };
+    return {
+      items: [fallbackItem],
+      paymentTerms: "",
+      orderNotes: operation.supplyChainNotes || defaultOrderNotes,
+      supplierOrder: fallbackSupplierOrder,
+      packingList: { consigneeName: operation.euImporter || "", netWeight: "", grossWeight: "", packages: "", marks: "MADE IN BRAZIL", containerReference: operation.containerNumbers || "", items: [] },
+    };
   }
 }
 type PrivateAgentStatus = { api: { active: boolean; mode: string; auth: string; tokenVisible: boolean }; metrics: { eventsProcessed: number; eventsWithError: number; eventsInReview: number; documentsProcessed: number; approvalsPending: number }; lastEvent: { subject?: string; source?: string; matchConfidence?: string; createdAt?: string } | null; endpoints: string[] };
@@ -3109,6 +3145,8 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   const [orderItems, setOrderItems] = useState<OrderItemDraft[]>(initialOrderDetails.items);
   const [supplierOrderDraft, setSupplierOrderDraft] = useState<SupplierOrderDraft>({ tradingName: initialOrderDetails.supplierOrder.tradingName || operation.exporterName, currency: initialOrderDetails.supplierOrder.currency || operation.currency, incoterm: initialOrderDetails.supplierOrder.incoterm || operation.incoterm, paymentTerms: initialOrderDetails.supplierOrder.paymentTerms || "", notes: initialOrderDetails.supplierOrder.notes || "" });
   const [supplierOrderItems, setSupplierOrderItems] = useState<OrderItemDraft[]>(initialOrderDetails.supplierOrder.items);
+  const [packingDraft, setPackingDraft] = useState<PackingListDraft>({ consigneeName: initialOrderDetails.packingList.consigneeName, netWeight: initialOrderDetails.packingList.netWeight, grossWeight: initialOrderDetails.packingList.grossWeight, packages: initialOrderDetails.packingList.packages, marks: initialOrderDetails.packingList.marks, containerReference: initialOrderDetails.packingList.containerReference });
+  const [packingItems, setPackingItems] = useState<PackingItemDraft[]>(initialOrderDetails.packingList.items.length ? initialOrderDetails.packingList.items : [{ description: "", cbm: "", totalPcs: "", piecesPerPackage: "", packages: "", length: "", width: "", thickness: "", grossWeight: "", netWeight: "" }]);
   const [bookingDraft, setBookingDraft] = useState({ carrier: operation.carrier, bookingNumber: operation.bookingNumber, billOfLadingNumber: operation.billOfLadingNumber, containerNumbers: operation.containerNumbers, vesselVoyage: operation.vesselVoyage, portOfLoading: operation.portOfLoading, portOfDischarge: operation.portOfDischarge, shipmentDate: operation.shipmentDate });
 
   useEffect(() => {
@@ -3129,6 +3167,8 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
         setOrderItems(orderDetails.items);
         setSupplierOrderDraft({ tradingName: orderDetails.supplierOrder.tradingName || payload.operation.exporterName, currency: orderDetails.supplierOrder.currency || payload.operation.currency, incoterm: orderDetails.supplierOrder.incoterm || payload.operation.incoterm, paymentTerms: orderDetails.supplierOrder.paymentTerms || "", notes: orderDetails.supplierOrder.notes || "" });
         setSupplierOrderItems(orderDetails.supplierOrder.items);
+        setPackingDraft({ consigneeName: orderDetails.packingList.consigneeName, netWeight: orderDetails.packingList.netWeight, grossWeight: orderDetails.packingList.grossWeight, packages: orderDetails.packingList.packages, marks: orderDetails.packingList.marks, containerReference: orderDetails.packingList.containerReference });
+        setPackingItems(orderDetails.packingList.items.length ? orderDetails.packingList.items : [{ description: "", cbm: "", totalPcs: "", piecesPerPackage: "", packages: "", length: "", width: "", thickness: "", grossWeight: "", netWeight: "" }]);
         setBookingDraft({ carrier: payload.operation.carrier, bookingNumber: payload.operation.bookingNumber, billOfLadingNumber: payload.operation.billOfLadingNumber, containerNumbers: payload.operation.containerNumbers, vesselVoyage: payload.operation.vesselVoyage, portOfLoading: payload.operation.portOfLoading, portOfDischarge: payload.operation.portOfDischarge, shipmentDate: payload.operation.shipmentDate });
         const eudrStage = payload.milestones.find((milestone) => milestone.code === "ORIGIN_COMPLIANCE" && ["Em andamento", "Aguardando aprovação"].includes(milestone.status));
         const initial = eudrStage || payload.milestones.find((milestone) => milestone.status !== "Concluído") || payload.milestones.at(-1);
@@ -3216,11 +3256,24 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   }
 
   async function saveOrderCommercial() {
-    await post({ action: "order-commercial", ...orderDraft, commercialValue: orderItemsTotal, orderItems, supplierOrder: { ...supplierOrderDraft, items: supplierOrderItems }, customerName: settings.customerName, customerEmail: settings.customerEmail }, "Dados comerciais da Etapa 01 atualizados.");
+    await post({ action: "order-commercial", ...orderDraft, commercialValue: orderItemsTotal, orderItems, supplierOrder: { ...supplierOrderDraft, items: supplierOrderItems }, packingList: { ...packingDraft, items: packingItems }, customerName: settings.customerName, customerEmail: settings.customerEmail }, "Dados comerciais da Etapa 01 atualizados.");
   }
 
-  function openOrderDocument(document: "sales-order" | "purchase-invoice" | "supplier-po") {
-    window.open(`/api/export-control?operationId=${operation.id}&document=${document}`, "_blank", "noopener,noreferrer");
+  function openOrderDocument(document: "sales-order" | "purchase-invoice" | "supplier-po" | "packing-list", format: "html" | "docx" = "html") {
+    const suffix = format === "docx" ? "&format=docx" : "";
+    window.open(`/api/export-control?operationId=${operation.id}&document=${document}${suffix}`, "_blank", "noopener,noreferrer");
+  }
+
+  function updatePackingItem(index: number, field: keyof PackingItemDraft, value: string) {
+    setPackingItems((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item));
+  }
+
+  function addPackingItem() {
+    setPackingItems((items) => [...items, { description: "", cbm: "", totalPcs: "", piecesPerPackage: "", packages: "", length: "", width: "", thickness: "", grossWeight: "", netWeight: "" }]);
+  }
+
+  function removePackingItem(index: number) {
+    setPackingItems((items) => items.length > 1 ? items.filter((_, itemIndex) => itemIndex !== index) : items);
   }
 
   function updateOrderItem(index: number, field: keyof OrderItemDraft, value: string) {
