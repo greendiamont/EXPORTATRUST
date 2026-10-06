@@ -248,9 +248,21 @@ test("stage 01 captures order data and emits official commercial documents", asy
   assert.match(client, /\+ adicionar item/);
   assert.match(client, /Payment Terms/);
   assert.match(client, /Notes padrão do pedido/);
-  assert.match(client, /Emitir Sales Order cliente/);
-  assert.match(client, /Emitir Purchase Invoice cliente/);
-  assert.match(client, /Emitir Pedido de Compra fornecedor/);
+  assert.match(client, /Visualizar Sales Order/);
+  assert.match(client, /Sales Order · Word/);
+  assert.match(client, /Visualizar Purchase Invoice/);
+  assert.match(client, /Purchase Invoice · Word/);
+  assert.match(client, /Visualizar Pedido de Compra/);
+  assert.match(client, /Pedido de Compra · Word/);
+  assert.match(client, /PACKING LIST/);
+  assert.match(client, /Formulário de embalagem e volumes da carga/);
+  assert.match(client, /Packing List · Word/);
+  assert.match(client, /packingItems/);
+  assert.match(client, /packingDraft/);
+  assert.match(route, /packing-list/);
+  assert.match(route, /packingListDocx/);
+  assert.match(route, /application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document/);
+  assert.match(css, /packing-list-layer/);
   assert.match(css, /order-stage-fields/);
 });
 
