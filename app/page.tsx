@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
+import Link from "next/link";
 import { ensureBaseTables, getDb } from "../db";
 import { exceptionActions, operationDocuments, operationPartners, operations, ruralProperties, suppliers } from "../db/schema";
 import { getSecurityContext } from "../lib/security";
@@ -16,7 +17,7 @@ export default async function Page() {
   const signedInUser = await getChatGPTUser();
   const security = await getSecurityContext();
   if (!security && signedInUser) return <main className="auth-gate"><section><span className="auth-gate-mark">ET</span><p className="eyebrow">ACESSO CONTROLADO</p><h1>Seu login foi confirmado, mas ainda não há uma empresa liberada.</h1><p>Peça ao administrador da ExportaTrust para cadastrar o e-mail <strong>{signedInUser.email}</strong> e definir seu perfil.</p><a href={chatGPTSignOutPath("/")}>Entrar com outra conta →</a><small>Nenhum processo ou documento foi exposto.</small></section></main>;
-  if (!security) return <main className="auth-gate"><section><span className="auth-gate-mark">ET</span><p className="eyebrow">EXPORTATRUST SECURE ACCESS</p><h1>Entre para acessar o Due Diligence EUDR App</h1><p>Processos, documentos e dossiês são protegidos por identidade e autorização da empresa.</p>{externalHost ? <a href="/">Recarregar acesso seguro →</a> : <a href={chatGPTSignInPath("/")}>Entrar com segurança →</a>}<small>{externalHost ? "A autenticação externa é administrada pelo Cloudflare Access." : "A recuperação de acesso é administrada pelo provedor de identidade."}</small></section></main>;
+  if (!security) return <main className="auth-gate"><section><span className="auth-gate-mark">ET</span><p className="eyebrow">EXPORTATRUST SECURE ACCESS</p><h1>Entre para acessar o Due Diligence EUDR App</h1><p>Processos, documentos e dossiês são protegidos por identidade e autorização da empresa.</p>{externalHost ? <Link href="/">Recarregar acesso seguro →</Link> : <a href={chatGPTSignInPath("/")}>Entrar com segurança →</a>}<small>{externalHost ? "A autenticação externa é administrada pelo Cloudflare Access." : "A recuperação de acesso é administrada pelo provedor de identidade."}</small></section></main>;
   try { await ensureDailyBackup(security); } catch { /* O acesso nunca é bloqueado por indisponibilidade pontual do backup. */ }
   let initialData: InitialAppData = {
     suppliers: [],
