@@ -3537,7 +3537,46 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
             <label className="wide">Payment Terms<textarea value={orderDraft.paymentTerms} onChange={(event) => setOrderDraft({ ...orderDraft, paymentTerms: event.target.value })} placeholder="Ex.: 10% ADVANCED AND 90% TT AGAINST COPY OF DOCS ETA 2 WEEKS" /></label>
             <label className="wide">Notes padrão do pedido<textarea value={orderDraft.orderNotes} onChange={(event) => setOrderDraft({ ...orderDraft, orderNotes: event.target.value })} /></label>
           </div>
-          <footer className="order-stage-actions"><button className="primary" disabled={Boolean(action)} onClick={saveOrderCommercial}>{action === "order-commercial" ? "Salvando pedido…" : "Salvar dados da Etapa 01"}</button><button onClick={() => openOrderDocument("sales-order")}>Emitir Sales Order cliente</button><button onClick={() => openOrderDocument("purchase-invoice")}>Emitir Purchase Invoice cliente</button></footer>
+          <footer className="order-stage-actions">
+            <button className="primary" disabled={Boolean(action)} onClick={saveOrderCommercial}>{action === "order-commercial" ? "Salvando pedido…" : "Salvar dados da Etapa 01"}</button>
+            <button onClick={() => openOrderDocument("sales-order")}>Visualizar Sales Order</button>
+            <button onClick={() => openOrderDocument("sales-order", "docx")}>Sales Order · Word</button>
+            <button onClick={() => openOrderDocument("purchase-invoice")}>Visualizar Purchase Invoice</button>
+            <button onClick={() => openOrderDocument("purchase-invoice", "docx")}>Purchase Invoice · Word</button>
+          </footer>
+          <section className="packing-list-layer wide">
+            <header><div><p className="eyebrow">PACKING LIST</p><h4>Formulário de embalagem e volumes da carga</h4><p>Modelo baseado no Packing List operacional: pesos, CBM, pacotes, dimensões, volumes e referência dos contêineres.</p></div><strong>{packingItems.reduce((sum, item) => sum + Number(item.cbm || 0), 0).toFixed(3)} CBM</strong></header>
+            <div className="order-stage-grid packing-summary-grid">
+              <label>Consignee<input value={packingDraft.consigneeName} onChange={(event) => setPackingDraft({ ...packingDraft, consigneeName: event.target.value })} placeholder={settings.customerName || currentOperation.euImporter} /></label>
+              <label>Peso líquido total (kg)<input type="number" step="0.001" value={packingDraft.netWeight} onChange={(event) => setPackingDraft({ ...packingDraft, netWeight: event.target.value })} /></label>
+              <label>Peso bruto total (kg)<input type="number" step="0.001" value={packingDraft.grossWeight} onChange={(event) => setPackingDraft({ ...packingDraft, grossWeight: event.target.value })} /></label>
+              <label>Total de pacotes<input type="number" step="1" value={packingDraft.packages} onChange={(event) => setPackingDraft({ ...packingDraft, packages: event.target.value })} /></label>
+              <label>Marcação / Marks<input value={packingDraft.marks} onChange={(event) => setPackingDraft({ ...packingDraft, marks: event.target.value })} placeholder="MADE IN BRAZIL" /></label>
+              <label>Ref. Container / Volumes<input value={packingDraft.containerReference} onChange={(event) => setPackingDraft({ ...packingDraft, containerReference: event.target.value })} placeholder={currentOperation.containerNumbers || "Container / volume references"} /></label>
+            </div>
+            <div className="packing-items-editor">
+              <header><b>ITENS DO PACKING LIST</b><button type="button" onClick={addPackingItem}>+ adicionar linha</button></header>
+              <div className="packing-items-head"><span>Descrição</span><span>CBM</span><span>Total pcs</span><span>Pcs/pacote</span><span>Pacotes</span><span>Comp.</span><span>Larg.</span><span>Esp.</span><span>Peso bruto</span><span>Peso líquido</span><span /></div>
+              {packingItems.map((item, index) => <div className="packing-item-row" key={index}>
+                <input value={item.description} onChange={(event) => updatePackingItem(index, "description", event.target.value)} placeholder="PINE WOOD LUMBER B GRADE" />
+                <input type="number" step="0.001" value={item.cbm} onChange={(event) => updatePackingItem(index, "cbm", event.target.value)} />
+                <input type="number" step="1" value={item.totalPcs} onChange={(event) => updatePackingItem(index, "totalPcs", event.target.value)} />
+                <input type="number" step="1" value={item.piecesPerPackage} onChange={(event) => updatePackingItem(index, "piecesPerPackage", event.target.value)} />
+                <input type="number" step="1" value={item.packages} onChange={(event) => updatePackingItem(index, "packages", event.target.value)} />
+                <input type="number" step="1" value={item.length} onChange={(event) => updatePackingItem(index, "length", event.target.value)} placeholder="mm" />
+                <input type="number" step="1" value={item.width} onChange={(event) => updatePackingItem(index, "width", event.target.value)} placeholder="mm" />
+                <input type="number" step="1" value={item.thickness} onChange={(event) => updatePackingItem(index, "thickness", event.target.value)} placeholder="mm" />
+                <input type="number" step="0.001" value={item.grossWeight} onChange={(event) => updatePackingItem(index, "grossWeight", event.target.value)} />
+                <input type="number" step="0.001" value={item.netWeight} onChange={(event) => updatePackingItem(index, "netWeight", event.target.value)} />
+                <button type="button" disabled={packingItems.length === 1} onClick={() => removePackingItem(index)}>×</button>
+              </div>)}
+            </div>
+            <footer className="order-stage-actions">
+              <button className="primary" disabled={Boolean(action)} onClick={saveOrderCommercial}>Salvar Packing List</button>
+              <button onClick={() => openOrderDocument("packing-list")}>Visualizar Packing List</button>
+              <button onClick={() => openOrderDocument("packing-list", "docx")}>Packing List · Word</button>
+            </footer>
+          </section>
           <section className="supplier-purchase-layer wide">
             <header><div><p className="eyebrow">PEDIDO DE COMPRA FORNECEDOR</p><h4>Camada comercial para envio ao fornecedor</h4><p>Use quando o fornecedor tiver preço, trading, incoterm ou pagamento diferente do documento enviado ao cliente.</p></div><strong>{supplierOrderDraft.currency} {supplierOrderItemsTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></header>
             <div className="order-stage-grid">
@@ -3564,7 +3603,7 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
               </div>
               <label className="wide">Observações para o fornecedor<textarea value={supplierOrderDraft.notes} onChange={(event) => setSupplierOrderDraft({ ...supplierOrderDraft, notes: event.target.value })} placeholder="Condições internas, tolerâncias, prazo de produção, instruções de embalagem ou documentos exigidos." /></label>
             </div>
-            <footer className="order-stage-actions"><button className="primary" disabled={Boolean(action)} onClick={saveOrderCommercial}>Salvar pedido fornecedor</button><button onClick={() => openOrderDocument("supplier-po")}>Emitir Pedido de Compra fornecedor</button></footer>
+            <footer className="order-stage-actions"><button className="primary" disabled={Boolean(action)} onClick={saveOrderCommercial}>Salvar pedido fornecedor</button><button onClick={() => openOrderDocument("supplier-po")}>Visualizar Pedido de Compra</button><button onClick={() => openOrderDocument("supplier-po", "docx")}>Pedido de Compra · Word</button></footer>
           </section>
         </section>}
         {selected.code === "BOOKING" && <section className="booking-stage-fields">
