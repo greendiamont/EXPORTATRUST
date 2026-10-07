@@ -5,6 +5,7 @@ import { addDays, canApproveShipment, countryRequirements, EXPORT_ORDER_MILESTON
 import { gmailDeliveryConfiguration, sendGmailEmail } from "../../../lib/gmail-integration";
 import { audit, requireSecurityContext } from "../../../lib/security";
 import { encodeTrackingLocation, freeTrackingGuide, shipsGoConfiguration, trackOceanShipment } from "../../../lib/shipsgo";
+import { buildDocx, docxParagraph, docxTable, docxTwoColumnBlock, safeDocxFileName } from "../../../lib/simple-docx";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Erro inesperado";
@@ -171,26 +172,42 @@ ANY CLAIM NEED TO BE ADVISED WITHIN MAXIMUM 15 DAYS AFTER ARRIVAL AND FULL QUANT
 
 type OrderItem = { species: string; quality: string; size: string; volume: number; unitPrice: number };
 type SupplierOrder = { tradingName?: string; currency?: string; incoterm?: string; paymentTerms?: string; notes?: string; items?: OrderItem[] };
+type PackingItem = { description: string; cbm: number; totalPcs: number; piecesPerPackage: number; packages: number; length: number; width: number; thickness: number; grossWeight: number; netWeight: number };
+type PackingList = { consigneeName?: string; netWeight?: number; grossWeight?: number; packages?: number; marks?: string; containerReference?: string; items?: PackingItem[] };
 
 function parsedOrderDetails(operation: typeof operations.$inferSelect) {
   const fallbackItems = [{ species: operation.species || operation.rawMaterial || "Taeda Pine", quality: operation.product, size: operation.lotCodes || "As per order", volume: operation.volumeM3 || operation.quantity || 0, unitPrice: operation.volumeM3 || operation.quantity ? operation.commercialValue / (operation.volumeM3 || operation.quantity) : 0 }];
   try {
-    const parsed = JSON.parse(operation.supplyChainNotes || "{}") as { orderItems?: OrderItem[]; paymentTerms?: string; orderNotes?: string; supplierOrder?: SupplierOrder };
+    const parsed = JSON.parse(operation.supplyChainNotes || "{}") as { orderItems?: OrderItem[]; paymentTerms?: string; orderNotes?: string; supplierOrder?: SupplierOrder; packingList?: PackingList };
     const supplierItems = Array.isArray(parsed.supplierOrder?.items) && parsed.supplierOrder.items.length ? parsed.supplierOrder.items : fallbackItems;
+    const packingItems = Array.isArray(parsed.packingList?.items) ? parsed.packingList!.items!.map((item) => ({
+      description: String(item.description ?? ""),
+      cbm: safeNumber(item.cbm),
+      totalPcs: safeNumber(item.totalPcs),
+      piecesPerPackage: safeNumber(item.piecesPerPackage),
+      packages: safeNumber(item.packages),
+      length: safeNumber(item.length),
+      width: safeNumber(item.width),
+      thickness: safeNumber(item.thickness),
+      grossWeight: safeNumber(item.grossWeight),
+      netWeight: safeNumber(item.netWeight),
+    })) : [];
     return {
       items: Array.isArray(parsed.orderItems) && parsed.orderItems.length ? parsed.orderItems : fallbackItems,
       paymentTerms: String(parsed.paymentTerms ?? "").trim(),
       notes: String(parsed.orderNotes ?? "").trim() || DEFAULT_ORDER_NOTES,
       supplierOrder: { ...parsed.supplierOrder, items: supplierItems },
+      packingList: { ...parsed.packingList, items: packingItems },
     };
   } catch {
-    return { items: fallbackItems, paymentTerms: "", notes: operation.supplyChainNotes || DEFAULT_ORDER_NOTES, supplierOrder: { items: fallbackItems } };
+    return { items: fallbackItems, paymentTerms: "", notes: operation.supplyChainNotes || DEFAULT_ORDER_NOTES, supplierOrder: { items: fallbackItems }, packingList: { items: [] } };
   }
 }
 
 function documentTitle(type: string) {
   if (type === "purchase-invoice") return "PURCHASE INVOICE";
   if (type === "supplier-po") return "PEDIDO DE COMPRA";
+  if (type === "packing-list") return "PACKING LIST";
   return "SALES ORDER";
 }
 
@@ -370,6 +387,151 @@ async function snapshot(context: Awaited<ReturnType<typeof requireSecurityContex
   };
 }
 
+async function orderDocumentDocx(db: Awaited<ReturnType<typeof getDb>>, operation: typeof operations.$inferSelect, organizationId: number, type: string) {
+  const [supplier] = operation.supplierId ? await db.select().from(suppliers).where(and(eq(suppliers.id, operation.supplierId), eq(suppliers.organizationId, organizationId))).limit(1) : [];
+  const [client] = operation.importerClientId ? await db.select().from(importerClients).where(and(eq(importerClients.id, operation.importerClientId), eq(importerClients.organizationId, organizationId))).limit(1) : [];
+  const details = parsedOrderDetails(operation);
+  const supplierOrder = details.supplierOrder;
+  const isSupplierDocument = type === "supplier-po";
+  const title = documentTitle(type);
+  const sellerName = isSupplierDocument ? (supplierOrder.tradingName || operation.exporterName || "HUB DAS AMERICAS / EXPORTATRUST") : (operation.exporterName || supplier?.legalName || operation.supplierName);
+  const buyerName = isSupplierDocument ? (supplier?.legalName || operation.supplierName) : (client?.legalName || operation.euImporter);
+  const sellerLines = isSupplierDocument
+    ? ["Comprador / trading", "Operação de exportação Brasil"]
+    : [
+      supplier?.legalName || operation.exporterName || operation.supplierName,
+      supplier?.taxId ? `CNPJ/Tax ID: ${supplier.taxId}` : operation.exporterTaxId ? `Tax ID: ${operation.exporterTaxId}` : "",
+      supplier ? [supplier.address, supplier.city, supplier.state, supplier.country].filter(Boolean).join(" - ") : "",
+      supplier?.email ? `Email: ${supplier.email}` : "",
+    ].filter(Boolean);
+  const buyerLines = isSupplierDocument
+    ? [
+      supplier?.taxId ? `CNPJ/Tax ID: ${supplier.taxId}` : "",
+      supplier ? [supplier.address, supplier.city, supplier.state, supplier.country].filter(Boolean).join(" - ") : "",
+      supplier?.email ? `Email: ${supplier.email}` : "",
+    ].filter(Boolean)
+    : [
+      client?.taxId ? `${client.taxIdType || "Tax ID"}: ${client.taxId}` : "",
+      client?.address || "",
+      [client?.city, client?.state, client?.country || operation.destinationCountry].filter(Boolean).join(" - "),
+      client?.email ? `Email: ${client.email}` : "",
+    ].filter(Boolean);
+  const docCurrency = isSupplierDocument ? (supplierOrder.currency || operation.currency) : operation.currency;
+  const docItems = isSupplierDocument ? supplierOrder.items || details.items : details.items;
+  const total = docItems.reduce((sum, item) => sum + safeNumber(item.volume) * safeNumber(item.unitPrice), 0);
+
+  const metaRows = [
+    [isSupplierDocument ? "DATA" : "DATE", new Date().toLocaleDateString(isSupplierDocument ? "pt-BR" : "en-GB"), isSupplierDocument ? "PROCESSO" : "REFERENCE", operation.reference],
+    [isSupplierDocument ? "REFERÊNCIA CLIENTE" : "CUSTOMER REFERENCE", operation.contractNumber || "", "POD", operation.portOfDischarge || ""],
+    [isSupplierDocument ? "INCOTERM COMPRA" : "INCOTERM", isSupplierDocument ? (supplierOrder.incoterm || operation.incoterm) : operation.incoterm, isSupplierDocument ? "PREVISÃO EMBARQUE" : "ESTIMATED DELIVERY", operation.shipmentDate || ""],
+    [isSupplierDocument ? "PAGAMENTO" : "PAYMENT TERMS", isSupplierDocument ? (supplierOrder.paymentTerms || "") : details.paymentTerms, "NCM / HS CODE", operation.hsCode || ""],
+  ];
+
+  const itemRows = [
+    [isSupplierDocument ? "PRODUTO" : "SPECIES", isSupplierDocument ? "QUALIDADE" : "QUALITY", isSupplierDocument ? "MEDIDA" : "SIZE", "VOLUME", isSupplierDocument ? "PREÇO / CBM" : "PRICE / CBM", "TOTAL"],
+    ...docItems.map((item) => [
+      item.species || "",
+      item.quality || "",
+      item.size || "",
+      `${safeNumber(item.volume).toLocaleString("en-US", { maximumFractionDigits: 3 })} CBM`,
+      money(safeNumber(item.unitPrice), docCurrency),
+      money(safeNumber(item.volume) * safeNumber(item.unitPrice), docCurrency),
+    ]),
+    ["TOTAL", "", "", `${docItems.reduce((sum, item) => sum + safeNumber(item.volume), 0).toLocaleString("en-US", { maximumFractionDigits: 3 })} CBM`, "", money(total, docCurrency)],
+  ];
+
+  let body = "";
+  body += docxParagraph("EXPORTATRUST", { bold: true, size: 18, color: "176C50", spacingAfter: 20 });
+  body += docxParagraph(`${title} — ${operation.reference}`, { bold: true, size: 28, align: "center", spacingAfter: 100 });
+  body += docxTwoColumnBlock(
+    isSupplierDocument ? "COMPRADOR / EMISSOR" : "SELLER / EXPORTER",
+    [sellerName, ...sellerLines.filter((line) => line !== sellerName)],
+    isSupplierDocument ? "FORNECEDOR BRASIL" : "BUYER / CONSIGNEE",
+    [buyerName, ...buyerLines.filter((line) => line !== buyerName)],
+  );
+  body += docxParagraph("", { spacingAfter: 40 });
+  body += docxTable(metaRows, [1600, 3150, 1600, 3150], { fontSize: 15 });
+  body += docxParagraph(isSupplierDocument ? "ITENS DO PEDIDO" : "ORDER DETAILS", { bold: true, size: 18, spacingAfter: 40 });
+  body += docxTable(itemRows, [1650, 1450, 1600, 1300, 1650, 1850], { headerRows: 1, fontSize: 14 });
+  body += docxParagraph("", { spacingAfter: 35 });
+  if (type === "purchase-invoice") {
+    body += docxParagraph("BANK DETAILS", { bold: true, size: 17, spacingAfter: 20 });
+    const bankLines = String(supplier?.bankDetails || "").split(/\r?\n/).filter(Boolean);
+    for (const line of bankLines) body += docxParagraph(line, { size: 14, spacingAfter: 6 });
+  } else {
+    const notes = isSupplierDocument ? supplierOrder.notes || "" : details.notes;
+    body += docxParagraph(isSupplierDocument ? "OBSERVAÇÕES" : "NOTES", { bold: true, size: 17, spacingAfter: 20 });
+    for (const line of String(notes || "").split(/\r?\n/).filter(Boolean)) body += docxParagraph(line, { size: 14, spacingAfter: 6 });
+  }
+  body += docxParagraph("", { spacingAfter: 160 });
+  body += docxTwoColumnBlock(
+    isSupplierDocument ? "Assinatura do comprador / trading" : "Exporter / Seller Signature",
+    [sellerName],
+    isSupplierDocument ? "Assinatura do fornecedor" : "Importer / Buyer Signature",
+    [buyerName],
+  );
+  return buildDocx(body, { title: `${title} ${operation.reference}` });
+}
+
+async function packingListHtml(db: Awaited<ReturnType<typeof getDb>>, operation: typeof operations.$inferSelect, organizationId: number) {
+  const [supplier] = operation.supplierId ? await db.select().from(suppliers).where(and(eq(suppliers.id, operation.supplierId), eq(suppliers.organizationId, organizationId))).limit(1) : [];
+  const [client] = operation.importerClientId ? await db.select().from(importerClients).where(and(eq(importerClients.id, operation.importerClientId), eq(importerClients.organizationId, organizationId))).limit(1) : [];
+  const packing = parsedOrderDetails(operation).packingList;
+  const rows = packing.items || [];
+  const consignee = packing.consigneeName || client?.legalName || operation.euImporter;
+  const exporter = operation.exporterName || supplier?.legalName || operation.supplierName;
+  const sum = (field: keyof PackingItem) => rows.reduce((total, item) => total + safeNumber(item[field]), 0);
+  const totalCbm = sum("cbm");
+  const totalPcs = sum("totalPcs");
+  const totalPackages = packing.packages || sum("packages");
+  const totalGross = packing.grossWeight || sum("grossWeight");
+  const totalNet = packing.netWeight || sum("netWeight");
+  const detail = (company: typeof supplier | typeof client | undefined) => company ? [company.address, [company.city, company.state, company.country].filter(Boolean).join(", "), company.taxId ? `${"taxIdType" in company ? company.taxIdType || "Tax ID" : "CNPJ"}: ${company.taxId}` : "", company.email ? `Email: ${company.email}` : ""].filter(Boolean).join("<br>") : "";
+  const bodyRows = rows.map((item, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(item.description)}</td><td>${safeNumber(item.cbm).toFixed(3)}</td><td>${safeNumber(item.totalPcs)}</td><td>${safeNumber(item.piecesPerPackage)}</td><td>${safeNumber(item.packages)}</td><td>${safeNumber(item.length)}</td><td>${safeNumber(item.width)}</td><td>${safeNumber(item.thickness)}</td><td>${safeNumber(item.grossWeight).toLocaleString("en-US")}</td><td>${safeNumber(item.netWeight).toLocaleString("en-US")}</td></tr>`).join("");
+  return `<!doctype html><html><head><meta charset="utf-8"><title>PACKING LIST ${escapeHtml(operation.reference)}</title><style>@page{size:A4 landscape;margin:8mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;background:#eee;color:#111}.page{width:277mm;min-height:190mm;margin:auto;background:#fff;padding:8mm}h1{text-align:center;font-size:20px;margin:5px 0 14px}.top{display:grid;grid-template-columns:1fr 1fr;gap:18px}.company{font-size:10px;line-height:1.35}.company b{font-size:11px}.summary{margin:16px 0 10px;display:grid;grid-template-columns:repeat(2,1fr);gap:3px 30px;font-size:10px}.summary div{display:flex;gap:8px}.summary strong{min-width:130px;text-align:right}.ref{margin:8px 0;font-size:10px}.ref strong{display:inline-block;min-width:150px;text-align:right;margin-right:10px}table{width:100%;border-collapse:collapse;font-size:8px;table-layout:fixed}th,td{border:1px solid #888;padding:4px;text-align:center;vertical-align:middle}th{background:#ddd;font-size:7px}.desc{text-align:left}tfoot td{font-weight:bold;background:#eee}@media print{body{background:#fff}.page{width:auto;min-height:auto;padding:0}}</style></head><body><main class="page"><h1>PACKING LIST ${escapeHtml(operation.reference.replace("/", "-"))}</h1><section class="top"><div class="company"><b>${escapeHtml(exporter)}</b><br>${detail(supplier)}</div><div class="company"><b>IMPORTADOR / IMPORTADOR / IMPORTER:</b><br><strong>${escapeHtml(consignee)}</strong><br>${detail(client)}<br><br><b>CONSIGNEE:</b><br><strong>${escapeHtml(consignee)}</strong></div></section><section class="summary"><div><strong>Peso Líquido / Net Weight:</strong><span>${safeNumber(totalNet).toLocaleString("en-US")} kgs</span></div><div><strong>Peso Bruto / Gross Weight:</strong><span>${safeNumber(totalGross).toLocaleString("en-US")} kgs</span></div><div><strong>M. cúbica / Cubic M.:</strong><span>${totalCbm.toFixed(3)} Cbm</span></div><div><strong>Pacotes / Packages:</strong><span>${safeNumber(totalPackages)}</span></div><div><strong>Marcação / Marks:</strong><span>${escapeHtml(packing.marks || "MADE IN BRAZIL")}</span></div></section><div class="ref"><strong>Ref. Container / Volumes:</strong>${escapeHtml(packing.containerReference || operation.containerNumbers || "")}</div><table><thead><tr><th>ITEM</th><th>DESCRIPTION OF GOODS</th><th>CBM</th><th>TOTAL PCS</th><th>PIECES PER PACKAGE</th><th>PACKAGES</th><th>LENGTH</th><th>WIDTH</th><th>THICKNESS</th><th>GROSS WEIGHT</th><th>NET WEIGHT</th></tr></thead><tbody>${bodyRows}</tbody><tfoot><tr><td colspan="2">TOTAL</td><td>${totalCbm.toFixed(3)}</td><td>${totalPcs}</td><td></td><td>${totalPackages}</td><td>-</td><td>-</td><td>-</td><td>${totalGross.toLocaleString("en-US")}</td><td>${totalNet.toLocaleString("en-US")}</td></tr></tfoot></table></main><script>window.print()</script></body></html>`;
+}
+
+async function packingListDocx(db: Awaited<ReturnType<typeof getDb>>, operation: typeof operations.$inferSelect, organizationId: number) {
+  const [supplier] = operation.supplierId ? await db.select().from(suppliers).where(and(eq(suppliers.id, operation.supplierId), eq(suppliers.organizationId, organizationId))).limit(1) : [];
+  const [client] = operation.importerClientId ? await db.select().from(importerClients).where(and(eq(importerClients.id, operation.importerClientId), eq(importerClients.organizationId, organizationId))).limit(1) : [];
+  const packing = parsedOrderDetails(operation).packingList;
+  const rows = packing.items || [];
+  const consignee = packing.consigneeName || client?.legalName || operation.euImporter;
+  const exporter = operation.exporterName || supplier?.legalName || operation.supplierName;
+  const sum = (field: keyof PackingItem) => rows.reduce((total, item) => total + safeNumber(item[field]), 0);
+  const totalCbm = sum("cbm");
+  const totalPcs = sum("totalPcs");
+  const totalPackages = packing.packages || sum("packages");
+  const totalGross = packing.grossWeight || sum("grossWeight");
+  const totalNet = packing.netWeight || sum("netWeight");
+  const companyLines = (company: typeof supplier | typeof client | undefined) => company ? [
+    company.address || "",
+    [company.city, company.state, company.country].filter(Boolean).join(", "),
+    company.taxId ? `Tax ID: ${company.taxId}` : "",
+    company.email ? `Email: ${company.email}` : "",
+  ].filter(Boolean) : [];
+
+  let body = "";
+  body += docxParagraph(`PACKING LIST ${operation.reference.replace("/", "-")}`, { bold: true, size: 28, align: "center", spacingAfter: 100 });
+  body += docxTwoColumnBlock(exporter, companyLines(supplier), "IMPORTER / CONSIGNEE", [consignee, ...companyLines(client)]);
+  body += docxParagraph("", { spacingAfter: 30 });
+  body += docxTable([
+    ["NET WEIGHT", `${totalNet.toLocaleString("en-US")} kgs`, "GROSS WEIGHT", `${totalGross.toLocaleString("en-US")} kgs`],
+    ["CUBIC M.", `${totalCbm.toFixed(3)} CBM`, "PACKAGES", String(totalPackages)],
+    ["MARKS", packing.marks || "MADE IN BRAZIL", "CONTAINER / VOLUMES", packing.containerReference || operation.containerNumbers || ""],
+  ], [1300, 3000, 1500, 3700], { fontSize: 14 });
+  body += docxParagraph("", { spacingAfter: 30 });
+  const tableRows = [
+    ["ITEM", "DESCRIPTION OF GOODS", "CBM", "TOTAL PCS", "PCS/PACK", "PACKAGES", "LENGTH", "WIDTH", "THICK.", "GROSS", "NET"],
+    ...rows.map((item, index) => [
+      String(index + 1), item.description || "", safeNumber(item.cbm).toFixed(3), String(safeNumber(item.totalPcs)), String(safeNumber(item.piecesPerPackage)), String(safeNumber(item.packages)), String(safeNumber(item.length)), String(safeNumber(item.width)), String(safeNumber(item.thickness)), String(safeNumber(item.grossWeight)), String(safeNumber(item.netWeight)),
+    ]),
+    ["TOTAL", "", totalCbm.toFixed(3), String(totalPcs), "", String(totalPackages), "-", "-", "-", String(totalGross), String(totalNet)],
+  ];
+  body += docxTable(tableRows, [550, 2100, 850, 800, 850, 850, 800, 800, 800, 900, 900], { headerRows: 1, fontSize: 12 });
+  return buildDocx(body, { landscape: true, title: `PACKING LIST ${operation.reference}` });
+}
+
 export async function GET(request: Request) {
   try {
     const context = await requireSecurityContext("read");
@@ -378,12 +540,28 @@ export async function GET(request: Request) {
     if (!operationId) return Response.json({ error: "Processo inválido." }, { status: 400 });
     const document = String(url.searchParams.get("document") ?? "");
     if (document) {
-      if (!["sales-order", "purchase-invoice", "supplier-po"].includes(document)) return Response.json({ error: "Documento inválido." }, { status: 400 });
+      if (!["sales-order", "purchase-invoice", "supplier-po", "packing-list"].includes(document)) return Response.json({ error: "Documento inválido." }, { status: 400 });
       const db = await getDb();
       const operation = await ownedOperation(db, operationId, context.organizationId);
       if (!operation) return Response.json({ error: "Processo não encontrado." }, { status: 404 });
-      return new Response(await orderDocumentHtml(db, operation, context.organizationId, document), {
-        headers: { "content-type": "text/html; charset=utf-8" },
+      const format = String(url.searchParams.get("format") ?? "html").toLowerCase();
+      if (format === "docx") {
+        const bytes = document === "packing-list"
+          ? await packingListDocx(db, operation, context.organizationId)
+          : await orderDocumentDocx(db, operation, context.organizationId, document);
+        const fileName = safeDocxFileName(`${documentTitle(document)}_${operation.reference}.docx`);
+        return new Response(bytes as BodyInit, {
+          headers: {
+            "content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "content-disposition": `attachment; filename="${fileName}"`,
+            "cache-control": "no-store",
+          },
+        });
+      }
+      return new Response(document === "packing-list"
+        ? await packingListHtml(db, operation, context.organizationId)
+        : await orderDocumentHtml(db, operation, context.organizationId, document), {
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
       });
     }
     return Response.json(await snapshot(context, operationId, context.organizationId));
@@ -425,6 +603,31 @@ export async function POST(request: Request) {
         notes: String(supplierBody?.notes ?? "").trim(),
         items: supplierItems,
       };
+      const packingBody = body.packingList as Record<string, unknown> | undefined;
+      const packingItems = Array.isArray(packingBody?.items) ? packingBody.items.map((item) => {
+        const row = item as Record<string, unknown>;
+        return {
+          description: String(row.description ?? "").trim(),
+          cbm: safeNumber(row.cbm),
+          totalPcs: safeNumber(row.totalPcs),
+          piecesPerPackage: safeNumber(row.piecesPerPackage),
+          packages: safeNumber(row.packages),
+          length: safeNumber(row.length),
+          width: safeNumber(row.width),
+          thickness: safeNumber(row.thickness),
+          grossWeight: safeNumber(row.grossWeight),
+          netWeight: safeNumber(row.netWeight),
+        };
+      }).filter((item) => item.description || item.cbm || item.totalPcs || item.packages) : [];
+      const packingList = {
+        consigneeName: String(packingBody?.consigneeName ?? "").trim(),
+        netWeight: safeNumber(packingBody?.netWeight),
+        grossWeight: safeNumber(packingBody?.grossWeight),
+        packages: safeNumber(packingBody?.packages),
+        marks: String(packingBody?.marks ?? "MADE IN BRAZIL").trim(),
+        containerReference: String(packingBody?.containerReference ?? "").trim(),
+        items: packingItems,
+      };
       const totalVolume = orderItems.reduce((sum, item) => sum + item.volume, 0);
       const totalValue = orderItems.reduce((sum, item) => sum + item.volume * item.unitPrice, 0);
       const orderNotes = String(body.orderNotes ?? DEFAULT_ORDER_NOTES).trim() || DEFAULT_ORDER_NOTES;
@@ -447,7 +650,7 @@ export async function POST(request: Request) {
         portOfDischarge: String(body.portOfDischarge ?? "").trim(),
         exporterName: String(body.exporterName ?? "").trim(),
         exporterTaxId: String(body.exporterTaxId ?? "").trim(),
-        supplyChainNotes: JSON.stringify({ orderItems, paymentTerms, orderNotes, supplierOrder }),
+        supplyChainNotes: JSON.stringify({ orderItems, paymentTerms, orderNotes, supplierOrder, packingList }),
       };
       await db.update(operations).set(values).where(and(eq(operations.id, operationId), eq(operations.organizationId, context.organizationId)));
       const customerEmail = String(body.customerEmail ?? settings.customerEmail ?? "").trim().toLowerCase();

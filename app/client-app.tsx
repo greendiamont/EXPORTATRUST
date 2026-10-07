@@ -451,6 +451,8 @@ type ClientNotificationRecord = { id: number; milestoneCode: string; recipient: 
 type TrackingEventRecord = { id: number; source: string; status: string; location: string; eta: string; details: string; checkedAt: string; nextCheckAt: string };
 type OrderItemDraft = { species: string; quality: string; size: string; volume: string; unitPrice: string };
 type SupplierOrderDraft = { tradingName: string; currency: string; incoterm: string; paymentTerms: string; notes: string };
+type PackingItemDraft = { description: string; cbm: string; totalPcs: string; piecesPerPackage: string; packages: string; length: string; width: string; thickness: string; grossWeight: string; netWeight: string };
+type PackingListDraft = { consigneeName: string; netWeight: string; grossWeight: string; packages: string; marks: string; containerReference: string };
 type ExportControlData = {
   operation: OperationRecord;
   settings: { customerName: string; customerEmail: string; customerReference: string; notificationsEnabled: boolean; trackingIntervalDays: number; nextTrackingAt: string | null; emailProviderStatus: string };
@@ -508,16 +510,50 @@ function parseOrderDetails(operation: OperationRecord) {
   const fallbackItem = { species: operation.species || "", quality: operation.product || "", size: operation.lotCodes || "", volume: String(operation.volumeM3 || operation.quantity || ""), unitPrice: operation.volumeM3 || operation.quantity ? String(Number(operation.commercialValue || 0) / Number(operation.volumeM3 || operation.quantity)) : "" };
   const fallbackSupplierOrder = { tradingName: operation.exporterName || "", currency: operation.currency || "USD", incoterm: operation.incoterm || "FOB", paymentTerms: "", notes: "", items: [fallbackItem] };
   try {
-    const parsed = JSON.parse(operation.supplyChainNotes || "{}") as { orderItems?: Array<{ species?: string; quality?: string; size?: string; volume?: number; unitPrice?: number }>; paymentTerms?: string; orderNotes?: string; supplierOrder?: SupplierOrderDraft & { items?: Array<{ species?: string; quality?: string; size?: string; volume?: number; unitPrice?: number }> } };
+    const parsed = JSON.parse(operation.supplyChainNotes || "{}") as { orderItems?: Array<{ species?: string; quality?: string; size?: string; volume?: number; unitPrice?: number }>; paymentTerms?: string; orderNotes?: string; supplierOrder?: SupplierOrderDraft & { items?: Array<{ species?: string; quality?: string; size?: string; volume?: number; unitPrice?: number }> }; packingList?: PackingListDraft & { items?: Array<{ description?: string; cbm?: number; totalPcs?: number; piecesPerPackage?: number; packages?: number; length?: number; width?: number; thickness?: number; grossWeight?: number; netWeight?: number }> } };
     const items = Array.isArray(parsed.orderItems) && parsed.orderItems.length
       ? parsed.orderItems.map((item) => ({ species: String(item.species ?? ""), quality: String(item.quality ?? ""), size: String(item.size ?? ""), volume: item.volume ? String(item.volume) : "", unitPrice: item.unitPrice ? String(item.unitPrice) : "" }))
       : [fallbackItem];
     const supplierItems = Array.isArray(parsed.supplierOrder?.items) && parsed.supplierOrder.items.length
       ? parsed.supplierOrder.items.map((item) => ({ species: String(item.species ?? ""), quality: String(item.quality ?? ""), size: String(item.size ?? ""), volume: item.volume ? String(item.volume) : "", unitPrice: item.unitPrice ? String(item.unitPrice) : "" }))
       : items;
-    return { items, paymentTerms: String(parsed.paymentTerms ?? ""), orderNotes: String(parsed.orderNotes ?? "") || defaultOrderNotes, supplierOrder: { ...fallbackSupplierOrder, ...parsed.supplierOrder, items: supplierItems } };
+    const packingItems = Array.isArray(parsed.packingList?.items)
+      ? parsed.packingList.items.map((item) => ({
+          description: String(item.description ?? ""),
+          cbm: item.cbm ? String(item.cbm) : "",
+          totalPcs: item.totalPcs ? String(item.totalPcs) : "",
+          piecesPerPackage: item.piecesPerPackage ? String(item.piecesPerPackage) : "",
+          packages: item.packages ? String(item.packages) : "",
+          length: item.length ? String(item.length) : "",
+          width: item.width ? String(item.width) : "",
+          thickness: item.thickness ? String(item.thickness) : "",
+          grossWeight: item.grossWeight ? String(item.grossWeight) : "",
+          netWeight: item.netWeight ? String(item.netWeight) : "",
+        }))
+      : [];
+    return {
+      items,
+      paymentTerms: String(parsed.paymentTerms ?? ""),
+      orderNotes: String(parsed.orderNotes ?? "") || defaultOrderNotes,
+      supplierOrder: { ...fallbackSupplierOrder, ...parsed.supplierOrder, items: supplierItems },
+      packingList: {
+        consigneeName: String(parsed.packingList?.consigneeName ?? operation.euImporter ?? ""),
+        netWeight: parsed.packingList?.netWeight ? String(parsed.packingList.netWeight) : "",
+        grossWeight: parsed.packingList?.grossWeight ? String(parsed.packingList.grossWeight) : "",
+        packages: parsed.packingList?.packages ? String(parsed.packingList.packages) : "",
+        marks: String(parsed.packingList?.marks ?? "MADE IN BRAZIL"),
+        containerReference: String(parsed.packingList?.containerReference ?? operation.containerNumbers ?? ""),
+        items: packingItems,
+      },
+    };
   } catch {
-    return { items: [fallbackItem], paymentTerms: "", orderNotes: operation.supplyChainNotes || defaultOrderNotes, supplierOrder: fallbackSupplierOrder };
+    return {
+      items: [fallbackItem],
+      paymentTerms: "",
+      orderNotes: operation.supplyChainNotes || defaultOrderNotes,
+      supplierOrder: fallbackSupplierOrder,
+      packingList: { consigneeName: operation.euImporter || "", netWeight: "", grossWeight: "", packages: "", marks: "MADE IN BRAZIL", containerReference: operation.containerNumbers || "", items: [] },
+    };
   }
 }
 type PrivateAgentStatus = { api: { active: boolean; mode: string; auth: string; tokenVisible: boolean }; metrics: { eventsProcessed: number; eventsWithError: number; eventsInReview: number; documentsProcessed: number; approvalsPending: number }; lastEvent: { subject?: string; source?: string; matchConfidence?: string; createdAt?: string } | null; endpoints: string[] };
@@ -3109,6 +3145,8 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   const [orderItems, setOrderItems] = useState<OrderItemDraft[]>(initialOrderDetails.items);
   const [supplierOrderDraft, setSupplierOrderDraft] = useState<SupplierOrderDraft>({ tradingName: initialOrderDetails.supplierOrder.tradingName || operation.exporterName, currency: initialOrderDetails.supplierOrder.currency || operation.currency, incoterm: initialOrderDetails.supplierOrder.incoterm || operation.incoterm, paymentTerms: initialOrderDetails.supplierOrder.paymentTerms || "", notes: initialOrderDetails.supplierOrder.notes || "" });
   const [supplierOrderItems, setSupplierOrderItems] = useState<OrderItemDraft[]>(initialOrderDetails.supplierOrder.items);
+  const [packingDraft, setPackingDraft] = useState<PackingListDraft>({ consigneeName: initialOrderDetails.packingList.consigneeName, netWeight: initialOrderDetails.packingList.netWeight, grossWeight: initialOrderDetails.packingList.grossWeight, packages: initialOrderDetails.packingList.packages, marks: initialOrderDetails.packingList.marks, containerReference: initialOrderDetails.packingList.containerReference });
+  const [packingItems, setPackingItems] = useState<PackingItemDraft[]>(initialOrderDetails.packingList.items.length ? initialOrderDetails.packingList.items : [{ description: "", cbm: "", totalPcs: "", piecesPerPackage: "", packages: "", length: "", width: "", thickness: "", grossWeight: "", netWeight: "" }]);
   const [bookingDraft, setBookingDraft] = useState({ carrier: operation.carrier, bookingNumber: operation.bookingNumber, billOfLadingNumber: operation.billOfLadingNumber, containerNumbers: operation.containerNumbers, vesselVoyage: operation.vesselVoyage, portOfLoading: operation.portOfLoading, portOfDischarge: operation.portOfDischarge, shipmentDate: operation.shipmentDate });
 
   useEffect(() => {
@@ -3129,6 +3167,8 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
         setOrderItems(orderDetails.items);
         setSupplierOrderDraft({ tradingName: orderDetails.supplierOrder.tradingName || payload.operation.exporterName, currency: orderDetails.supplierOrder.currency || payload.operation.currency, incoterm: orderDetails.supplierOrder.incoterm || payload.operation.incoterm, paymentTerms: orderDetails.supplierOrder.paymentTerms || "", notes: orderDetails.supplierOrder.notes || "" });
         setSupplierOrderItems(orderDetails.supplierOrder.items);
+        setPackingDraft({ consigneeName: orderDetails.packingList.consigneeName, netWeight: orderDetails.packingList.netWeight, grossWeight: orderDetails.packingList.grossWeight, packages: orderDetails.packingList.packages, marks: orderDetails.packingList.marks, containerReference: orderDetails.packingList.containerReference });
+        setPackingItems(orderDetails.packingList.items.length ? orderDetails.packingList.items : [{ description: "", cbm: "", totalPcs: "", piecesPerPackage: "", packages: "", length: "", width: "", thickness: "", grossWeight: "", netWeight: "" }]);
         setBookingDraft({ carrier: payload.operation.carrier, bookingNumber: payload.operation.bookingNumber, billOfLadingNumber: payload.operation.billOfLadingNumber, containerNumbers: payload.operation.containerNumbers, vesselVoyage: payload.operation.vesselVoyage, portOfLoading: payload.operation.portOfLoading, portOfDischarge: payload.operation.portOfDischarge, shipmentDate: payload.operation.shipmentDate });
         const eudrStage = payload.milestones.find((milestone) => milestone.code === "ORIGIN_COMPLIANCE" && ["Em andamento", "Aguardando aprovação"].includes(milestone.status));
         const initial = eudrStage || payload.milestones.find((milestone) => milestone.status !== "Concluído") || payload.milestones.at(-1);
@@ -3216,11 +3256,24 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
   }
 
   async function saveOrderCommercial() {
-    await post({ action: "order-commercial", ...orderDraft, commercialValue: orderItemsTotal, orderItems, supplierOrder: { ...supplierOrderDraft, items: supplierOrderItems }, customerName: settings.customerName, customerEmail: settings.customerEmail }, "Dados comerciais da Etapa 01 atualizados.");
+    await post({ action: "order-commercial", ...orderDraft, commercialValue: orderItemsTotal, orderItems, supplierOrder: { ...supplierOrderDraft, items: supplierOrderItems }, packingList: { ...packingDraft, items: packingItems }, customerName: settings.customerName, customerEmail: settings.customerEmail }, "Dados comerciais da Etapa 01 atualizados.");
   }
 
-  function openOrderDocument(document: "sales-order" | "purchase-invoice" | "supplier-po") {
-    window.open(`/api/export-control?operationId=${operation.id}&document=${document}`, "_blank", "noopener,noreferrer");
+  function openOrderDocument(document: "sales-order" | "purchase-invoice" | "supplier-po" | "packing-list", format: "html" | "docx" = "html") {
+    const suffix = format === "docx" ? "&format=docx" : "";
+    window.open(`/api/export-control?operationId=${operation.id}&document=${document}${suffix}`, "_blank", "noopener,noreferrer");
+  }
+
+  function updatePackingItem(index: number, field: keyof PackingItemDraft, value: string) {
+    setPackingItems((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item));
+  }
+
+  function addPackingItem() {
+    setPackingItems((items) => [...items, { description: "", cbm: "", totalPcs: "", piecesPerPackage: "", packages: "", length: "", width: "", thickness: "", grossWeight: "", netWeight: "" }]);
+  }
+
+  function removePackingItem(index: number) {
+    setPackingItems((items) => items.length > 1 ? items.filter((_, itemIndex) => itemIndex !== index) : items);
   }
 
   function updateOrderItem(index: number, field: keyof OrderItemDraft, value: string) {
@@ -3484,7 +3537,46 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
             <label className="wide">Payment Terms<textarea value={orderDraft.paymentTerms} onChange={(event) => setOrderDraft({ ...orderDraft, paymentTerms: event.target.value })} placeholder="Ex.: 10% ADVANCED AND 90% TT AGAINST COPY OF DOCS ETA 2 WEEKS" /></label>
             <label className="wide">Notes padrão do pedido<textarea value={orderDraft.orderNotes} onChange={(event) => setOrderDraft({ ...orderDraft, orderNotes: event.target.value })} /></label>
           </div>
-          <footer className="order-stage-actions"><button className="primary" disabled={Boolean(action)} onClick={saveOrderCommercial}>{action === "order-commercial" ? "Salvando pedido…" : "Salvar dados da Etapa 01"}</button><button onClick={() => openOrderDocument("sales-order")}>Emitir Sales Order cliente</button><button onClick={() => openOrderDocument("purchase-invoice")}>Emitir Purchase Invoice cliente</button></footer>
+          <footer className="order-stage-actions">
+            <button className="primary" disabled={Boolean(action)} onClick={saveOrderCommercial}>{action === "order-commercial" ? "Salvando pedido…" : "Salvar dados da Etapa 01"}</button>
+            <button onClick={() => openOrderDocument("sales-order")}>Visualizar Sales Order</button>
+            <button onClick={() => openOrderDocument("sales-order", "docx")}>Sales Order · Word</button>
+            <button onClick={() => openOrderDocument("purchase-invoice")}>Visualizar Purchase Invoice</button>
+            <button onClick={() => openOrderDocument("purchase-invoice", "docx")}>Purchase Invoice · Word</button>
+          </footer>
+          <section className="packing-list-layer wide">
+            <header><div><p className="eyebrow">PACKING LIST</p><h4>Formulário de embalagem e volumes da carga</h4><p>Modelo baseado no Packing List operacional: pesos, CBM, pacotes, dimensões, volumes e referência dos contêineres.</p></div><strong>{packingItems.reduce((sum, item) => sum + Number(item.cbm || 0), 0).toFixed(3)} CBM</strong></header>
+            <div className="order-stage-grid packing-summary-grid">
+              <label>Consignee<input value={packingDraft.consigneeName} onChange={(event) => setPackingDraft({ ...packingDraft, consigneeName: event.target.value })} placeholder={settings.customerName || currentOperation.euImporter} /></label>
+              <label>Peso líquido total (kg)<input type="number" step="0.001" value={packingDraft.netWeight} onChange={(event) => setPackingDraft({ ...packingDraft, netWeight: event.target.value })} /></label>
+              <label>Peso bruto total (kg)<input type="number" step="0.001" value={packingDraft.grossWeight} onChange={(event) => setPackingDraft({ ...packingDraft, grossWeight: event.target.value })} /></label>
+              <label>Total de pacotes<input type="number" step="1" value={packingDraft.packages} onChange={(event) => setPackingDraft({ ...packingDraft, packages: event.target.value })} /></label>
+              <label>Marcação / Marks<input value={packingDraft.marks} onChange={(event) => setPackingDraft({ ...packingDraft, marks: event.target.value })} placeholder="MADE IN BRAZIL" /></label>
+              <label>Ref. Container / Volumes<input value={packingDraft.containerReference} onChange={(event) => setPackingDraft({ ...packingDraft, containerReference: event.target.value })} placeholder={currentOperation.containerNumbers || "Container / volume references"} /></label>
+            </div>
+            <div className="packing-items-editor">
+              <header><b>ITENS DO PACKING LIST</b><button type="button" onClick={addPackingItem}>+ adicionar linha</button></header>
+              <div className="packing-items-head"><span>Descrição</span><span>CBM</span><span>Total pcs</span><span>Pcs/pacote</span><span>Pacotes</span><span>Comp.</span><span>Larg.</span><span>Esp.</span><span>Peso bruto</span><span>Peso líquido</span><span /></div>
+              {packingItems.map((item, index) => <div className="packing-item-row" key={index}>
+                <input value={item.description} onChange={(event) => updatePackingItem(index, "description", event.target.value)} placeholder="PINE WOOD LUMBER B GRADE" />
+                <input type="number" step="0.001" value={item.cbm} onChange={(event) => updatePackingItem(index, "cbm", event.target.value)} />
+                <input type="number" step="1" value={item.totalPcs} onChange={(event) => updatePackingItem(index, "totalPcs", event.target.value)} />
+                <input type="number" step="1" value={item.piecesPerPackage} onChange={(event) => updatePackingItem(index, "piecesPerPackage", event.target.value)} />
+                <input type="number" step="1" value={item.packages} onChange={(event) => updatePackingItem(index, "packages", event.target.value)} />
+                <input type="number" step="1" value={item.length} onChange={(event) => updatePackingItem(index, "length", event.target.value)} placeholder="mm" />
+                <input type="number" step="1" value={item.width} onChange={(event) => updatePackingItem(index, "width", event.target.value)} placeholder="mm" />
+                <input type="number" step="1" value={item.thickness} onChange={(event) => updatePackingItem(index, "thickness", event.target.value)} placeholder="mm" />
+                <input type="number" step="0.001" value={item.grossWeight} onChange={(event) => updatePackingItem(index, "grossWeight", event.target.value)} />
+                <input type="number" step="0.001" value={item.netWeight} onChange={(event) => updatePackingItem(index, "netWeight", event.target.value)} />
+                <button type="button" disabled={packingItems.length === 1} onClick={() => removePackingItem(index)}>×</button>
+              </div>)}
+            </div>
+            <footer className="order-stage-actions">
+              <button className="primary" disabled={Boolean(action)} onClick={saveOrderCommercial}>Salvar Packing List</button>
+              <button onClick={() => openOrderDocument("packing-list")}>Visualizar Packing List</button>
+              <button onClick={() => openOrderDocument("packing-list", "docx")}>Packing List · Word</button>
+            </footer>
+          </section>
           <section className="supplier-purchase-layer wide">
             <header><div><p className="eyebrow">PEDIDO DE COMPRA FORNECEDOR</p><h4>Camada comercial para envio ao fornecedor</h4><p>Use quando o fornecedor tiver preço, trading, incoterm ou pagamento diferente do documento enviado ao cliente.</p></div><strong>{supplierOrderDraft.currency} {supplierOrderItemsTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></header>
             <div className="order-stage-grid">
@@ -3511,7 +3603,7 @@ function ExportOrderControl({ operation, documents, uploadFiles, removeDocument,
               </div>
               <label className="wide">Observações para o fornecedor<textarea value={supplierOrderDraft.notes} onChange={(event) => setSupplierOrderDraft({ ...supplierOrderDraft, notes: event.target.value })} placeholder="Condições internas, tolerâncias, prazo de produção, instruções de embalagem ou documentos exigidos." /></label>
             </div>
-            <footer className="order-stage-actions"><button className="primary" disabled={Boolean(action)} onClick={saveOrderCommercial}>Salvar pedido fornecedor</button><button onClick={() => openOrderDocument("supplier-po")}>Emitir Pedido de Compra fornecedor</button></footer>
+            <footer className="order-stage-actions"><button className="primary" disabled={Boolean(action)} onClick={saveOrderCommercial}>Salvar pedido fornecedor</button><button onClick={() => openOrderDocument("supplier-po")}>Visualizar Pedido de Compra</button><button onClick={() => openOrderDocument("supplier-po", "docx")}>Pedido de Compra · Word</button></footer>
           </section>
         </section>}
         {selected.code === "BOOKING" && <section className="booking-stage-fields">
