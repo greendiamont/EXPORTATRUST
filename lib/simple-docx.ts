@@ -1,3 +1,4 @@
+// ExportaTrust DOCX helper — Stage 01 document generation.
 const encoder = new TextEncoder();
 
 function xmlEscape(value: unknown) {
