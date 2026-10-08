@@ -141,7 +141,7 @@ upload.onclick=async()=>{
       const r=await putOne(item,fileMap.get(item.archivePath));
       if(r.skipped) skipped++;
       done++;
-      out.textContent='Importando R2... '+done+'/'+manifest.objectCount+'\nIgnorados por já existirem com mesmo tamanho: '+skipped+'\nFalhas: '+failed.length;
+      out.textContent=['Importando R2... '+done+'/'+manifest.objectCount,'Ignorados por já existirem com mesmo tamanho: '+skipped,'Falhas: '+failed.length].join(String.fromCharCode(10));
       return r;
     }));
     results.forEach((r,j)=>{if(r.status==='rejected')failed.push({key:batch[j].key,error:String(r.reason)});});
