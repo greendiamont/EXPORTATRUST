@@ -480,6 +480,18 @@ async function packingListHtml(db: Awaited<ReturnType<typeof getDb>>, operation:
   const rows = packing.items || [];
   const consignee = packing.consigneeName || client?.legalName || operation.euImporter;
   const exporter = operation.exporterName || supplier?.legalName || operation.supplierName;
+  const sellerLines = [
+    supplier?.legalName || operation.exporterName || operation.supplierName,
+    supplier?.taxId ? `CNPJ/Tax ID: ${supplier.taxId}` : operation.exporterTaxId ? `Tax ID: ${operation.exporterTaxId}` : "",
+    supplier ? [supplier.address, supplier.city, supplier.state, supplier.country].filter(Boolean).join(" - ") : "",
+    supplier?.email ? `Email: ${supplier.email}` : "",
+  ].filter(Boolean);
+  const buyerLines = [
+    client?.taxId ? `${client.taxIdType || "Tax ID"}: ${client.taxId}` : "",
+    client?.address || "",
+    [client?.city, client?.state, client?.country || operation.destinationCountry].filter(Boolean).join(" - "),
+    client?.email ? `Email: ${client.email}` : "",
+  ].filter(Boolean);
   const sum = (field: keyof PackingItem) => rows.reduce((total, item) => total + safeNumber(item[field]), 0);
   const totalCbm = sum("cbm");
   const totalPcs = sum("totalPcs");
@@ -488,7 +500,7 @@ async function packingListHtml(db: Awaited<ReturnType<typeof getDb>>, operation:
   const totalNet = packing.netWeight || sum("netWeight");
   const detail = (company: typeof supplier | typeof client | undefined) => company ? [company.address, [company.city, company.state, company.country].filter(Boolean).join(", "), company.taxId ? `${"taxIdType" in company ? company.taxIdType || "Tax ID" : "CNPJ"}: ${company.taxId}` : "", company.email ? `Email: ${company.email}` : ""].filter(Boolean).join("<br>") : "";
   const bodyRows = rows.map((item, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(item.description)}</td><td>${safeNumber(item.cbm).toFixed(3)}</td><td>${safeNumber(item.totalPcs)}</td><td>${safeNumber(item.piecesPerPackage)}</td><td>${safeNumber(item.packages)}</td><td>${safeNumber(item.length)}</td><td>${safeNumber(item.width)}</td><td>${safeNumber(item.thickness)}</td><td>${safeNumber(item.grossWeight).toLocaleString("en-US")}</td><td>${safeNumber(item.netWeight).toLocaleString("en-US")}</td></tr>`).join("");
-  return `<!doctype html><html><head><meta charset="utf-8"><title>PACKING LIST ${escapeHtml(operation.reference)}</title><style>@page{size:A4 landscape;margin:8mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;background:#eee;color:#111}.page{width:277mm;min-height:190mm;margin:auto;background:#fff;padding:8mm}h1{text-align:center;font-size:20px;margin:5px 0 14px}.top{display:grid;grid-template-columns:1fr 1fr;gap:18px}.company{font-size:10px;line-height:1.35}.company b{font-size:11px}.summary{margin:16px 0 10px;display:grid;grid-template-columns:repeat(2,1fr);gap:3px 30px;font-size:10px}.summary div{display:flex;gap:8px}.summary strong{min-width:130px;text-align:right}.ref{margin:8px 0;font-size:10px}.ref strong{display:inline-block;min-width:150px;text-align:right;margin-right:10px}table{width:100%;border-collapse:collapse;font-size:8px;table-layout:fixed}th,td{border:1px solid #888;padding:4px;text-align:center;vertical-align:middle}th{background:#ddd;font-size:7px}.desc{text-align:left}tfoot td{font-weight:bold;background:#eee}@media print{body{background:#fff}.page{width:auto;min-height:auto;padding:0}}</style></head><body><main class="page"><h1>PACKING LIST ${escapeHtml(operation.reference.replace("/", "-"))}</h1><section class="top"><div class="company"><b>${escapeHtml(exporter)}</b><br>${detail(supplier)}</div><div class="company"><b>IMPORTADOR / IMPORTADOR / IMPORTER:</b><br><strong>${escapeHtml(consignee)}</strong><br>${detail(client)}<br><br><b>CONSIGNEE:</b><br><strong>${escapeHtml(consignee)}</strong></div></section><section class="summary"><div><strong>Peso Líquido / Net Weight:</strong><span>${safeNumber(totalNet).toLocaleString("en-US")} kgs</span></div><div><strong>Peso Bruto / Gross Weight:</strong><span>${safeNumber(totalGross).toLocaleString("en-US")} kgs</span></div><div><strong>M. cúbica / Cubic M.:</strong><span>${totalCbm.toFixed(3)} Cbm</span></div><div><strong>Pacotes / Packages:</strong><span>${safeNumber(totalPackages)}</span></div><div><strong>Marcação / Marks:</strong><span>${escapeHtml(packing.marks || "MADE IN BRAZIL")}</span></div></section><div class="ref"><strong>Ref. Container / Volumes:</strong>${escapeHtml(packing.containerReference || operation.containerNumbers || "")}</div><table><thead><tr><th>ITEM</th><th>DESCRIPTION OF GOODS</th><th>CBM</th><th>TOTAL PCS</th><th>PIECES PER PACKAGE</th><th>PACKAGES</th><th>LENGTH</th><th>WIDTH</th><th>THICKNESS</th><th>GROSS WEIGHT</th><th>NET WEIGHT</th></tr></thead><tbody>${bodyRows}</tbody><tfoot><tr><td colspan="2">TOTAL</td><td>${totalCbm.toFixed(3)}</td><td>${totalPcs}</td><td></td><td>${totalPackages}</td><td>-</td><td>-</td><td>-</td><td>${totalGross.toLocaleString("en-US")}</td><td>${totalNet.toLocaleString("en-US")}</td></tr></tfoot></table></main><script>window.print()</script></body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>PACKING LIST ${escapeHtml(operation.reference)}</title><style>@page{size:A4 landscape;margin:8mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;background:#f3f7f5;color:#20362d}.page{width:277mm;min-height:190mm;margin:auto;background:#fff;padding:8mm}.brand{font-weight:800;letter-spacing:2px;color:#086c55;font-size:12px}.title{text-align:center;font-size:20px;margin:4px 0 12px}.top{display:grid;grid-template-columns:1fr 1fr;gap:18px;border-top:3px solid #086c55;padding-top:10px}.company{font-size:10px;line-height:1.35}.company b{font-size:10px;color:#086c55}.company strong{font-size:11px;color:#20362d}.summary{margin:16px 0 10px;display:grid;grid-template-columns:repeat(2,1fr);gap:3px 30px;font-size:10px}.summary div{display:flex;gap:8px}.summary strong{min-width:130px;text-align:right}.ref{margin:8px 0;font-size:10px}.ref strong{display:inline-block;min-width:150px;text-align:right;margin-right:10px}table{width:100%;border-collapse:collapse;font-size:8px;table-layout:fixed}th,td{border:1px solid #888;padding:4px;text-align:center;vertical-align:middle}th{background:#e8f2ee;font-size:7px}.desc{text-align:left}tfoot td{font-weight:bold;background:#eef5f2}@media print{body{background:#fff}.page{width:auto;min-height:auto;padding:0}}</style></head><body><main class="page"><div class="brand">EXPORTATRUST</div><h1 class="title">PACKING LIST — ${escapeHtml(operation.reference)}</h1><section class="top"><div class="company"><b>SELLER / EXPORTER</b><br><strong>${escapeHtml(exporter)}</strong><br>${sellerLines.filter((line) => line !== exporter).map((line) => escapeHtml(line)).join("<br>")}</div><div class="company"><b>BUYER / CONSIGNEE</b><br><strong>${escapeHtml(consignee)}</strong><br>${buyerLines.map((line) => escapeHtml(line)).join("<br>")}</div></section><section class="summary"><div><strong>Peso Líquido / Net Weight:</strong><span>${safeNumber(totalNet).toLocaleString("en-US")} kgs</span></div><div><strong>Peso Bruto / Gross Weight:</strong><span>${safeNumber(totalGross).toLocaleString("en-US")} kgs</span></div><div><strong>M. cúbica / Cubic M.:</strong><span>${totalCbm.toFixed(3)} Cbm</span></div><div><strong>Pacotes / Packages:</strong><span>${safeNumber(totalPackages)}</span></div><div><strong>Marcação / Marks:</strong><span>${escapeHtml(packing.marks || "MADE IN BRAZIL")}</span></div></section><div class="ref"><strong>Ref. Container / Volumes:</strong>${escapeHtml(packing.containerReference || operation.containerNumbers || "")}</div><table><thead><tr><th>ITEM</th><th>DESCRIPTION OF GOODS</th><th>CBM</th><th>TOTAL PCS</th><th>PIECES PER PACKAGE</th><th>PACKAGES</th><th>LENGTH</th><th>WIDTH</th><th>THICKNESS</th><th>GROSS WEIGHT</th><th>NET WEIGHT</th></tr></thead><tbody>${bodyRows}</tbody><tfoot><tr><td colspan="2">TOTAL</td><td>${totalCbm.toFixed(3)}</td><td>${totalPcs}</td><td></td><td>${totalPackages}</td><td>-</td><td>-</td><td>-</td><td>${totalGross.toLocaleString("en-US")}</td><td>${totalNet.toLocaleString("en-US")}</td></tr></tfoot></table></main><script>window.print()</script></body></html>`;
 }
 
 async function packingListDocx(db: Awaited<ReturnType<typeof getDb>>, operation: typeof operations.$inferSelect, organizationId: number) {
@@ -498,22 +510,33 @@ async function packingListDocx(db: Awaited<ReturnType<typeof getDb>>, operation:
   const rows = packing.items || [];
   const consignee = packing.consigneeName || client?.legalName || operation.euImporter;
   const exporter = operation.exporterName || supplier?.legalName || operation.supplierName;
+  const sellerLines = [
+    supplier?.legalName || operation.exporterName || operation.supplierName,
+    supplier?.taxId ? `CNPJ/Tax ID: ${supplier.taxId}` : operation.exporterTaxId ? `Tax ID: ${operation.exporterTaxId}` : "",
+    supplier ? [supplier.address, supplier.city, supplier.state, supplier.country].filter(Boolean).join(" - ") : "",
+    supplier?.email ? `Email: ${supplier.email}` : "",
+  ].filter(Boolean);
+  const buyerLines = [
+    client?.taxId ? `${client.taxIdType || "Tax ID"}: ${client.taxId}` : "",
+    client?.address || "",
+    [client?.city, client?.state, client?.country || operation.destinationCountry].filter(Boolean).join(" - "),
+    client?.email ? `Email: ${client.email}` : "",
+  ].filter(Boolean);
   const sum = (field: keyof PackingItem) => rows.reduce((total, item) => total + safeNumber(item[field]), 0);
   const totalCbm = sum("cbm");
   const totalPcs = sum("totalPcs");
   const totalPackages = packing.packages || sum("packages");
   const totalGross = packing.grossWeight || sum("grossWeight");
   const totalNet = packing.netWeight || sum("netWeight");
-  const companyLines = (company: typeof supplier | typeof client | undefined) => company ? [
-    company.address || "",
-    [company.city, company.state, company.country].filter(Boolean).join(", "),
-    company.taxId ? `Tax ID: ${company.taxId}` : "",
-    company.email ? `Email: ${company.email}` : "",
-  ].filter(Boolean) : [];
-
   let body = "";
-  body += docxParagraph(`PACKING LIST ${operation.reference.replace("/", "-")}`, { bold: true, size: 28, align: "center", spacingAfter: 100 });
-  body += docxTwoColumnBlock(exporter, companyLines(supplier), "IMPORTER / CONSIGNEE", [consignee, ...companyLines(client)]);
+  body += docxParagraph("EXPORTATRUST", { bold: true, size: 18, color: "176C50", spacingAfter: 20 });
+  body += docxParagraph(`PACKING LIST — ${operation.reference}`, { bold: true, size: 28, align: "center", spacingAfter: 100 });
+  body += docxTwoColumnBlock(
+    "SELLER / EXPORTER",
+    [exporter, ...sellerLines.filter((line) => line !== exporter)],
+    "BUYER / CONSIGNEE",
+    [consignee, ...buyerLines],
+  );
   body += docxParagraph("", { spacingAfter: 30 });
   body += docxTable([
     ["NET WEIGHT", `${totalNet.toLocaleString("en-US")} kgs`, "GROSS WEIGHT", `${totalGross.toLocaleString("en-US")} kgs`],
