@@ -1,0 +1,82 @@
+name: Phase 5 R2 Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "GitHub Release tag containing the R2 TAR"
+        required: true
+        default: "phase5-r2-source"
+      asset_name:
+        description: "Release asset TAR filename"
+        required: true
+        default: "exportatrust-full-r2-2026-09-29.tar"
+      confirm:
+        description: "Type MIGRATE-R2-STAGING to run"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  migrate-r2:
+    name: Validate, import and verify R2
+    if: ${{ inputs.confirm == 'MIGRATE-R2-STAGING' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET: exportatrust-staging-files
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          test -n "$R2_ACCESS_KEY_ID" || { echo "Missing secret R2_ACCESS_KEY_ID"; exit 1; }
+          test -n "$R2_SECRET_ACCESS_KEY" || { echo "Missing secret R2_SECRET_ACCESS_KEY"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Missing secret CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+
+      - name: Download source TAR from GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p .phase5
+          gh release download "${{ inputs.release_tag }}" \
+            --pattern "${{ inputs.asset_name }}" \
+            --dir .phase5
+          test -f ".phase5/${{ inputs.asset_name }}"
+
+      - name: Verify physical TAR size
+        shell: bash
+        run: |
+          ACTUAL="$(stat -c%s ".phase5/${{ inputs.asset_name }}")"
+          EXPECTED="156049920"
+          echo "Physical TAR bytes: $ACTUAL"
+          test "$ACTUAL" = "$EXPECTED" || { echo "Unexpected TAR size. Expected $EXPECTED."; exit 1; }
+
+      - name: Install migration dependency
+        run: python3 -m pip install --disable-pip-version-check boto3==1.40.17
+
+      - name: Validate TAR, import to R2 and validate destination
+        shell: bash
+        run: |
+          python3 scripts/phase5_r2_migrate.py \
+            --tar ".phase5/${{ inputs.asset_name }}" \
+            --bucket "$R2_BUCKET" \
+            --endpoint "https://$CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com" \
+            --report "phase5-r2-report.json"
+
+      - name: Upload migration report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase5-r2-report-${{ github.run_id }}
+          path: phase5-r2-report.json
+          if-no-files-found: warn
+          retention-days: 30
