@@ -24,6 +24,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 8. Backups e dados não devem ser apagados automaticamente.
 9. Se houver dúvida sobre uma mudança feita por outro agente, preserve o comportamento existente e abra uma entrada de conflito antes de alterar.
 10. Este arquivo deve ser atualizado no mesmo PR da alteração funcional.
+11. Para qualquer alteração de frontend React/TypeScript, leia e siga `docs/skills/SENIOR_REACT_FRONTEND.md` antes de implementar.
 
 ## Convenção de ambientes
 
@@ -64,3 +65,14 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Risco:** baixo; nenhuma alteração de produção aplicada.
 - **Migração:** nenhuma.
 - **CI/deploy:** não aplicável.
+
+### 2026-10-14 — ChatGPT / Jarvis
+- **Branch:** `docs/ai-collaboration-log`
+- **PR:** #78
+- **Tipo:** padrão técnico / frontend
+- **Alteração:** inclusão da skill `docs/skills/SENIOR_REACT_FRONTEND.md` e vinculação obrigatória no fluxo de colaboração.
+- **Motivo:** padronizar React/TypeScript, UX, acessibilidade, responsividade, APIs, segurança e critérios de conclusão entre ChatGPT, Codex e Claude.
+- **Impacto:** passa a ser a referência obrigatória para mudanças de frontend.
+- **Risco:** baixo.
+- **Migração:** nenhuma.
+- **CI/deploy:** documental.
