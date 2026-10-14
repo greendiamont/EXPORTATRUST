@@ -146,7 +146,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 
 ### 2026-10-14 — Claude
 - **Branch:** `claude/data-migration-homologation`
-- **PR:** a preencher após abertura
+- **PR:** #86
 - **Tipo:** migração de dados / segurança
 - **Alteração:** importação integral (banco + arquivos) liberada em homologação, com ajuste registrado de valores incompatíveis com PostgreSQL, operador mantido como administrador e correção do filtro de cabeçalhos do runtime Railway. Roteiro em `docs/MIGRATION_PRODUCTION_TO_HOMOLOGATION.md`.
 - **Motivo:** trazer todos os dados de produção para homologação.

@@ -123,7 +123,7 @@
 
 - **ID:** CHG-20261014-006
 - **Branch:** `claude/data-migration-homologation`
-- **PR:** a preencher
+- **PR:** #86
 - **Destino:** homologation
 - **Tipo:** migration / security
 - **Arquivos/módulos alterados:** `app/api/admin/migration-full-import/route.ts`, `app/api/admin/migration-r2-import/route.ts`, `server/railway/auth.mjs`, `docs/RAILWAY_RUNTIME.md`, `docs/MIGRATION_PRODUCTION_TO_HOMOLOGATION.md` (novo), docs de change control.
