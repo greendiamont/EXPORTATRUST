@@ -122,7 +122,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 
 ### 2026-10-14 — Claude
 - **Branch:** `claude/railway-homologation-runtime`
-- **PR:** a preencher após abertura
+- **PR:** #84
 - **Tipo:** infraestrutura / migração / segurança
 - **Alteração:** runtime Node para o `web-api` no Railway (`server/railway/`): API do D1 sobre PostgreSQL com tradução SQLite→PostgreSQL, migrações `drizzle/*.sql` no PostgreSQL, API do R2 sobre bucket S3, login de homologação e remoção de cabeçalhos de identidade falsificáveis. Bucket `documents-homologation` e variáveis configurados no projeto `ExportaTrust Homologation`.
 - **Motivo:** o `web-api` de homologação respondia só a página; todas as APIs falhavam em Node e a autenticação dependia de cabeçalhos que, fora do ChatGPT Sites/Cloudflare Access, podem ser forjados.

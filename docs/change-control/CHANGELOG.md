@@ -67,7 +67,7 @@
 
 - **ID:** CHG-20261014-004
 - **Branch:** `claude/railway-homologation-runtime`
-- **PR:** a preencher
+- **PR:** #84
 - **Destino:** homologation
 - **Tipo:** infra / migration / security
 - **Arquivos/módulos alterados:** `server/railway/*` (novo), `scripts/railway-build.sh` (novo), `package.json`/`package-lock.json` (scripts `build:railway`/`start:railway`, dependências `pg` e `aws4fetch`), `docs/RAILWAY_RUNTIME.md` (novo), docs de change control. Nenhum arquivo de `app/`, `lib/`, `db/` ou `worker/` foi alterado.
