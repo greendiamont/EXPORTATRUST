@@ -23,3 +23,26 @@
 - **Rollback:** remover apenas estes arquivos de governança, se necessário.
 - **Conflitos/coordenação com outros agentes:** este registro passa a ser a referência principal.
 - **Status:** em andamento
+
+
+## 2026-10-14 — ChatGPT / Jarvis — Agentes separados no Railway
+
+- **ID:** CHG-20261014-002
+- **Branch:** `docs/railway-agent-separation`
+- **PR:** a preencher
+- **Destino:** main + sincronização com homologation
+- **Tipo:** infra
+- **Arquivos/módulos alterados:** documentação de change control
+- **Motivo:** separar operacionalmente o agente de homologação do agente de produção.
+- **O que mudou:** criado serviço `agent-homologation` no projeto Railway de homologação e `agent-production` no projeto Railway de produção. Cada serviço possui variáveis próprias de ambiente, branch alvo e política de aprovação.
+- **Impacto esperado:** homologação e produção passam a ter agentes independentes, reduzindo risco de ações cruzadas.
+- **Riscos:** baixo; os serviços de agente estão sem source/deploy nesta etapa.
+- **Dados/migração:** nenhuma.
+- **Compatibilidade:** sem impacto funcional no app atual.
+- **Testes executados:** verificação de criação dos serviços e variáveis no Railway.
+- **CI:** pendente.
+- **Railway homologation:** `agent-homologation`, APP_ENV=homologation, TARGET_BRANCH=homologation.
+- **Railway production:** `agent-production`, APP_ENV=production, TARGET_BRANCH=main, REQUIRE_HUMAN_APPROVAL=true, ALLOW_DIRECT_PRODUCTION_CHANGES=false.
+- **Rollback:** remover apenas os serviços de agente se a arquitetura for abandonada; não afeta banco/app.
+- **Conflitos/coordenação com outros agentes:** agentes devem consultar CURRENT_STATE/CHANGELOG antes de qualquer alteração.
+- **Status:** em andamento
