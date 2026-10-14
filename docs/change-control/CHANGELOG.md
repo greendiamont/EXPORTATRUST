@@ -46,3 +46,18 @@
 - **Rollback:** remover apenas os serviços de agente se a arquitetura for abandonada; não afeta banco/app.
 - **Conflitos/coordenação com outros agentes:** agentes devem consultar CURRENT_STATE/CHANGELOG antes de qualquer alteração.
 - **Status:** em andamento
+
+
+## 2026-10-14 — ChatGPT / Jarvis — Runtime dos agentes Railway
+
+- **ID:** CHG-20261014-003
+- **Branch:** `infra/agent-runtime-online`
+- **PR:** a preencher
+- **Destino:** homologation primeiro
+- **Tipo:** infra
+- **O que mudou:** criado runtime Node mínimo para manter `agent-homologation` e `agent-production` online, com endpoints de saúde/status e trava explícita de execução em produção.
+- **Impacto esperado:** serviços deixam de ficar offline e passam a expor health/status independentes.
+- **Riscos:** baixo; o runtime não executa mutações de negócio em produção.
+- **Railway homologation:** será conectado à branch `homologation`.
+- **Railway production:** será promovido somente após homologação e aprovação explícita.
+- **Status:** em andamento
