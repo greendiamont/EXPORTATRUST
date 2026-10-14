@@ -90,3 +90,20 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Risco:** baixo/moderado; banco novo e vazio até a migração controlada.
 - **Migração:** pendente D1/SQLite → PostgreSQL; ainda não executar cutover.
 - **CI/deploy:** serviço PostgreSQL provisionado no Railway; app Web/API ainda não conectado para evitar deploy incompatível antes da adaptação do runtime.
+
+
+### 2026-10-14 — ChatGPT / Jarvis
+- **Branch:** `docs/railway-homologation-bootstrap`
+- **PR:** a preencher após abertura
+- **Tipo:** infraestrutura / Railway
+- **Alteração:** criação de infraestrutura isolada para homologação usando projeto Railway dedicado `ExportaTrust Homologation`, com PostgreSQL próprio e serviço vazio `web-api`. Também foi criado `web-api` no projeto de produção.
+- **Railway Production Project ID:** `74645f02-a85d-4b9a-8244-148784d8b633`
+- **Railway Homologation Project ID:** `f1b37adf-57c3-4cad-9f52-786dd65357ad`
+- **Production Web/API Service ID:** `0138e1a2-8d68-4df7-ab51-c240b1e78cc1`
+- **Homologation Web/API Service ID:** `874bdc7f-fd50-47f8-8fd0-3277954ae9df`
+- **Motivo:** manter isolamento máximo entre produção e homologação, já que a integração Railway disponível não expõe criação de novos environments dentro do mesmo projeto.
+- **Impacto:** homologação passa a ter banco separado; produção e homologação não compartilham PostgreSQL.
+- **Variáveis configuradas:** `APP_ENV` e `DATABASE_URL` por serviço, sem deploy.
+- **Risco:** baixo; serviços Web/API ainda sem source e não publicados.
+- **Migração:** pendente adaptação D1/SQLite → PostgreSQL e runtime Cloudflare Worker → Node/Railway.
+- **CI/deploy:** PostgreSQL production ativo; PostgreSQL homologation provisionado; Web/API sem source para evitar deploy incompatível.
