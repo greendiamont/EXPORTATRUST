@@ -53,3 +53,18 @@ Arquivos obrigatórios de coordenação:
 - `CLAUDE.md`
 - `docs/change-control/CHANGELOG.md`
 - `docs/AI_COLLABORATION_LOG.md`
+
+
+## Agentes Railway
+
+### Homologação
+- Serviço: `agent-homologation`
+- Service ID: `8a919e00-9f91-4596-b388-3409dff5f4d1`
+- Branch alvo: `homologation`
+
+### Produção
+- Serviço: `agent-production`
+- Service ID: `ee03364b-be25-452a-a862-a3b71eccc957`
+- Branch alvo: `main`
+- Aprovação humana obrigatória para ações críticas.
+- Mudanças diretas em produção bloqueadas por política.
