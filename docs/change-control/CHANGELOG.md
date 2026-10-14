@@ -100,7 +100,7 @@
 
 - **ID:** CHG-20261014-005
 - **Branch:** `claude/fixes-eudr-auth-review`
-- **PR:** a preencher
+- **PR:** #85
 - **Destino:** homologation
 - **Tipo:** fix / security / docs
 - **Arquivos/módulos alterados:** `lib/export-control.ts`; `app/api/agent-control/route.ts`, `app/api/agent-discovery/route.ts`, `app/api/documents/route.ts`, `app/api/eudr-report/route.ts`, `app/api/exception-actions/route.ts`, `app/api/export-control/route.ts`, `app/api/forest-documents/route.ts`, `app/api/forest-dossier/route.ts`, `app/api/industrial-plan/route.ts`, `app/api/integrations/route.ts`, `app/api/operations/route.ts`, `app/api/partners/route.ts`, `app/api/payments/route.ts`, `app/api/product-catalog/route.ts`, `app/api/properties/route.ts`, `app/api/satellite-map/route.ts`, `app/api/shipment-advice/route.ts`, `app/api/stage-settings/route.ts`, `app/api/suppliers/route.ts`; `tests/agent-e2e.mjs`; `tests/eudr-applicability.test.mjs` (novo); `docs/reviews/FUNCTIONAL_REVIEW_2026-10-14.md` (novo); docs de change control.
