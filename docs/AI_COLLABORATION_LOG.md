@@ -76,3 +76,17 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Risco:** baixo.
 - **Migração:** nenhuma.
 - **CI/deploy:** documental.
+
+
+### 2026-10-14 — ChatGPT / Jarvis
+- **Branch:** `docs/railway-infrastructure-log`
+- **PR:** a preencher após abertura
+- **Tipo:** infraestrutura / Railway
+- **Alteração:** criação do projeto Railway `ExportaTrust` no workspace pessoal e provisionamento do serviço `Postgres` no ambiente `production`.
+- **Railway Project ID:** `74645f02-a85d-4b9a-8244-148784d8b633`
+- **Production Environment ID:** `2f662215-9a8e-41a2-9cc1-43d0720a384e`
+- **Motivo:** iniciar a arquitetura alvo GitHub → Railway Web/API → PostgreSQL, mantendo Cloudflare R2 para documentos nesta fase.
+- **Impacto:** novo ambiente de infraestrutura criado; nenhum dado de produção atual foi migrado ou removido.
+- **Risco:** baixo/moderado; banco novo e vazio até a migração controlada.
+- **Migração:** pendente D1/SQLite → PostgreSQL; ainda não executar cutover.
+- **CI/deploy:** serviço PostgreSQL provisionado no Railway; app Web/API ainda não conectado para evitar deploy incompatível antes da adaptação do runtime.
