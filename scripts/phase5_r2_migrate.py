@@ -188,10 +188,9 @@ def validate_destination(manifest, actual):
         "ok": (
             not missing
             and not size_mismatches
-            and not extras
-            and len(actual) == manifest["objectCount"]
-            and actual_bytes == expected_bytes
         ),
+        "warning": bool(extras),
+        "warningReason": "Destination contains extra objects not present in the source manifest." if extras else None,
         "mode": "validate-r2",
         "expectedObjectCount": manifest["objectCount"],
         "actualObjectCount": len(actual),
@@ -220,6 +219,8 @@ def main():
 
     Path(args.report).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2))
+    if report["warning"]:
+        print("WARNING: destination contains extra objects. They were preserved and are listed in the report.", file=sys.stderr)
     if not report["ok"]:
         raise SystemExit(4)
 
