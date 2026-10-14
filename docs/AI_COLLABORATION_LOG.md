@@ -107,3 +107,15 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Risco:** baixo; serviços Web/API ainda sem source e não publicados.
 - **Migração:** pendente adaptação D1/SQLite → PostgreSQL e runtime Cloudflare Worker → Node/Railway.
 - **CI/deploy:** PostgreSQL production ativo; PostgreSQL homologation provisionado; Web/API sem source para evitar deploy incompatível.
+
+
+### 2026-10-14 — ChatGPT / Jarvis
+- **Branch:** `docs/change-control-registry`
+- **PR:** a preencher após abertura
+- **Tipo:** governança / coordenação multiagente
+- **Alteração:** criação de `AGENTS.md`, `CLAUDE.md` e da pasta `docs/change-control/` com estado atual, changelog append-only, template e índice JSONL.
+- **Motivo:** garantir que ChatGPT, Codex e Claude leiam o mesmo estado antes de alterar o projeto e registrem toda mudança no mesmo PR.
+- **Impacto:** estabelece o registro canônico de alterações para homologação e produção.
+- **Risco:** baixo.
+- **Migração:** nenhuma.
+- **CI/deploy:** documental.
