@@ -14,7 +14,9 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 export const SESSION_COOKIE = "exportatrust_session";
 const SESSION_TTL_SECONDS = Number(process.env.EXPORTATRUST_SESSION_TTL_HOURS ?? 12) * 3600;
 
-const IDENTITY_HEADER_PATTERNS = [/^oai-authenticated-/i, /^cf-access-/i, /^x-exportatrust-/i];
+// Só cabeçalhos de identidade: outros x-exportatrust-* (metadados da importação R2,
+// esquema da API de agentes) são dados legítimos do cliente.
+const IDENTITY_HEADER_PATTERNS = [/^oai-authenticated-/i, /^cf-access-/i, /^x-exportatrust-authenticated-/i, /^x-exportatrust-auth-provider$/i];
 
 export function authConfig() {
   const allowedEmails = (process.env.EXPORTATRUST_ALLOWED_EMAILS ?? "")

@@ -1,4 +1,4 @@
-import { requireSecurityContext, sha256Hex } from "../../../../lib/security";
+import { requireSecurityContext, sha256Hex, type SecurityContext } from "../../../../lib/security";
 
 const KNOWN_APP_TABLES = [
   "organizations","app_users","organization_memberships","rural_properties","forest_documents",
@@ -30,11 +30,14 @@ function errorText(error: unknown) {
   return error instanceof Error ? error.message : "Falha desconhecida.";
 }
 
+// Ambientes de destino que podem receber a cópia integral. Produção nunca.
+const IMPORT_ENVIRONMENTS = new Set(["staging", "homologation"]);
+
 async function requireStaging() {
   const { env } = await import("cloudflare:workers");
   const appEnv = String((env as unknown as Record<string, unknown>).APP_ENV ?? "");
-  if (appEnv !== "staging") {
-    throw new Response(JSON.stringify({ error: "Importação integral permitida somente em staging." }), {
+  if (!IMPORT_ENVIRONMENTS.has(appEnv)) {
+    throw new Response(JSON.stringify({ error: "Importação integral permitida somente em staging ou homologação." }), {
       status: 403,
       headers: { "content-type": "application/json" },
     });
@@ -98,7 +101,10 @@ async function destinationState(database: D1Database) {
     counts[table] = Number(row?.count ?? 0);
   }
   const allowedBootstrap = new Set(["organizations", "app_users", "organization_memberships"]);
-  const unexpectedRows = Object.entries(counts).filter(([table, count]) => count > 0 && !allowedBootstrap.has(table));
+  // O primeiro acesso ao destino já grava o backup diário e sua auditoria; esses
+  // poucos registros automáticos são sobrepostos pela cópia (upsert por id).
+  const automaticOnFirstAccess = new Set(["audit_logs", "backup_snapshots"]);
+  const unexpectedRows = Object.entries(counts).filter(([table, count]) => count > 0 && !allowedBootstrap.has(table) && !(automaticOnFirstAccess.has(table) && count <= 10));
   if (unexpectedRows.length) {
     throw new Error(`O staging não está vazio para importação inicial: ${unexpectedRows.map(([t,c]) => `${t}=${c}`).join(", ")}`);
   }
@@ -129,7 +135,38 @@ function orderRows(table: string, rows: Array<Record<string, unknown>>) {
   return ordered.concat(pending);
 }
 
-async function upsertRows(database: D1Database, table: string, rows: Array<Record<string, unknown>>) {
+type CoercionLog = Array<{ table: string; id: unknown; column: string; from: unknown; to: unknown }>;
+
+/**
+ * O SQLite aceita texto em coluna numérica (ex.: "" em importer_client_id); o
+ * PostgreSQL não. Ajusta só esses valores e registra cada ajuste no relatório.
+ */
+async function numericColumns(database: D1Database, table: string) {
+  const info = await database.prepare(`PRAGMA table_info(${q(table)})`).all<{ name: string; type: string; notnull: number }>();
+  const columns = new Map<string, boolean>();
+  for (const column of info.results ?? []) {
+    if (/INT|REAL|DOUBLE|NUMERIC|FLOAT|DECIMAL/i.test(String(column.type ?? ""))) columns.set(column.name, Number(column.notnull) === 1);
+  }
+  return columns;
+}
+
+function coerceRow(table: string, row: Record<string, unknown>, numeric: Map<string, boolean>, log: CoercionLog) {
+  const next = { ...row };
+  for (const [column, notNull] of numeric) {
+    const value = next[column];
+    if (typeof value !== "string") continue;
+    const trimmed = value.trim();
+    const parsed = trimmed === "" ? NaN : Number(trimmed);
+    const to = Number.isFinite(parsed) ? parsed : notNull ? 0 : null;
+    next[column] = to;
+    if (!Number.isFinite(parsed)) log.push({ table, id: row.id, column, from: value, to });
+  }
+  return next;
+}
+
+async function upsertRows(database: D1Database, table: string, sourceRows: Array<Record<string, unknown>>, coercions: CoercionLog) {
+  const numeric = await numericColumns(database, table);
+  const rows = numeric.size ? sourceRows.map((row) => coerceRow(table, row, numeric, coercions)) : sourceRows;
   const ordered = orderRows(table, rows);
   const chunkSize = 75;
   for (let start = 0; start < ordered.length; start += chunkSize) {
@@ -145,13 +182,37 @@ async function upsertRows(database: D1Database, table: string, rows: Array<Recor
   }
 }
 
+/**
+ * A cópia substitui os usuários do destino pelos da origem. Quem executou a
+ * importação continua administrador da organização 1 para poder conferir os dados
+ * (na produção de referência o perfil de origem pode ser outro).
+ */
+async function keepOperatorAsAdministrator(database: D1Database, context: SecurityContext) {
+  const user = await database.prepare("SELECT id FROM app_users WHERE email = ? LIMIT 1").bind(context.email).first<{ id: number }>();
+  let userId = user?.id;
+  if (!userId) {
+    const created = await database.prepare("INSERT INTO app_users (email, full_name, identity_provider) VALUES (?, ?, ?) RETURNING id").bind(context.email, context.fullName, "migration-operator").first<{ id: number }>();
+    userId = created?.id;
+  }
+  if (!userId) return { email: context.email, role: "indefinido" };
+  const membership = await database.prepare("SELECT id, role FROM organization_memberships WHERE organization_id = 1 AND user_id = ? LIMIT 1").bind(userId).first<{ id: number; role: string }>();
+  if (!membership) {
+    await database.prepare("INSERT INTO organization_memberships (organization_id, user_id, role, status, invited_by) VALUES (1, ?, 'administrador', 'Ativo', 'migration-operator')").bind(userId).run();
+    return { email: context.email, role: "administrador", previousRole: null };
+  }
+  if (membership.role !== "administrador") {
+    await database.prepare("UPDATE organization_memberships SET role = 'administrador', status = 'Ativo' WHERE id = ?").bind(membership.id).run();
+  }
+  return { email: context.email, role: "administrador", previousRole: membership.role };
+}
+
 export async function GET() {
   try {
     await requireSecurityContext("export");
     await requireStaging();
     return new Response(`<!doctype html><html><head><meta charset="utf-8"><title>ExportaTrust · Import D1</title></head>
 <body style="font-family:system-ui;max-width:760px;margin:40px auto;padding:0 20px">
-<h1>Importação integral D1 · Staging</h1>
+<h1>Importação integral do banco · Staging/Homologação</h1>
 <p>Selecione o JSON gerado por <code>migration-full-export</code>. Primeiro valide. A importação só será liberada se SHA-256, 43 tabelas, contagens, schema e estado vazio do V3 forem confirmados.</p>
 <input id="file" type="file" accept=".json,application/json"><button id="validate">Validar</button><button id="import" disabled>Importar no V3</button>
 <pre id="out" style="white-space:pre-wrap;background:#f5f5f5;padding:16px"></pre>
@@ -200,9 +261,11 @@ export async function POST(request: Request) {
     }
     if (context.organizationId !== 1) return Response.json({ error: "Tenant inesperado para esta migração." }, { status: 409 });
 
+    const coercions: CoercionLog = [];
     for (const table of KNOWN_APP_TABLES) {
-      await upsertRows(env.DB, table, payload.tables?.[table] ?? []);
+      await upsertRows(env.DB, table, payload.tables?.[table] ?? [], coercions);
     }
+    const operatorAccess = await keepOperatorAsAdministrator(env.DB, context);
 
     const after: Record<string, number> = {};
     const mismatches: Array<{ table: string; expected: number; actual: number }> = [];
@@ -224,6 +287,9 @@ export async function POST(request: Request) {
       actualTotalRows: Object.values(after).reduce((sum, value) => sum + value, 0),
       mismatches,
       counts: after,
+      operatorAccess,
+      coercedValues: coercions.length,
+      coercions: coercions.slice(0, 200),
     }, { status: mismatches.length ? 409 : 200 });
   } catch (error) {
     if (error instanceof Response) return error;

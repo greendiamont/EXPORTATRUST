@@ -117,3 +117,32 @@
 - **Rollback:** reverter o merge deste PR.
 - **Conflitos/coordenação com outros agentes:** nenhum; branch criada de `homologation` @ `bdd2081`.
 - **Status:** em andamento
+
+
+## 2026-10-14 — Claude — Cópia integral da produção para a homologação (banco + arquivos)
+
+- **ID:** CHG-20261014-006
+- **Branch:** `claude/data-migration-homologation`
+- **PR:** a preencher
+- **Destino:** homologation
+- **Tipo:** migration / security
+- **Arquivos/módulos alterados:** `app/api/admin/migration-full-import/route.ts`, `app/api/admin/migration-r2-import/route.ts`, `server/railway/auth.mjs`, `docs/RAILWAY_RUNTIME.md`, `docs/MIGRATION_PRODUCTION_TO_HOMOLOGATION.md` (novo), docs de change control.
+- **Motivo:** Ivam pediu todos os dados do app em homologação. As rotas de importação da Fase 5 só aceitavam `APP_ENV=staging`; o destino é PostgreSQL; e o filtro de cabeçalhos do runtime Railway descartava os metadados enviados pelo importador R2.
+- **O que mudou:**
+  - importação do banco e dos arquivos liberada para `staging` e `homologation` (produção continua recusada);
+  - valores de texto em colunas numéricas (aceitos pelo SQLite) ajustados para `null`/`0`, com cada ajuste listado no resultado;
+  - quem executa a importação permanece `administrador` da organização 1 (na produção o Ivam é `cliente`);
+  - registros automáticos do primeiro acesso (backup diário e auditoria, até 10) não bloqueiam a importação inicial;
+  - runtime Railway remove só cabeçalhos de identidade (`x-exportatrust-authenticated-*`, `x-exportatrust-auth-provider`), preservando `x-exportatrust-http-metadata`/`custom-metadata` do importador R2;
+  - roteiro em `docs/MIGRATION_PRODUCTION_TO_HOMOLOGATION.md`.
+- **Impacto esperado:** homologação pode receber a cópia completa e atual da produção pelas telas `/api/admin/migration-full-import` e `/api/admin/migration-r2-import`.
+- **Riscos:** baixo. Nenhuma escrita na produção. Na homologação, a importação substitui os usuários do destino pelos da produção.
+- **Dados/migração:** a cópia em si depende das duas exportações feitas na produção por Ivam (ver roteiro). Nenhum dado de produção foi importado neste PR.
+- **Compatibilidade:** ChatGPT Sites/Cloudflare (staging continua aceito) e Railway.
+- **Testes executados:** local em PostgreSQL 16 — exportação integral gerada pelo app → importação em banco vazio de homologação: 218/218 registros, 0 divergências, 1 valor ajustado, operador promovido de `cliente` para `administrador`, cadastro posterior sem colisão de id; importação do pacote real `exportatrust-full-r2-2026-09-29.tar` pela tela: 451/451 objetos e 155.513.309 bytes conferidos no destino; cabeçalhos de identidade forjados continuam recusados (401); `node --test` 56/56; eslint sem erros.
+- **CI:** não configurado.
+- **Railway homologation:** deploy automático após merge; depois, executar o roteiro.
+- **Railway production:** sem alteração.
+- **Rollback:** reverter o merge deste PR.
+- **Conflitos/coordenação com outros agentes:** a correção de JavaScript do importador R2 do PR #72 (fix/r2-import-inline-script-syntax → main) já estava no código de `homologation`; o PR #72 pode ser fechado como já incorporado.
+- **Status:** em andamento
