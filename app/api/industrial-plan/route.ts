@@ -19,6 +19,7 @@ export async function GET(request: Request) {
     const [plan] = await db.select().from(industrialPlans).where(and(eq(industrialPlans.operationId, operationId), eq(industrialPlans.organizationId, context.organizationId))).limit(1);
     return Response.json({ plan: plan ?? null });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
     await audit(context, "INDUSTRIAL_PLAN_SAVED", "industrial_plan", String(plan.id), { operationId, status: plan.status });
     return Response.json({ plan }, { status: 201 });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

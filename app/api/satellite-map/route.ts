@@ -19,6 +19,7 @@ export async function GET(request: Request) {
     if (!satellite?.bytes?.length) return Response.json({ error: "Satellite imagery is unavailable for this CAR geometry." }, { status: 404 });
     return new Response(satellite.bytes, { headers: { "content-type": satellite.contentType, "cache-control": "private, max-age=1800", "x-map-provider": satellite.provider } });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: error instanceof Error ? error.message : "Satellite map could not be loaded." }, { status: 500 });
   }
 }

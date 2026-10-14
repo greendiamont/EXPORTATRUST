@@ -19,6 +19,7 @@ export async function GET() {
     )).orderBy(asc(productTraceabilityCatalog.product), asc(productTraceabilityCatalog.entryType), asc(productTraceabilityCatalog.sortOrder));
     return Response.json({ catalog });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: message(error) }, { status: 500 });
   }
 }

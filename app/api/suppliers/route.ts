@@ -22,6 +22,7 @@ export async function GET() {
     const db = await getDb();
     return Response.json({ suppliers: await db.select().from(suppliers).where(eq(suppliers.organizationId, context.organizationId)).orderBy(desc(suppliers.id)).limit(250) });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: message(error) }, { status: 500 });
   }
 }

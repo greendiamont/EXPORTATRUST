@@ -6,6 +6,7 @@ export async function GET() {
   try {
     return Response.json(await discoverConfiguredExternalServices(), { headers: { "cache-control": "no-store" } });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: error instanceof Error ? error.message : "Agent discovery failed." }, { status: 500 });
   }
 }

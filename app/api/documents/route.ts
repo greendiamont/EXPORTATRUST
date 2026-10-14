@@ -44,6 +44,7 @@ export async function GET(request: Request) {
     const documents = await db.select().from(operationDocuments).where(and(eq(operationDocuments.organizationId, context.organizationId), eq(operationDocuments.operationId, operationId))).orderBy(desc(operationDocuments.id)).limit(500);
     return Response.json({ documents });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
@@ -75,6 +76,7 @@ export async function POST(request: Request) {
     const readiness = await refreshOperationReadiness(db, operationId);
     return Response.json({ document, readiness }, { status: 201 });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

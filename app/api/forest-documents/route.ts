@@ -65,6 +65,7 @@ export async function GET(request: Request) {
     const documents = await db.select().from(forestDocuments).where(and(eq(forestDocuments.organizationId, context.organizationId), eq(forestDocuments.propertyCarCode, carCode))).orderBy(desc(forestDocuments.id)).limit(500);
     return Response.json({ documents });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
@@ -102,6 +103,7 @@ export async function POST(request: Request) {
     await audit(context, "FOREST_DOCUMENT_UPLOADED", "forest_document", String(document.id), { carCode, category, fileName: file.name, sizeBytes: file.size });
     return Response.json({ document }, { status: 201 });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
@@ -120,6 +122,7 @@ export async function DELETE(request: Request) {
     await audit(context, "FOREST_DOCUMENT_DELETED", "forest_document", String(id), { carCode: record.propertyCarCode, fileName: record.fileName });
     return Response.json({ ok: true });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

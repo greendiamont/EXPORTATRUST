@@ -88,3 +88,32 @@
 - **Rollback:** no `web-api` de homologação, voltar build/start para o padrão (`npm run build` / `npm start`) e remover o healthcheck; reverter o merge deste PR. O bucket e as variáveis podem permanecer sem efeito.
 - **Conflitos/coordenação com outros agentes:** nenhum conflito. Branch criada sobre `3a8d82d` (CHG-20261014-003, runtime dos agentes), que não foi alterado. `services/agent-runtime` e `agent-homologation` intocados.
 - **Status:** em andamento
+
+
+## 2026-10-14 — Claude — Validação do runtime Railway em homologação (complemento de CHG-20261014-004)
+
+- **ID:** CHG-20261014-004 (atualização de status)
+- **Status:** homologado — PR #84 mergeado em `homologation` (`bdd2081`); deploy `deea28ef` no Railway com build `npm run build:railway` (Node 22), 29 migrações aplicadas no PostgreSQL de homologação, autoteste do bucket `documents-homologation` OK e healthcheck `/api/health` aprovado.
+
+
+## 2026-10-14 — Claude — Correções: aplicabilidade EUDR, 401/403 nas APIs, e2e; parecer funcional
+
+- **ID:** CHG-20261014-005
+- **Branch:** `claude/fixes-eudr-auth-review`
+- **PR:** a preencher
+- **Destino:** homologation
+- **Tipo:** fix / security / docs
+- **Arquivos/módulos alterados:** `lib/export-control.ts`; `app/api/agent-control/route.ts`, `app/api/agent-discovery/route.ts`, `app/api/documents/route.ts`, `app/api/eudr-report/route.ts`, `app/api/exception-actions/route.ts`, `app/api/export-control/route.ts`, `app/api/forest-documents/route.ts`, `app/api/forest-dossier/route.ts`, `app/api/industrial-plan/route.ts`, `app/api/integrations/route.ts`, `app/api/operations/route.ts`, `app/api/partners/route.ts`, `app/api/payments/route.ts`, `app/api/product-catalog/route.ts`, `app/api/properties/route.ts`, `app/api/satellite-map/route.ts`, `app/api/shipment-advice/route.ts`, `app/api/stage-settings/route.ts`, `app/api/suppliers/route.ts`; `tests/agent-e2e.mjs`; `tests/eudr-applicability.test.mjs` (novo); `docs/reviews/FUNCTIONAL_REVIEW_2026-10-14.md` (novo); docs de change control.
+- **Motivo:** varredura funcional encontrou (1) EUDR desligado para destinos da UE escritos em inglês ou ISO ("Italy", "DE") e para 6 das 7 commodities, liberando aprovação de embarque sem DDS; (2) detecção de madeira por `includes("44")`; (3) palavra-chave `ht` (NIMF 15) casando com "weight"/"freight"; (4) 37 blocos `catch` em 19 rotas devolvendo 500 em vez de 401/403; (5) teste e2e com CNPJ inválido.
+- **O que mudou:** países da UE em PT/EN/ISO; commodities EUDR do Anexo I por prefixo do SH, com palavras-chave de produto como reserva; `isWoodProduct` por capítulo 44; correspondência por palavra inteira para termos curtos; `catch` que respondem 500 agora devolvem o `Response` de autenticação; e2e gera CNPJ válido; parecer funcional documentado.
+- **Impacto esperado:** processos para a UE passam a exigir EUDR corretamente — **operações já existentes com destino em inglês voltam a ter a etapa "Origem e compliance EUDR" ativa e a aprovação de embarque passa a exigir prontidão EUDR**. APIs respondem 401/403 corretos.
+- **Riscos:** baixo/moderado. Comportamento mais restritivo para destinos UE antes não reconhecidos (intencional). Produtos não-EUDR com palavras como "papel" ou "couro" no nome podem passar a exigir EUDR (conservador).
+- **Dados/migração:** nenhuma migração; status da etapa EUDR é recalculado ao abrir o processo.
+- **Compatibilidade:** ChatGPT Sites/Cloudflare e Railway.
+- **Testes executados:** `node --test tests/*.test.mjs` 56/56 (7 novos de aplicabilidade EUDR e palavras-chave); `tests/agent-e2e.mjs` original passou contra o runtime Railway local em PostgreSQL; 401 verificado em 7 rotas sem login; operação com destino "Italy" passou de "Suspenso" para "Em andamento" na etapa EUDR; `tsc` sem erros novos (88 pré-existentes); eslint sem erros.
+- **CI:** não configurado.
+- **Railway homologation:** deploy automático após merge.
+- **Railway production:** sem alteração.
+- **Rollback:** reverter o merge deste PR.
+- **Conflitos/coordenação com outros agentes:** nenhum; branch criada de `homologation` @ `bdd2081`.
+- **Status:** em andamento

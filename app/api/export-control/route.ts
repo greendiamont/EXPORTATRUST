@@ -589,6 +589,7 @@ export async function GET(request: Request) {
     }
     return Response.json(await snapshot(context, operationId, context.organizationId));
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
@@ -879,6 +880,7 @@ export async function POST(request: Request) {
 
     return Response.json({ error: "Ação inválida." }, { status: 400 });
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("EXPORT_CONTROL_POST_FAILED", error);
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }

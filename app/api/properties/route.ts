@@ -14,6 +14,7 @@ export async function GET() {
     const rows = await db.select().from(ruralProperties).where(eq(ruralProperties.organizationId, context.organizationId)).orderBy(desc(ruralProperties.id)).limit(100);
     return Response.json({ properties: rows });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
@@ -74,6 +75,7 @@ export async function POST(request: Request) {
     await audit(context, "PROPERTY_CREATED", "rural_property", carCode, { name, city, areaHa });
     return Response.json({ property }, { status: 201 });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
@@ -107,6 +109,7 @@ export async function PATCH(request: Request) {
     await audit(context, "PROPERTY_UPDATED", "rural_property", carCode, { name: property.name, areaHa: property.areaHa });
     return Response.json({ property });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
@@ -139,6 +142,7 @@ export async function DELETE(request: Request) {
     await audit(context, "PROPERTY_DELETED", "rural_property", carCode, { name: existing.name });
     return Response.json({ deleted: true, carCode });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

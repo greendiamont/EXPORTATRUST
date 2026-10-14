@@ -29,14 +29,79 @@ function normalized(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-const EU_COUNTRIES = ["alemanha", "austria", "belgica", "bulgaria", "chipre", "croacia", "dinamarca", "eslovaquia", "eslovenia", "espanha", "estonia", "finlandia", "franca", "grecia", "hungria", "irlanda", "italia", "letonia", "lituania", "luxemburgo", "malta", "paises baixos", "holanda", "polonia", "portugal", "republica tcheca", "romenia", "suecia"];
+// Estados-membros da UE em português, inglês e código ISO-3166 alfa-2.
+// Antes só havia nomes em português sem acento: "Italy", "Germany" ou "DE"
+// desligavam a exigência EUDR e liberavam a aprovação de embarque.
+const EU_COUNTRY_NAMES = [
+  "alemanha", "germany", "austria", "belgica", "belgium", "bulgaria", "chipre", "cyprus", "croacia", "croatia",
+  "dinamarca", "denmark", "eslovaquia", "slovakia", "eslovenia", "slovenia", "espanha", "spain", "estonia",
+  "finlandia", "finland", "franca", "france", "grecia", "greece", "hungria", "hungary", "irlanda", "ireland",
+  "italia", "italy", "letonia", "latvia", "lituania", "lithuania", "luxemburgo", "luxembourg", "malta",
+  "paises baixos", "netherlands", "the netherlands", "holanda", "holland", "polonia", "poland", "portugal",
+  "republica tcheca", "tchequia", "chequia", "czech republic", "czechia", "romenia", "romania", "suecia", "sweden",
+  "uniao europeia", "european union",
+];
+const EU_COUNTRY_CODES = ["at", "be", "bg", "hr", "cy", "cz", "dk", "ee", "fi", "fr", "de", "gr", "el", "hu", "ie", "it", "lv", "lt", "lu", "mt", "nl", "pl", "pt", "ro", "sk", "si", "es", "se", "eu"];
+
+// Posições do Anexo I do Regulamento (UE) 2023/1115 (EUDR), por prefixo do SH.
+const EUDR_HS_PREFIXES = [
+  // bovinos
+  "0102", "0201", "0202", "020610", "020629", "160250", "4101", "4104", "4107",
+  // cacau
+  "1801", "1802", "1803", "1804", "1805", "1806",
+  // café
+  "0901",
+  // dendê / palma
+  "120710", "1511", "151321", "151329", "230660", "290545", "291570", "382311", "382312", "382319", "382370",
+  // borracha
+  "4001", "4005", "4006", "4007", "4008", "4010", "4011", "4012", "4013", "4015", "4016", "4017",
+  // soja
+  "1201", "120810", "1507", "2304",
+  // madeira e derivados
+  "44", "47", "48", "49", "9401", "9403", "940610", "9406",
+];
+const EUDR_PRODUCT_KEYWORDS = [
+  "madeira", "wood", "timber", "lumber", "pellet", "serrad", "compensado", "plywood", "mdf", "osb", "carvao vegetal", "charcoal",
+  "celulose", "pulp", "papel", "paper", "movel", "moveis", "furniture",
+  "cacau", "cocoa", "chocolate", "cafe", "coffee", "soja", "soy", "borracha", "rubber", "latex",
+  "dende", "palma", "palm oil", "oleo de palma", "gado", "bovino", "cattle", "beef", "carne bovina", "couro", "leather",
+];
+const WOOD_PRODUCT_KEYWORDS = ["madeira", "wood", "timber", "lumber", "pellet", "serrad", "compensado", "plywood", "mdf", "osb", "pallet", "palete"];
+
+function words(value: string) {
+  return ` ${normalized(value).replace(/[^a-z0-9]+/g, " ").trim()} `;
+}
+
+function containsTerm(text: string, term: string) {
+  // Termos curtos exigem palavra inteira; termos longos aceitam radical ("serrad" → "serrada").
+  const haystack = words(text);
+  const needle = normalized(term).replace(/[^a-z0-9]+/g, " ").trim();
+  if (!needle) return false;
+  return needle.length <= 3 ? haystack.includes(` ${needle} `) : haystack.includes(` ${needle}`);
+}
+
+function hsDigits(hsCode: string) {
+  return hsCode.replace(/\D/g, "");
+}
+
+export function isEuDestination(country: string) {
+  const destination = words(country);
+  if (EU_COUNTRY_CODES.some((code) => destination.trim() === code)) return true;
+  return EU_COUNTRY_NAMES.some((name) => destination.includes(` ${name} `));
+}
+
+export function isEudrCommodity(hsCode: string, product: string) {
+  const hs = hsDigits(hsCode);
+  if (hs.length >= 2 && EUDR_HS_PREFIXES.some((prefix) => hs.startsWith(prefix))) return true;
+  return EUDR_PRODUCT_KEYWORDS.some((keyword) => containsTerm(product, keyword));
+}
+
+export function isWoodProduct(hsCode: string, product: string) {
+  return hsDigits(hsCode).startsWith("44") || WOOD_PRODUCT_KEYWORDS.some((keyword) => containsTerm(product, keyword));
+}
 
 export function isEudrRequired(country: string, hsCode: string, product: string) {
-  const destination = normalized(country);
-  const goods = normalized(`${hsCode} ${product}`);
-  const isEu = EU_COUNTRIES.some((item) => destination.includes(item));
-  const isWood = goods.includes("44") || goods.includes("madeira") || goods.includes("pellet") || goods.includes("wood");
-  return isEu && isWood;
+  return isEuDestination(country) && isEudrCommodity(hsCode, product);
 }
 
 export type ShipmentApprovalGateInput = {
@@ -56,16 +121,14 @@ export function canApproveShipment(input: ShipmentApprovalGateInput) {
 }
 
 export function countryRequirements(country: string, hsCode: string, product: string): ComplianceRequirement[] {
-  const destination = normalized(country);
-  const goods = normalized(`${hsCode} ${product}`);
-  const isEu = EU_COUNTRIES.some((item) => destination.includes(item));
-  const isUk = destination.includes("reino unido") || destination.includes("united kingdom") || destination === "uk";
-  const isUs = destination.includes("estados unidos") || destination.includes("united states") || destination === "usa";
-  const isWood = goods.includes("44") || goods.includes("madeira") || goods.includes("pellet") || goods.includes("wood");
+  const destination = words(country);
+  const isUk = ["reino unido", "united kingdom", "inglaterra", "england", "great britain", "gra bretanha"].some((name) => destination.includes(` ${name} `)) || ["uk", "gb"].includes(destination.trim());
+  const isUs = ["estados unidos", "united states", "united states of america"].some((name) => destination.includes(` ${name} `)) || ["us", "usa", "eua"].includes(destination.trim());
+  const isWood = isWoodProduct(hsCode, product);
   const requirements: ComplianceRequirement[] = [
     { key: "commercial_invoice", label: "Commercial Invoice", reason: "Documento comercial básico para exportação e desembaraço.", required: true, keywords: ["invoice", "fatura comercial"] },
     { key: "packing_list", label: "Packing List", reason: "Volumes, pesos, dimensões, lotes e identificação das embalagens.", required: true, keywords: ["packing list", "romaneio"] },
-    { key: "transport_document", label: "Bill of Lading / documento de transporte", reason: "Evidência do contrato de transporte e embarque.", required: true, keywords: ["bill of lading", "b/l", " bl", "awb", "crt"] },
+    { key: "transport_document", label: "Bill of Lading / documento de transporte", reason: "Evidência do contrato de transporte e embarque.", required: true, keywords: ["bill of lading", "b/l", "bl", "awb", "crt"] },
     { key: "origin", label: "Certificado ou declaração de origem", reason: "Origem preferencial ou não preferencial conforme país e acordo aplicável.", required: false, keywords: ["certificado de origem", "certificate of origin", "declaração de origem"] },
   ];
   if (isWood) requirements.push(
@@ -85,7 +148,9 @@ export function countryRequirements(country: string, hsCode: string, product: st
 }
 
 export function requirementMatches(requirement: ComplianceRequirement, documentTexts: string[]) {
-  return documentTexts.some((text) => requirement.keywords.some((keyword) => normalized(text).includes(normalized(keyword))));
+  // Palavra inteira para termos curtos: antes "ht" casava com "weight"/"freight"
+  // e dava o NIMF 15 como cumprido.
+  return documentTexts.some((text) => requirement.keywords.some((keyword) => containsTerm(text, keyword)));
 }
 
 export function addDays(date: Date, days: number) {
