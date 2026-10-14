@@ -119,3 +119,15 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Risco:** baixo.
 - **Migração:** nenhuma.
 - **CI/deploy:** documental.
+
+### 2026-10-14 — Claude
+- **Branch:** `claude/railway-homologation-runtime`
+- **PR:** #84
+- **Tipo:** infraestrutura / migração / segurança
+- **Alteração:** runtime Node para o `web-api` no Railway (`server/railway/`): API do D1 sobre PostgreSQL com tradução SQLite→PostgreSQL, migrações `drizzle/*.sql` no PostgreSQL, API do R2 sobre bucket S3, login de homologação e remoção de cabeçalhos de identidade falsificáveis. Bucket `documents-homologation` e variáveis configurados no projeto `ExportaTrust Homologation`.
+- **Motivo:** o `web-api` de homologação respondia só a página; todas as APIs falhavam em Node e a autenticação dependia de cabeçalhos que, fora do ChatGPT Sites/Cloudflare Access, podem ser forjados.
+- **Impacto:** homologação funcional de ponta a ponta. Código de `app/`, `lib/`, `db/` e `worker/` inalterado; build do ChatGPT Sites/Cloudflare inalterado.
+- **Risco:** moderado (tradução SQL cobre os padrões atuais; ver `docs/RAILWAY_RUNTIME.md`).
+- **Migração:** schema PostgreSQL de homologação criado vazio; nenhum dado de produção tocado.
+- **CI/deploy:** testes locais em PostgreSQL 16; deploy e validação no Railway de homologação após merge em `homologation`.
+- **Observação para outros agentes:** `docs/change-control/changes.jsonl` não tinha as entradas CHG-20261014-002 e -003; não foram adicionadas por mim para não reescrever registros de outro agente.
