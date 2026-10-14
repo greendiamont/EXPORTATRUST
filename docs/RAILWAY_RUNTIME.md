@@ -27,7 +27,7 @@ alterar o código das rotas.
 
 ## Segurança do login
 
-- Cabeçalhos de identidade vindos do cliente (`oai-authenticated-*`, `cf-access-*`, `x-exportatrust-*`) são **sempre removidos**. No Railway não existe ChatGPT Sites/Cloudflare Access para garanti-los.
+- Cabeçalhos de identidade vindos do cliente (`oai-authenticated-*`, `cf-access-*`, `x-exportatrust-authenticated-*`, `x-exportatrust-auth-provider`) são **sempre removidos**. No Railway não existe ChatGPT Sites/Cloudflare Access para garanti-los.
 - Com login válido o servidor injeta `x-exportatrust-authenticated-user-email`, já reconhecido por `lib/security.ts`.
 - Páginas sem sessão redirecionam para `/__auth/login`. APIs sem sessão seguem sem identidade: rotas protegidas respondem 401 e rotas públicas por desenho (token Bearer dos agentes, `/api/secure-documents`, webhook Stripe, `/api/health`) continuam funcionando.
 - Hosts `localhost`/`127.0.0.1`/`terminal.local` não ativam o modo "preview" do app.

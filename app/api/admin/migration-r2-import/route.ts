@@ -5,11 +5,14 @@ function errorText(error: unknown) {
   return error instanceof Error ? error.message : "Falha desconhecida.";
 }
 
+// Ambientes de destino que podem receber a cópia dos arquivos. Produção nunca.
+const IMPORT_ENVIRONMENTS = new Set(["staging", "homologation"]);
+
 async function requireStaging() {
   const { env } = await import("cloudflare:workers");
   const appEnv = String((env as unknown as Record<string, unknown>).APP_ENV ?? "");
-  if (appEnv !== "staging") {
-    throw new Response(JSON.stringify({ error: "Importação R2 permitida somente em staging." }), {
+  if (!IMPORT_ENVIRONMENTS.has(appEnv)) {
+    throw new Response(JSON.stringify({ error: "Importação R2 permitida somente em staging ou homologação." }), {
       status: 403,
       headers: { "content-type": "application/json" },
     });
@@ -43,7 +46,7 @@ export async function GET() {
     await requireStaging();
     return new Response(`<!doctype html><html><head><meta charset="utf-8"><title>ExportaTrust · Import R2</title></head>
 <body style="font-family:system-ui;max-width:900px;margin:40px auto;padding:0 20px">
-<h1>Importação integral R2 · Staging</h1>
+<h1>Importação integral R2 · Staging/Homologação</h1>
 <p>Selecione diretamente o arquivo <strong>.tar</strong> baixado da produção. O navegador lerá o TAR localmente, localizará o manifesto e enviará os objetos um a um, preservando a chave R2 original.</p>
 <input id="tar" type="file" accept=".tar,application/x-tar">
 <button id="scan">Validar TAR</button>

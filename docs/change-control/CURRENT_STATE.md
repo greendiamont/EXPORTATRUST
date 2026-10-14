@@ -29,6 +29,7 @@ Atualizado em: 2026-10-14
 - URL: https://web-api-production-a92f.up.railway.app
 - Runtime: Node (`npm run build:railway` / `npm run start:railway`, healthcheck `/api/health`) — ver `docs/RAILWAY_RUNTIME.md`. Validado em 2026-10-14 (deploy `deea28ef`, commit `bdd2081`).
 - Storage de documentos: bucket Railway `documents-homologation` (S3, isolado)
+- Dados: cópia integral da produção via `docs/MIGRATION_PRODUCTION_TO_HOMOLOGATION.md` (pendente de execução em 2026-10-14).
 - Acesso: login de homologação (e-mails em `EXPORTATRUST_ALLOWED_EMAILS` + `EXPORTATRUST_ACCESS_PASSWORD`, definidos nas variáveis do serviço)
 
 ## Storage

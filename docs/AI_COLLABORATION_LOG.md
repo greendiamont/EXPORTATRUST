@@ -143,3 +143,15 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Migração:** nenhuma.
 - **CI/deploy:** testes locais; deploy em homologação após merge.
 - **Para outros agentes:** o parecer lista as lacunas por prioridade (emissão numerada de documentos, Commercial/Proforma Invoice, unidade por item, conciliação PL × pedido × invoice, endereço do fornecedor). Recomendo dividir `app/client-app.tsx` antes de features grandes para evitar conflitos.
+
+### 2026-10-14 — Claude
+- **Branch:** `claude/data-migration-homologation`
+- **PR:** #86
+- **Tipo:** migração de dados / segurança
+- **Alteração:** importação integral (banco + arquivos) liberada em homologação, com ajuste registrado de valores incompatíveis com PostgreSQL, operador mantido como administrador e correção do filtro de cabeçalhos do runtime Railway. Roteiro em `docs/MIGRATION_PRODUCTION_TO_HOMOLOGATION.md`.
+- **Motivo:** trazer todos os dados de produção para homologação.
+- **Impacto:** a cópia depende das exportações feitas na produção (ChatGPT Sites) por um usuário com permissão de exportação.
+- **Risco:** baixo; produção somente leitura.
+- **Migração:** ver roteiro.
+- **CI/deploy:** testes locais em PostgreSQL; deploy em homologação após merge.
+- **Para outros agentes:** não cadastrar dados em homologação antes da importação inicial (a importação do banco exige destino vazio).
