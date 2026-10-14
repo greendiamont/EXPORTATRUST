@@ -26,20 +26,28 @@ Atualizado em: 2026-10-14
 - Source: `greendiamont/EXPORTATRUST`
 - Branch: `homologation`
 - APP_ENV: `homologation`
+- URL: https://web-api-production-a92f.up.railway.app
+- Runtime: Node (`npm run build:railway` / `npm run start:railway`, healthcheck `/api/health`) — ver `docs/RAILWAY_RUNTIME.md`
+- Storage de documentos: bucket Railway `documents-homologation` (S3, isolado)
+- Acesso: login de homologação (e-mails em `EXPORTATRUST_ALLOWED_EMAILS` + `EXPORTATRUST_ACCESS_PASSWORD`, definidos nas variáveis do serviço)
 
 ## Storage
 
-- Cloudflare R2 permanece como storage de documentos nesta fase.
+- Cloudflare R2 permanece como storage de documentos de produção nesta fase.
+- Homologação no Railway usa bucket S3 próprio (`documents-homologation`), acessado pela mesma API do R2 (`server/railway/r2-s3.mjs`).
 - Não migrar/remover documentos sem validação e backup.
 
 ## Banco atual / migração
 
-- Código legado ainda contém dependência de D1/SQLite e `cloudflare:workers`.
+- O código do app continua escrito para D1/SQLite e `cloudflare:workers` (sem alteração).
+- No Railway, `server/railway/` fornece `cloudflare:workers` em Node: `env.DB` com API do D1 sobre PostgreSQL (tradução SQLite→PostgreSQL) e `env.BUCKET` com API do R2 sobre S3.
+- Schema PostgreSQL: criado a partir de `drizzle/*.sql` na inicialização do serviço (tabela de controle `_exportatrust_pg_migrations`). Validado em homologação com banco vazio (29 migrações, 43 tabelas).
+- SQL novo deve evitar recursos exclusivos do SQLite (`INSERT OR REPLACE`, funções de data do SQLite, `GROUP BY` com colunas não agregadas) ou ajustar `server/railway/sql-translate.mjs`.
 - A migração alvo é PostgreSQL no Railway.
 - Nenhum cutover de produção deve ocorrer até:
   - schema PostgreSQL validado;
   - dados migrados e comparados;
-  - autenticação validada;
+  - autenticação validada (o login de homologação não é o modelo final de produção);
   - documentos R2 testados;
   - homologação aprovada.
 
