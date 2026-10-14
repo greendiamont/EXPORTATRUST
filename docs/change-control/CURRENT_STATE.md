@@ -27,7 +27,7 @@ Atualizado em: 2026-10-14
 - Branch: `homologation`
 - APP_ENV: `homologation`
 - URL: https://web-api-production-a92f.up.railway.app
-- Runtime: Node (`npm run build:railway` / `npm run start:railway`, healthcheck `/api/health`) — ver `docs/RAILWAY_RUNTIME.md`
+- Runtime: Node (`npm run build:railway` / `npm run start:railway`, healthcheck `/api/health`) — ver `docs/RAILWAY_RUNTIME.md`. Validado em 2026-10-14 (deploy `deea28ef`, commit `bdd2081`).
 - Storage de documentos: bucket Railway `documents-homologation` (S3, isolado)
 - Acesso: login de homologação (e-mails em `EXPORTATRUST_ALLOWED_EMAILS` + `EXPORTATRUST_ACCESS_PASSWORD`, definidos nas variáveis do serviço)
 
@@ -50,6 +50,10 @@ Atualizado em: 2026-10-14
   - autenticação validada (o login de homologação não é o modelo final de produção);
   - documentos R2 testados;
   - homologação aprovada.
+
+## Avaliação funcional
+
+- Parecer e lacunas priorizadas: `docs/reviews/FUNCTIONAL_REVIEW_2026-10-14.md`.
 
 ## Governança
 

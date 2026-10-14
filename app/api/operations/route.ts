@@ -358,6 +358,7 @@ export async function GET() {
     ));
     return Response.json({ operations: calculated });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: message(error) }, { status: 500 });
   }
 }
@@ -445,6 +446,7 @@ export async function PATCH(request: Request) {
     if (!operation) return Response.json({ error: "Processo não encontrado." }, { status: 404 });
     return Response.json({ operation });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: message(error) }, { status: 500 });
   }
 }

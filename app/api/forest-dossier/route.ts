@@ -60,6 +60,7 @@ export async function GET(request: Request) {
       "x-content-type-options": "nosniff",
     } });
   } catch (error) {
+    if (error instanceof Response) return error;
     const message = error instanceof Error ? error.message : "Forest dossier could not be generated.";
     return Response.json({ error: message }, { status: 500 });
   }

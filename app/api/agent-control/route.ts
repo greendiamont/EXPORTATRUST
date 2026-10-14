@@ -144,7 +144,7 @@ export async function GET(request: Request) {
     const db = await getDb();
     if (!(await db.select({ id: operations.id }).from(operations).where(and(eq(operations.id, operationId), eq(operations.organizationId, context.organizationId))).limit(1)).length) return Response.json({ error: "Operation not found." }, { status: 404 });
     return Response.json(await snapshot(db, operationId));
-  } catch (error) { return Response.json({ error: errorMessage(error) }, { status: 500 }); }
+  } catch (error) {if (error instanceof Response) return error; return Response.json({ error: errorMessage(error) }, { status: 500 }); }
 }
 
 export async function POST(request: Request) {
@@ -218,7 +218,7 @@ export async function POST(request: Request) {
       return Response.json({ job: completed, candidates, ...(await snapshot(db, operationId)) }, { status: 201 });
     }
     return Response.json({ job, candidates, ...(await snapshot(db, operationId)) }, { status: 201 });
-  } catch (error) { return Response.json({ error: errorMessage(error) }, { status: 500 }); }
+  } catch (error) {if (error instanceof Response) return error; return Response.json({ error: errorMessage(error) }, { status: 500 }); }
 }
 
 function parseList(value: string) {

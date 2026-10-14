@@ -131,3 +131,15 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Migração:** schema PostgreSQL de homologação criado vazio; nenhum dado de produção tocado.
 - **CI/deploy:** testes locais em PostgreSQL 16; deploy e validação no Railway de homologação após merge em `homologation`.
 - **Observação para outros agentes:** `docs/change-control/changes.jsonl` não tinha as entradas CHG-20261014-002 e -003; não foram adicionadas por mim para não reescrever registros de outro agente.
+
+### 2026-10-14 — Claude
+- **Branch:** `claude/fixes-eudr-auth-review`
+- **PR:** #85
+- **Tipo:** correção / compliance / documentação
+- **Alteração:** regra de aplicabilidade EUDR (países UE em PT/EN/ISO, commodities do Anexo I por SH), palavras-chave documentais por palavra inteira, 401/403 em vez de 500 nas APIs, e2e com CNPJ válido e parecer funcional em `docs/reviews/FUNCTIONAL_REVIEW_2026-10-14.md`.
+- **Motivo:** varredura funcional do fluxo pedido → packing list → invoice → embarque.
+- **Impacto:** processos para a UE voltam a exigir EUDR; ver lacunas priorizadas no parecer antes de planejar novas features.
+- **Risco:** baixo/moderado (regra mais restritiva, intencional).
+- **Migração:** nenhuma.
+- **CI/deploy:** testes locais; deploy em homologação após merge.
+- **Para outros agentes:** o parecer lista as lacunas por prioridade (emissão numerada de documentos, Commercial/Proforma Invoice, unidade por item, conciliação PL × pedido × invoice, endereço do fornecedor). Recomendo dividir `app/client-app.tsx` antes de features grandes para evitar conflitos.

@@ -18,6 +18,7 @@ export async function GET(request: Request) {
       : await db.select().from(exceptionActions).where(eq(exceptionActions.organizationId, context.organizationId)).orderBy(desc(exceptionActions.id)).limit(300);
     return Response.json({ actions });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
     await audit(context, "RISK_ACTION_CREATED", "exception_action", String(action.id), { operationReference: action.operationReference, responsibleEmail });
     return Response.json({ action }, { status: 201 });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
@@ -72,6 +74,7 @@ export async function PATCH(request: Request) {
     await audit(context, "RISK_ACTION_RESOLVED", "exception_action", String(id), { operationReference: action.operationReference });
     return Response.json({ action });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
