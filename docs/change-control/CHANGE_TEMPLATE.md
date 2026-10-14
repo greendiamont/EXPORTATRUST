@@ -1,0 +1,21 @@
+## YYYY-MM-DD HH:MM — <Agente/Autor> — <Título>
+
+- **ID:** CHG-YYYYMMDD-NNN
+- **Branch:**
+- **PR:**
+- **Destino:** homologation | main
+- **Tipo:** feature | fix | refactor | infra | migration | docs | security
+- **Arquivos/módulos alterados:**
+- **Motivo:**
+- **O que mudou:**
+- **Impacto esperado:**
+- **Riscos:**
+- **Dados/migração:**
+- **Compatibilidade:**
+- **Testes executados:**
+- **CI:**
+- **Railway homologation:**
+- **Railway production:**
+- **Rollback:**
+- **Conflitos/coordenação com outros agentes:**
+- **Status:** planejado | em andamento | homologado | produção
