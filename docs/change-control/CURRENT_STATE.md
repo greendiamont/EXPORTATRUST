@@ -31,7 +31,8 @@ Atualizado em: 2026-10-15
 - Storage de documentos: bucket Railway `documents-homologation` (S3, isolado)
 - Dados: cópia integral da produção via `docs/MIGRATION_PRODUCTION_TO_HOMOLOGATION.md` (pendente de execução em 2026-10-14).
 - Acesso: login de homologação (e-mails em `EXPORTATRUST_ALLOWED_EMAILS` + `EXPORTATRUST_ACCESS_PASSWORD`, definidos nas variáveis do serviço)
-- Continuação no PR #88 (`codex/individual-login`): senhas individuais e link de definição por administrador da empresa, com duas tabelas próprias no PostgreSQL e revogação de sessão por versão. Testes locais concluídos; publicação/validação Railway ainda pendentes. Ver `docs/redesign/LOGIN_INDIVIDUAL.md`. Bootstrap continua disponível; não tratar como autenticação final homologada de produção.
+- Redesign #87 e login individual #88 integrados **somente em `homologation`** com autorização do Ivam. Commit funcional `fd20afb3652e10b6426134e3409ccb77f00e0c49`; deploy Railway `f7ad5232-19ff-4b94-bd69-a24a10025d9d` SUCCESS em 2026-10-15, healthcheck aprovado. Web/API, agente e PostgreSQL online, sem trabalho pendente na conferência.
+- Senhas individuais e link de definição por administrador da empresa: duas tabelas próprias no PostgreSQL e revogação de sessão por versão. Testes locais concluídos; **testes reais autenticados com a equipe e validação dos dados ainda pendentes**. Ver `docs/redesign/LOGIN_INDIVIDUAL.md`. Bootstrap continua disponível; não tratar como autenticação final homologada de produção.
 
 ## Storage
 
