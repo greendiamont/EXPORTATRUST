@@ -115,6 +115,10 @@ async function handleAuthRoute(req, res, url, origin) {
   const secure = isSecure(req);
   const html = { "content-type": "text/html; charset=utf-8" };
   const json = { "content-type": "application/json; charset=utf-8" };
+  if (url.pathname === "/__auth/password-visibility.js") {
+    if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, "Method Not Allowed", { allow: "GET, HEAD" });
+    return send(res, 200, req.method === "HEAD" ? "" : auth.passwordVisibilityScript, { "content-type": "text/javascript; charset=utf-8" });
+  }
   if (url.pathname === "/__auth/google/start" || url.pathname === "/__auth/google/callback") {
     if (req.method !== "GET") return send(res, 405, "Method Not Allowed", { allow: "GET" });
     if (!google) return send(res, 503, loginPage({ environment: appEnv, error: "O login com Google ainda não foi configurado." }), html);
@@ -141,18 +145,26 @@ async function handleAuthRoute(req, res, url, origin) {
     return send(res, 403, JSON.stringify({ error: "Origem da requisição não autorizada." }), json);
   }
   if (url.pathname === "/__auth/cadastrar") {
-    const privacy = { ...html, "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'" };
+    const privacy = { ...html, "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'" };
     if (!credentials || !authConfig.ready) return send(res, 503, "Cadastro temporariamente indisponível.", privacy);
-    if (req.method === "GET" || req.method === "HEAD") return send(res, 200, auth.registrationPage({ environment: appEnv, success: url.searchParams.get("success") === "1" }), privacy);
+    if (req.method === "GET" || req.method === "HEAD") return send(res, 200, auth.registrationPage({ environment: appEnv, mode: url.searchParams.get("mode"), success: url.searchParams.get("success") === "1" }), privacy);
     if (req.method !== "POST") return send(res, 405, "Method Not Allowed", { allow: "GET, POST" });
     if (!auth.allowLoginAttempt(`register:${clientIp(req)}`)) return send(res, 429, auth.registrationPage({ environment: appEnv, error: "Muitas tentativas. Aguarde alguns minutos." }), privacy);
     let form;
     try { form = await readForm(req); } catch { return send(res, 413, "Payload Too Large"); }
+    const mode = form.get("mode");
+    const values = Object.fromEntries(["cnpj", "companyName", "name", "email"].map(key => [key, form.get(key)]));
     try {
-      await credentials.requestAccess({ email: form.get("email"), name: form.get("name"), company: form.get("company") });
-      return redirect(res, "/__auth/cadastrar?success=1");
+      if (mode === "team") {
+        await credentials.requestAccess({ email: values.email, name: values.name, company: values.cnpj });
+        return redirect(res, "/__auth/cadastrar?mode=team&success=1");
+      }
+      if (mode !== "company") throw Object.assign(new Error("Selecione cadastro de empresa ou solicitação à equipe."), { status: 400 });
+      if (form.get("password") !== form.get("confirm")) throw Object.assign(new Error("As senhas não coincidem."), { status: 400 });
+      const identity = await credentials.registerCompany({ ...values, password: form.get("password") });
+      return redirect(res, "/", { "set-cookie": [auth.createSessionCookie(identity.email, authConfig, secure, identity.version), `exportatrust_org=${identity.organizationId}; Path=/; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`] });
     } catch (error) {
-      return send(res, error.status ?? 500, auth.registrationPage({ environment: appEnv, error: error.status ? error.message : "Não foi possível registrar. Tente novamente." }), privacy);
+      return send(res, error.status ?? 500, auth.registrationPage({ environment: appEnv, mode, values, error: error.status ? error.message : "Não foi possível registrar. Tente novamente." }), privacy);
     }
   }
   if (url.pathname === "/__auth/access-requests") {
@@ -184,7 +196,7 @@ async function handleAuthRoute(req, res, url, origin) {
     }
   }
   if (url.pathname === "/__auth/definir-senha") {
-    const privacy = { ...html, "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'" };
+    const privacy = { ...html, "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'" };
     if (!credentials || !authConfig.ready) return send(res, 503, auth.passwordPage({ environment: appEnv, error: "Login individual indisponível." }), privacy);
     if (req.method === "GET" || req.method === "HEAD") {
       return send(res, 200, auth.passwordPage({ token: url.searchParams.get("token") ?? "", environment: appEnv, success: url.searchParams.get("success") === "1" }), privacy);
