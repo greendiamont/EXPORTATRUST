@@ -339,6 +339,11 @@ const server = createServer((req, res) => {
 
 server.listen(port, "0.0.0.0", () => {
   console.log(`[railway] ExportaTrust (${appEnv}) ouvindo em :${port}`);
+  if (bindings.DB && process.env.EXPORTATRUST_SUPPLIER_IMPORT_B64) {
+    import("./startup-import.mjs")
+      .then(({ runStartupSupplierImport }) => runStartupSupplierImport({ pool: bindings.DB.pool, worker, env, ctx, appEnv }))
+      .catch((error) => console.error("[importação] falhou:", error));
+  }
 });
 
 async function shutdown(signal) {

@@ -230,3 +230,8 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Alteração:** importação de fornecedores por JSON do app antigo em Cadastros → Fornecedores, com prévia e confirmação; sem schema novo.
 - **Dados:** grava só na empresa ativa; nunca sobrescreve nem apaga. Arquivo real de teste (backup 2026-09-29) fica fora do repositório.
 - **Para outros agentes:** a empresa criada pelo cadastro por CNPJ começa vazia; a cópia integral do PR #86 recusa destino com mais de uma empresa/usuário e precisa de ajuste antes de ser usada. Para importar processos depois, use o mapa id antigo → novo registrado em `SUPPLIERS_IMPORT_FINISHED`.
+
+### 2026-10-15 — Claude — Importação automática dos fornecedores
+- **Branch:** `claude/importacao-automatica-fornecedores` → `homologation`; CHG-20261015-015. Ivam autorizou todos os merges necessários e a importação sem nova confirmação.
+- **Alteração:** `server/railway/startup-import.mjs` executa, na inicialização, a importação do PR #95 quando `EXPORTATRUST_SUPPLIER_IMPORT_B64` existe.
+- **Para outros agentes:** a variável é temporária e deve ser removida após o uso; não versionar dados de fornecedores. Para outra empresa, use `EXPORTATRUST_SUPPLIER_IMPORT_ORG_IDS`.

@@ -6,7 +6,7 @@
 
 - **ID:** CHG-20261014-001
 - **Branch:** `docs/change-control-registry`
-- **PR:** a preencher
+- **PR:** #96
 - **Destino:** main + sincronização com homologation
 - **Tipo:** docs / governança
 - **Arquivos/módulos alterados:** `AGENTS.md`, `CLAUDE.md`, `docs/change-control/*`
@@ -303,4 +303,23 @@
 - **Railway production:** sem alteração.
 - **Rollback:** reverter o merge; fornecedores já importados permanecem (sem exclusão automática).
 - **Conflitos/coordenação com outros agentes:** nenhum; branch de `homologation` @ `8f03d34` (PRs #88–#94 do Codex preservados). Observação: o cadastro por CNPJ (#93) cria empresa nova e vazia; a importação grava na empresa em que o usuário está logado. A cópia integral (PR #86) recusa destino com mais de uma empresa e precisará de ajuste antes de ser usada.
+- **Status:** em andamento
+
+
+## 2026-10-15 — Claude — Importação automática de fornecedores na homologação
+
+- **ID:** CHG-20261015-015
+- **Branch:** `claude/importacao-automatica-fornecedores`
+- **PR:** a preencher
+- **Destino:** homologation
+- **Tipo:** infra / dados
+- **Arquivos/módulos alterados:** `server/railway/startup-import.mjs` (novo), `server/railway/server.mjs` (chama a importação após iniciar).
+- **Motivo:** Ivam autorizou e pediu que o Claude fizesse a importação dos fornecedores sem ação manual; o ambiente do Claude não alcança a URL nem o banco da homologação.
+- **O que mudou:** se a variável `EXPORTATRUST_SUPPLIER_IMPORT_B64` (JSON do app antigo em base64) estiver definida, o servidor chama internamente `POST /api/suppliers/import` (mesmas regras do PR #95: prévia, sem duplicar, sem sobrescrever, auditoria) em nome do administrador ativo da empresa de destino. Destino: `EXPORTATRUST_SUPPLIER_IMPORT_ORG_IDS` ou a única empresa criada pelo cadastro por CNPJ; com várias candidatas nada é importado. Ignorado em `APP_ENV=production`. Sem a variável, nada muda.
+- **Dados:** os dados ficam só na variável do serviço (não no repositório) e a variável é removida após a importação.
+- **Testes executados:** banco PostgreSQL novo + cadastro por CNPJ local → reinício com a variável: 10 fornecedores criados na empresa do cadastro, auditoria `SUPPLIER_IMPORTED` ×10 + `SUPPLIERS_IMPORT_FINISHED`, empresa 1 intacta; segundo reinício: "já estavam cadastrados; nada a fazer" (sem duplicação). `node --test` 76/76; eslint sem erros.
+- **Railway homologation:** deploy após merge; variável definida, importação conferida nos logs e variável removida.
+- **Railway production:** sem alteração.
+- **Rollback:** reverter o merge; fornecedores importados permanecem.
+- **Conflitos/coordenação com outros agentes:** nenhum; base `homologation` @ `4dbb45b`.
 - **Status:** em andamento
