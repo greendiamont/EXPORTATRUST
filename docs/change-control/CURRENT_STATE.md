@@ -56,11 +56,12 @@ Atualizado em: 2026-10-15
 
 ## Interface (redesign em andamento)
 
-- Primeiro acesso por **Cadastrar e-mail** no login: solicitação com código da
-  empresa, revisão em Equipe e link privado para senha após liberação explícita.
-  Branch `codex/self-registration`, somente homologação; detalhes e limitações
-  em `docs/redesign/PRIMEIRO_ACESSO.md`. Não ativa Google nem cria administrador
-  automaticamente. Uma tabela aditiva `railway_access_requests` no PostgreSQL.
+- Primeiro acesso por CNPJ (`codex/cnpj-onboarding`, evolução de #92): empresa
+  nova cria organização vazia isolada, novo administrador, senha e sessão. Equipe
+  solicita pelo mesmo CNPJ, com aprovação e link de senha. Olho em todos os campos
+  de senha. Tabela aditiva `railway_company_registrations`, sem mover dados antigos
+  nem substituir contas/senhas existentes. CNPJ/e-mail são declarados, sem validação
+  de titularidade externa. Ver `docs/redesign/PRIMEIRO_ACESSO_CNPJ.md`; só homologação.
 
 - Login Google no PR #90 (`codex/google-login`): botão padrão, conta Google
   verificada + vínculo ativo. **Ainda falta criar/configurar cliente OAuth Google**
