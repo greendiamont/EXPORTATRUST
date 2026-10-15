@@ -41,6 +41,11 @@ export class UserCredentials {
   }
 
   async initialize() {
+    await this.pool.query(`CREATE TABLE IF NOT EXISTS railway_access_requests (
+      id serial PRIMARY KEY, organization_id integer NOT NULL, email text NOT NULL,
+      full_name text NOT NULL, created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (organization_id, email)
+    )`);
     await this.pool.query(`CREATE TABLE IF NOT EXISTS railway_google_identities (
       subject text PRIMARY KEY, email text NOT NULL UNIQUE, user_id integer NOT NULL,
       created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -63,6 +68,37 @@ export class UserCredentials {
       WHERE lower(u.email) = $1 AND u.status = 'Ativo' AND m.status = 'Ativo'
       AND o.status = 'Ativa' ORDER BY m.id`, [email]);
     return rows;
+  }
+
+  async requestAccess({ email, name, company }) {
+    email = normalizeEmail(email);
+    name = String(name ?? "").trim();
+    company = String(company ?? "").trim().toLowerCase();
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || name.length < 2 || name.length > 120 || !/^[a-z0-9-]{2,80}$/.test(company)) {
+      fail(400, "Informe nome, e-mail válido e o código da empresa fornecido pelo administrador.");
+    }
+    // Não confirma a existência da empresa/conta e não altera usuários ou credenciais.
+    await this.pool.query(`INSERT INTO railway_access_requests (organization_id, email, full_name)
+      SELECT o.id, $1, $2 FROM organizations o WHERE o.slug = $3 AND o.status = 'Ativa'
+      AND NOT EXISTS (SELECT 1 FROM app_users u JOIN organization_memberships m ON m.user_id = u.id
+        WHERE lower(u.email) = $1 AND m.organization_id = o.id)
+      ON CONFLICT (organization_id, email) DO NOTHING`, [email, name, company]);
+  }
+
+  async accessRequests(cookieHeader, config) {
+    const actor = await this.sessionIdentity(cookieHeader, config);
+    if (!actor) fail(401, "Autenticação obrigatória.");
+    const memberships = await this.memberships(actor);
+    const requested = Number(readCookie(cookieHeader, "exportatrust_org"));
+    const current = memberships.find((item) => item.organization_id === requested) ?? memberships[0];
+    if (current?.role !== "administrador") fail(403, "Somente administradores podem consultar solicitações.");
+    const { rows: [organization] } = await this.pool.query("SELECT slug FROM organizations WHERE id = $1", [current.organization_id]);
+    const { rows } = await this.pool.query(`SELECT r.id, r.email, r.full_name AS "fullName", r.created_at AS "createdAt"
+      FROM railway_access_requests r WHERE r.organization_id = $1 AND NOT EXISTS (
+        SELECT 1 FROM app_users u JOIN organization_memberships m ON m.user_id = u.id
+        WHERE lower(u.email) = r.email AND m.organization_id = r.organization_id
+      ) ORDER BY r.created_at DESC LIMIT 100`, [current.organization_id]);
+    return { requests: rows, companyCode: organization.slug };
   }
 
   async authenticate(email, password, config) {
