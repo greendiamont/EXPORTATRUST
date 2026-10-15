@@ -6,7 +6,7 @@
 
 - **ID:** CHG-20261014-001
 - **Branch:** `docs/change-control-registry`
-- **PR:** a preencher
+- **PR:** #96
 - **Destino:** main + sincronização com homologation
 - **Tipo:** docs / governança
 - **Arquivos/módulos alterados:** `AGENTS.md`, `CLAUDE.md`, `docs/change-control/*`
