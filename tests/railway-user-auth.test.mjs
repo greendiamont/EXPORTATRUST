@@ -1,0 +1,119 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createSessionCookie, isSameOrigin, passwordPage, readSession, sessionEmail, stripIdentityHeaders } from "../server/railway/auth.mjs";
+import { hashPassword, passwordTokenHash, UserCredentials, validPassword, verifyPassword } from "../server/railway/user-credentials.mjs";
+
+const config = { ready: true, allowedEmails: ["admin@example.test"], password: "bootstrap-long-password", secret: "test-only-secret-32-characters-minimum" };
+const cookie = (email, version) => createSessionCookie(email, config, true, version).split(";")[0];
+
+test("individual passwords use random salts and reject wrong or malformed hashes", async () => {
+  const first = await hashPassword("individual-password");
+  const second = await hashPassword("individual-password");
+  assert.notEqual(first, second);
+  assert.equal(await verifyPassword("individual-password", first), true);
+  assert.equal(await verifyPassword("wrong", first), false);
+  assert.equal(await verifyPassword("individual-password", "scrypt-v1$invalid$hash"), false);
+  assert.equal(validPassword("short"), false);
+  assert.equal(validPassword("x".repeat(1025)), false);
+});
+
+test("signed individual sessions are not mistaken for bootstrap and reject tampering", () => {
+  const personal = cookie("member@example.test", "version-1");
+  assert.equal(readSession(personal, config).v, "version-1");
+  assert.equal(sessionEmail(personal, config), null);
+  assert.equal(readSession(`${personal}x`, config), null);
+  assert.equal(readSession(`${personal}.extra`, config), null);
+  assert.equal(sessionEmail(cookie("admin@example.test"), config), "admin@example.test");
+  assert.equal(sessionEmail(cookie("other@example.test"), config), null);
+});
+
+test("auth forms escape links and errors; cross-origin requests and forged identity are refused", () => {
+  const page = passwordPage({ token: '"><script>alert(1)</script>', error: "<img src=x>" });
+  assert.ok(!page.includes("<script>"));
+  assert.ok(!page.includes("<img src=x>"));
+  assert.equal(isSameOrigin("https://app.example.test", "https://app.example.test"), true);
+  for (const bad of [undefined, "null", "https://attacker.test", "http://app.example.test"]) {
+    assert.equal(isSameOrigin(bad, "https://app.example.test"), false);
+  }
+  const headers = { "x-exportatrust-authenticated-user-email": "admin@example.test", "x-exportatrust-http-metadata": "data" };
+  stripIdentityHeaders(headers);
+  assert.equal(headers["x-exportatrust-authenticated-user-email"], undefined);
+  assert.equal(headers["x-exportatrust-http-metadata"], "data");
+});
+
+// Optional local PostgreSQL engine; no runtime dependency is added to the app.
+// AUTH_TEST_PGLITE_MODULE=/absolute/path/to/@electric-sql/pglite/dist/index.js
+test("PostgreSQL: authorization, reset, replay, expiry, tenant isolation and immediate revocation", {
+  skip: !process.env.AUTH_TEST_PGLITE_MODULE,
+}, async () => {
+  const { PGlite } = await import(process.env.AUTH_TEST_PGLITE_MODULE);
+  const database = new PGlite();
+  let queue = Promise.resolve();
+  const pool = {
+    async connect() {
+      const before = queue;
+      let release;
+      queue = new Promise((resolve) => { release = resolve; });
+      await before;
+      return { query: database.query.bind(database), release };
+    },
+    async query(...args) {
+      const client = await this.connect();
+      try { return await client.query(...args); } finally { client.release(); }
+    },
+  };
+  try {
+    await database.exec(`
+      CREATE TABLE organizations (id integer PRIMARY KEY, status text);
+      CREATE TABLE app_users (id integer PRIMARY KEY, email text UNIQUE, status text);
+      CREATE TABLE organization_memberships (id integer PRIMARY KEY, organization_id integer, user_id integer, role text, status text);
+      INSERT INTO organizations VALUES (1, 'Ativa'), (2, 'Ativa');
+      INSERT INTO app_users VALUES (1, 'admin@example.test', 'Ativo'), (2, 'member@example.test', 'Ativo'), (3, 'other@example.test', 'Ativo');
+      INSERT INTO organization_memberships VALUES (1, 1, 1, 'administrador', 'Ativo'), (2, 1, 2, 'analista', 'Ativo'), (3, 2, 3, 'analista', 'Ativo');
+    `);
+    const store = new UserCredentials(pool);
+    await store.initialize();
+    await store.initialize(); // startup idempotence
+    const admin = cookie("admin@example.test");
+    assert.equal((await store.authenticate(" ADMIN@example.test ", config.password, config)).email, "admin@example.test");
+    assert.equal(await store.authenticate("unknown@example.test", "wrong-password", config), null);
+    await assert.rejects(store.issueLink("member@example.test", "", config, "https://test.local"), { status: 401 });
+    await assert.rejects(store.issueLink("other@example.test", admin, config, "https://test.local"), { status: 403 });
+    const first = await store.issueLink("member@example.test", admin, config, "https://test.local");
+    const oldToken = new URL(first.url).searchParams.get("token");
+    const second = await store.issueLink("member@example.test", admin, config, "https://test.local");
+    const token = new URL(second.url).searchParams.get("token");
+    const { rows: [stored] } = await pool.query("SELECT token_hash FROM railway_password_tokens WHERE used_at IS NULL");
+    assert.equal(stored.token_hash, passwordTokenHash(token));
+    assert.notEqual(stored.token_hash, token);
+    await assert.rejects(store.setPassword(oldToken, "first-password"), { status: 400 });
+    await assert.rejects(store.setPassword(token, "short"), { status: 400 });
+    const consumes = await Promise.allSettled([store.setPassword(token, "member-password"), store.setPassword(token, "member-password")]);
+    assert.equal(consumes.filter((result) => result.status === "fulfilled").length, 1);
+    assert.equal(consumes.filter((result) => result.status === "rejected").length, 1);
+    const identity = await store.authenticate("member@example.test", "member-password", config);
+    assert.ok(identity?.version);
+    assert.equal(await store.authenticate("member@example.test", "wrong-password", config), null);
+    const session = cookie(identity.email, identity.version);
+    assert.equal(await store.sessionIdentity(session, config), identity.email);
+    await assert.rejects(store.issueLink("admin@example.test", session, config, "https://test.local"), { status: 403 });
+    const reset = await store.issueLink(identity.email, admin, config, "https://test.local");
+    await store.setPassword(new URL(reset.url).searchParams.get("token"), "replacement-password");
+    assert.equal(await store.sessionIdentity(session, config), null);
+    assert.equal(await store.authenticate(identity.email, "member-password", config), null);
+    const replacement = await store.authenticate(identity.email, "replacement-password", config);
+    await pool.query("UPDATE organization_memberships SET status = 'Inativo' WHERE user_id = 2");
+    assert.equal(await store.sessionIdentity(cookie(replacement.email, replacement.version), config), null);
+    assert.equal(await store.authenticate(identity.email, "replacement-password", config), null);
+    await assert.rejects(store.issueLink(identity.email, admin, config, "https://test.local"), { status: 403 });
+    await pool.query("UPDATE organization_memberships SET status = 'Ativo' WHERE user_id = 2");
+    const expired = await store.issueLink(identity.email, admin, config, "https://test.local");
+    await pool.query("UPDATE railway_password_tokens SET expires_at = CURRENT_TIMESTAMP - interval '1 minute' WHERE used_at IS NULL");
+    await assert.rejects(store.setPassword(new URL(expired.url).searchParams.get("token"), "another-password"), { status: 400 });
+    await pool.query("UPDATE app_users SET status = 'Inativo' WHERE id = 1");
+    assert.equal(await store.sessionIdentity(admin, config), null);
+    assert.equal(await store.authenticate("admin@example.test", config.password, config), null);
+  } finally {
+    await database.close();
+  }
+});
