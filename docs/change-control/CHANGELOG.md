@@ -249,3 +249,17 @@
 - **Coordenação:** base `homologation` @ `675e65d`; preservados trabalho de Claude, app clássico, dados/documentos e produção.
 - **Rollback:** reverter somente o PR, preservar tabelas e dados.
 - **Status:** preparado para homologação; produção não autorizada.
+
+## 2026-10-15 — Codex/Jarvis — Empresa inicial por CNPJ e olho de senha
+
+- **ID:** CHG-20261015-012
+- **Branch:** `codex/cnpj-onboarding`; PR #93; destino exclusivo `homologation`.
+- **Pedido:** Ivam quer CNPJ como código, criação inicial da estrutura da empresa e olho para conferir senha.
+- **Alteração:** cadastro cria empresa vazia isolada + novo administrador + senha individual + sessão. Equipe solicita pelo CNPJ; não recria empresa nem substitui conta/senha existente. Mostrar/Ocultar em todos os campos de senha.
+- **Arquivos:** runtime Railway, Equipe, testes e docs de primeiro acesso/coordenação.
+- **Dados:** tabela aditiva railway_company_registrations, reserva única por CNPJ, sequência de organizations alinhada sem recuar sob lock. Transação integral; nenhum dado anterior apagado, movido ou copiado. D1/R2 e produção preservados.
+- **Coordenação:** evolui #92 por mudança explícita do usuário; preserva convites, login individual/Google e clássico. Legado sem CNPJ não é associado automaticamente.
+- **Validação:** build Railway, 72/72 testes PGlite (zero skips) e lint; cadastro manual real pelo Ivam pendente.
+- **Riscos/limites:** CNPJ/e-mail declarados sem comprovação externa. Empresa nova não contém dados antigos. Google OAuth pendente. Reservas/auth no backup privado integral PostgreSQL.
+- **Rollback:** reverter código, preservar dados/tabelas.
+- **Status:** só homologação; sem autorização de produção.

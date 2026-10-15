@@ -125,7 +125,7 @@ export default function EquipeView({ isAdmin, onCount }: { isAdmin: boolean; onC
         <section className="et2-card" aria-labelledby="solicitacoes">
           <div className="et2-card-head"><h2 id="solicitacoes">Solicitações de primeiro acesso</h2></div>
           <div className="et2-card-body">
-            <p>Código da empresa: <strong>{companyCode || "Carregando…"}</strong>. Compartilhe com a equipe junto ao link de entrada.</p>
+            <p>CNPJ da empresa: <strong>{companyCode || "Não informado no cadastro da empresa"}</strong>. A equipe solicita acesso usando esse CNPJ na tela de entrada.</p>
             <p>Confira a identidade da pessoa, escolha o perfil em “Liberar acesso” e entregue o link de senha somente ao destinatário confirmado. Não há envio automático de e-mail.</p>
             {requests.length === 0 ? <p>Nenhuma solicitação pendente.</p> : requests.map((request) => (
               <p key={request.id}>{request.fullName} — {request.email} · {formatDate(request.createdAt)}{" "}
