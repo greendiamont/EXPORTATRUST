@@ -245,7 +245,7 @@ function EntityView({ entity, initialId, onCount }: { entity: Entity; initialId:
             <button aria-pressed={!onlyIncomplete} onClick={() => setOnlyIncomplete(false)}>Todos ({rows?.length ?? 0})</button>
             <button aria-pressed={onlyIncomplete} onClick={() => setOnlyIncomplete(true)}>Incompletos ({incompleteCount})</button>
           </div>
-          {entity.tab === "fornecedores" && <button className="et2-btn et2-btn--sm" onClick={() => { setEditing("import"); setNotice(""); }}>Importar do app antigo…</button>}
+          {(entity.tab === "fornecedores" || entity.tab === "clientes" || entity.tab === "produtos") && <button className="et2-btn et2-btn--sm" onClick={() => { setEditing("import"); setNotice(""); }}>Importar do app antigo…</button>}
         </div>
         <div className="et2-list" style={{ maxHeight: 640, overflowY: "auto" }}>
           {visible.map((row) => {
@@ -272,7 +272,7 @@ function EntityView({ entity, initialId, onCount }: { entity: Entity; initialId:
         {error && <div className="et2-card-body"><div className="et2-alert et2-alert--bad" role="alert">{error}</div></div>}
         {notice && <div className="et2-card-body" style={{ paddingBottom: 0 }}><div className="et2-alert et2-alert--ok" role="status">{notice}</div></div>}
         {editing === "import"
-          ? <ImportarFornecedores onCancel={() => setEditing(null)} onImported={(message) => { setEditing(null); setNotice(message); void load(); }} />
+          ? <ImportarFornecedores tipo={entity.tab as "fornecedores" | "clientes" | "produtos"} onCancel={() => setEditing(null)} onImported={(message) => { setEditing(null); setNotice(message); void load(); }} />
           : editing
           ? <EntityForm entity={entity} initial={editing === "edit" && selected ? selected : { ...entity.defaults, id: 0 } as Row} suppliers={suppliers}
               onCancel={() => setEditing(null)}

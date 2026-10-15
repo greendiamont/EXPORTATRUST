@@ -323,3 +323,26 @@
 - **Rollback:** reverter o merge; fornecedores importados permanecem.
 - **Conflitos/coordenação com outros agentes:** nenhum; base `homologation` @ `4dbb45b`.
 - **Status:** em andamento
+
+
+## 2026-10-15 — Claude — Importar clientes e produtos do app antigo
+
+- **ID:** CHG-20261015-016
+- **Branch:** `claude/importar-clientes-produtos`
+- **PR:** a preencher
+- **Destino:** homologation
+- **Tipo:** feature / dados
+- **Arquivos/módulos alterados:** `lib/registry-import.ts` (novo), `app/api/registry-import/route.ts` (novo), `app/ui/importar-fornecedores.tsx` (passa a servir fornecedores, clientes e produtos), `app/ui/cadastros-view.tsx` (botão "Importar do app antigo…" também em Clientes e Produtos), `server/railway/startup-import.mjs` e `server.mjs` (variável `EXPORTATRUST_REGISTRY_IMPORT_B64`: fornecedores → clientes → produtos), `tests/registry-import.test.mjs` (novo).
+- **Motivo:** Ivam pediu clientes e produtos do app antigo no app novo, como foi feito com fornecedores; processos ficam para etapa posterior.
+- **O que mudou:**
+  - Mesmas regras da importação de fornecedores: prévia, sem duplicar, sem sobrescrever, auditoria (`REGISTRY_IMPORTED`, `REGISTRY_IMPORT_COMPLETED`, `REGISTRY_IMPORT_FINISHED` com mapa id antigo → novo).
+  - Aceita a tabela completa (exportação integral `importer_clients` / `master_products`). Quando o arquivo não tem a tabela — caso do backup "Portable Export v2" de 2026-09-29, que não incluía esses cadastros —, reconstrói pelos processos: clientes com razão social oficial da auditoria, apelidos usados nos processos, país, EORI, porto, incoterm, moeda e contato do parceiro importador; produtos com NCM, espécie, matéria-prima, origem, unidade e fornecedores habilitados (mapeados para os fornecedores já importados). Registros reconstruídos ficam "Pendente".
+  - Ao importar depois a exportação completa, o mesmo cadastro é reconhecido pelo id antigo, os campos vazios são completados e o status passa de "Pendente" para o do app antigo.
+- **Riscos:** baixo. Sem migration nem mudança de schema; nenhuma rota existente alterada.
+- **Dados:** cliente nº 5 do app antigo não aparece em nenhum processo do backup e só virá com a exportação completa. Pellets de madeira tem dois NCMs nos processos (4407.11.00 e 4401.031.00) — sinalizado para conferência.
+- **Testes executados:** `node --test` 80/80 (+2 skips existentes; 4 novos); runtime Railway local em PostgreSQL 16 com o backup real: 10 clientes e 4 produtos criados na empresa do cadastro por CNPJ, fornecedores habilitados idênticos aos do app antigo; reinício sem duplicação; eslint sem erros; `tsc` 89 (baseline inalterado).
+- **Railway homologation:** merge autorizado por Ivam; importação automática pela variável temporária, removida após o uso.
+- **Railway production:** sem alteração.
+- **Rollback:** reverter o merge; cadastros importados permanecem.
+- **Conflitos/coordenação com outros agentes:** nenhum; base `homologation` @ `463a89e`.
+- **Status:** em andamento

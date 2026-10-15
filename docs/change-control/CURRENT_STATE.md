@@ -76,6 +76,8 @@ Atualizado em: 2026-10-15
 
 - Importação de fornecedores do app antigo (CHG-20261015-014): Cadastros → Fornecedores → "Importar do app antigo…", JSON de exportação/backup, prévia e confirmação; grava na empresa ativa sem duplicar nem sobrescrever.
 
+- Importação de clientes e produtos (CHG-20261015-016): mesma tela em Clientes/Produtos; sem tabela no arquivo, reconstrói pelos processos e marca "Pendente".
+
 ## Correção do primeiro acesso
 
 - `fix/auth-form-origin`: formulário era recusado por Origin:null sob no-referrer.
