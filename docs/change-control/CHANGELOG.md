@@ -366,3 +366,23 @@
 - **Rollback:** reverter o merge; processos importados permanecem.
 - **Conflitos/coordenação com outros agentes:** nenhum; base `homologation` @ `b2939b7`.
 - **Status:** em andamento
+
+
+## 2026-10-15 — Claude — Importar arquivos e documentos do app antigo (parte 2)
+
+- **ID:** CHG-20261015-018
+- **Branch:** `claude/importar-documentos`
+- **PR:** #100
+- **Destino:** homologation
+- **Tipo:** feature / dados
+- **Arquivos/módulos alterados:** `app/api/document-import/route.ts` (novo), `server/railway/startup-import.mjs` (`runStartupFileImport`), `server/railway/server.mjs`.
+- **Motivo:** Ivam pediu os arquivos do app antigo no app novo, ligados aos processos importados na parte 1.
+- **O que mudou:** com `EXPORTATRUST_FILES_IMPORT_URL` (somente fora de produção), o servidor baixa o pacote "ExportaTrust Full R2 Export v1" (.tar), grava cada arquivo no storage com a mesma chave e metadados (pula os já existentes com mesmo tamanho) e usa o backup mais recente do próprio pacote para ligar os documentos aos processos já importados (`/api/document-import`): `operation_documents` e `forest_documents` na empresa ativa, avisos de embarque passam a apontar para os ids novos. Prévia (dryRun), sem duplicar (chave de arquivo única), sem apagar.
+- **Dados:** fonte = release `phase5-r2-source` (pacote de 2026-09-29, 451 arquivos, 155.513.309 bytes). 1 documento (certificado fitossanitário 048-2026) já não tinha arquivo no pacote original.
+- **Segurança:** o repositório é público e esse anexo do release contém documentos reais da produção; Ivam autorizou removê-lo após a importação.
+- **Testes executados:** runtime local em PostgreSQL com o pacote real servido por HTTP: 451/451 arquivos gravados (155.513.309 bytes), 400 documentos ligados (108 no GBU002-26, 64 no PO0657…), 2 documentos de florestas, 8 avisos atualizados; download de PDF pela API idêntico ao original; `node --test` 84/84; eslint sem erros; `tsc` 89 (baseline).
+- **Railway homologation:** importação automática pela variável temporária, removida após o uso.
+- **Railway production:** sem alteração.
+- **Rollback:** reverter o merge; arquivos e registros importados permanecem.
+- **Conflitos/coordenação com outros agentes:** nenhum; base `homologation` @ `71d3c7f`.
+- **Status:** em andamento

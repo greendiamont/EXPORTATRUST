@@ -80,6 +80,8 @@ Atualizado em: 2026-10-15
 
 - Importação de processos (CHG-20261015-017): 19 processos do backup de 2026-09-29 com etapas recriadas, florestas CAR, parceiros, avisos e plano industrial; documentos/arquivos pendentes (parte 2).
 
+- Importação de arquivos (CHG-20261015-018): 451 arquivos do pacote de 2026-09-29 no storage de homologação e 400 documentos ligados aos processos importados.
+
 ## Correção do primeiro acesso
 
 - `fix/auth-form-origin`: formulário era recusado por Origin:null sob no-referrer.
