@@ -74,6 +74,8 @@ Atualizado em: 2026-10-15
 - Pedido em 6 fases (`lib/order-phases.ts`): Pedido → Produção → Embarque → Documentos → Trânsito → Entregue.
 - Migration `0029` (aditiva): campos novos de cadastro (endereço do fornecedor, notify party/incoterm/moeda do cliente, unidade de venda/embalagem do produto).
 
+- Importação de fornecedores do app antigo (CHG-20261015-014): Cadastros → Fornecedores → "Importar do app antigo…", JSON de exportação/backup, prévia e confirmação; grava na empresa ativa sem duplicar nem sobrescrever.
+
 ## Correção do primeiro acesso
 
 - `fix/auth-form-origin`: formulário era recusado por Origin:null sob no-referrer.
