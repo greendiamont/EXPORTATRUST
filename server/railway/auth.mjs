@@ -133,7 +133,7 @@ export function loginPage({ next = "/", error = "", environment = "", unavailabl
         <input id="password" name="password" type="password" autocomplete="current-password" required>
         ${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ""}
         <button type="submit">Entrar</button>
-      </form>`));
+      </form><p>Primeiro acesso? <a href="/__auth/cadastrar">Cadastrar e-mail</a></p>`));
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Entrar · ExportaTrust</title><link rel="icon" href="/favicon.svg">
 <style>
@@ -168,4 +168,18 @@ export function passwordPage({ token = "", error = "", environment = "", success
 
 export function isSameOrigin(origin, expected) {
   try { return new URL(origin).origin === new URL(expected).origin; } catch { return false; }
+}
+
+export function registrationPage({ environment = "", error = "", success = false } = {}) {
+  const content = success
+    ? '<h2>Solicitação registrada</h2><p role="status">Se os dados da empresa estiverem corretos, o administrador verá sua solicitação em Cadastros → Equipe. Aguarde o link privado para criar sua senha. Nenhum e-mail foi enviado automaticamente.</p><p><a href="/__auth/login">Voltar para entrar</a></p>'
+    : `<h2>Primeiro acesso</h2><p>Cadastre seu e-mail para solicitar acesso à sua empresa. Depois da aprovação, você recebe do administrador um link privado para criar sua senha.</p>
+      <form method="post" action="/__auth/cadastrar">
+      <label for="name">Nome completo</label><input id="name" name="name" autocomplete="name" maxlength="120" required>
+      <label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email" maxlength="254" required>
+      <label for="company">Código da empresa</label><input id="company" name="company" maxlength="80" required aria-describedby="company-help">
+      <p id="company-help">Peça ao administrador o código da empresa no ExportaTrust.</p>
+      ${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ""}
+      <button type="submit">Cadastrar e solicitar acesso</button></form><p>Já tem conta? <a href="/__auth/login">Entrar</a></p>`;
+  return loginPage({ environment, content });
 }

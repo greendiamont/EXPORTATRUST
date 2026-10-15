@@ -56,6 +56,12 @@ Atualizado em: 2026-10-15
 
 ## Interface (redesign em andamento)
 
+- Primeiro acesso por **Cadastrar e-mail** no login: solicitação com código da
+  empresa, revisão em Equipe e link privado para senha após liberação explícita.
+  Branch `codex/self-registration`, somente homologação; detalhes e limitações
+  em `docs/redesign/PRIMEIRO_ACESSO.md`. Não ativa Google nem cria administrador
+  automaticamente. Uma tabela aditiva `railway_access_requests` no PostgreSQL.
+
 - Login Google no PR #90 (`codex/google-login`): botão padrão, conta Google
   verificada + vínculo ativo. **Ainda falta criar/configurar cliente OAuth Google**
   (`GOOGLE_LOGIN_CLIENT_ID` e `GOOGLE_LOGIN_CLIENT_SECRET`); botão desativado até
