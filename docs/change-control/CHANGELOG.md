@@ -277,3 +277,30 @@
 - **Coordenação:** worktree próprio da homologation @85e99fa; alteração local não relacionada em docs/redesign/prototipo/EUDR.dc.html preservada no checkout original, fora deste PR.
 - **Rollback:** reverter somente este PR; dados preservados.
 - **Status:** correção preparada para homologação, validação manual pendente.
+
+
+## 2026-10-15 — Claude — Importar fornecedores do app antigo
+
+- **ID:** CHG-20261015-014
+- **Branch:** `claude/importar-fornecedores`
+- **PR:** a preencher
+- **Destino:** homologation
+- **Tipo:** feature / dados
+- **Arquivos/módulos alterados:** `app/api/suppliers/import/route.ts` (novo), `lib/supplier-import.ts` (novo), `app/ui/importar-fornecedores.tsx` (novo), `app/ui/cadastros-view.tsx` (botão "Importar do app antigo…" em Fornecedores), `tests/supplier-import.test.mjs` (novo).
+- **Motivo:** Ivam pediu todos os fornecedores do app antigo no app novo, com todas as informações e sem mexer na estrutura existente.
+- **O que mudou:** em Cadastros → Fornecedores, tela que lê o JSON exportado do app antigo (exportação de dados / backup "Portable Export", exportação integral ou lista), mostra prévia calculada no servidor e só grava após confirmação, na empresa ativa.
+  - Todos os campos do fornecedor são copiados (inclusive dados bancários, unidades produtivas, certificações, status e data de criação).
+  - Formato novo: endereço digitado no campo cidade vai inteiro para Endereço e a cidade fica limpa; UF digitada com cidade ("PIRATINI – RS") vira "RS". Cada ajuste aparece na prévia e na auditoria.
+  - Fornecedor já cadastrado (mesmo CNPJ ou razão social) não é duplicado: só campos vazios são completados; nada é sobrescrito ou apagado.
+  - Auditoria por fornecedor (`SUPPLIER_IMPORTED`, `SUPPLIER_IMPORT_COMPLETED`) e resumo com o mapa id antigo → id novo (`SUPPLIERS_IMPORT_FINISHED`), para vincular processos em importações futuras.
+- **Impacto esperado:** fornecedores do app antigo disponíveis no app novo sem redigitação.
+- **Riscos:** baixo. Sem migration, sem mudança de schema, permissões (`write_supplier`) ou telas existentes.
+- **Dados/migração:** nenhuma migration. Arquivo real usado no teste: backup automático de produção de 2026-09-29 (10 fornecedores), não versionado no repositório por conter dados bancários.
+- **Compatibilidade:** ChatGPT Sites/Cloudflare e Railway.
+- **Testes executados:** `node --test` 76/76 (+2 skips existentes; 5 novos de conversão); runtime Railway local em PostgreSQL 16 com o backup real via Playwright: 10 criados, 157/160 campos idênticos ao original e 3 diferenças = ajustes de formato previstos com texto original preservado em Endereço; segunda importação do mesmo arquivo: 0 novos, 10 já cadastrados (sem duplicação); sem erros de console; eslint sem erros; `tsc` 89 (baseline inalterado).
+- **CI:** não configurado.
+- **Railway homologation:** deploy automático após merge autorizado; a importação é feita pelo Ivam na tela.
+- **Railway production:** sem alteração.
+- **Rollback:** reverter o merge; fornecedores já importados permanecem (sem exclusão automática).
+- **Conflitos/coordenação com outros agentes:** nenhum; branch de `homologation` @ `8f03d34` (PRs #88–#94 do Codex preservados). Observação: o cadastro por CNPJ (#93) cria empresa nova e vazia; a importação grava na empresa em que o usuário está logado. A cópia integral (PR #86) recusa destino com mais de uma empresa e precisará de ajuste antes de ser usada.
+- **Status:** em andamento

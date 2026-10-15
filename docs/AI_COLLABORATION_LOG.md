@@ -223,3 +223,10 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Teste:** servidor Node real isolado, sem banco nem conta; headers nas telas e diferença 401 mesma origem / 403 origem inválida. Fetch anterior não cobria o comportamento de Origin em form POST no browser.
 - **Limites:** browser remoto bloqueou ação de teste por política, sem contorno. Teste manual do cadastro permanece necessário após deploy.
 - **Dados:** nenhum dado real modificado; checkout próprio preserva edição local alheia em EUDR.dc.html. Produção não alterada.
+
+### 2026-10-15 — Claude — Importar fornecedores do app antigo
+- **Branch:** `claude/importar-fornecedores` → `homologation`; ver CHG-20261015-014.
+- **Conferência antes de alterar:** PRs #88–#94 (Codex/Jarvis) lidos e preservados; deploy `811b11cf` (commit `8f03d34`) SUCCESS; logs mostram cadastro por CNPJ concluído e telas novas respondendo 200.
+- **Alteração:** importação de fornecedores por JSON do app antigo em Cadastros → Fornecedores, com prévia e confirmação; sem schema novo.
+- **Dados:** grava só na empresa ativa; nunca sobrescreve nem apaga. Arquivo real de teste (backup 2026-09-29) fica fora do repositório.
+- **Para outros agentes:** a empresa criada pelo cadastro por CNPJ começa vazia; a cópia integral do PR #86 recusa destino com mais de uma empresa/usuário e precisa de ajuste antes de ser usada. Para importar processos depois, use o mapa id antigo → novo registrado em `SUPPLIERS_IMPORT_FINISHED`.
