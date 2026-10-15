@@ -451,7 +451,7 @@
 
 - **ID:** CHG-20261015-022
 - **Branch:** `claude/protocolo-layout`
-- **PR:** a preencher
+- **PR:** #104
 - **Destino:** homologation
 - **Tipo:** docs / governança / CI
 - **Arquivos/módulos alterados:** `docs/change-control/LAYOUT_PROTOCOL.md` (novo), `.github/workflows/layout-guard.yml` (novo), `CLAUDE.md`, `AGENTS.md`, `docs/change-control/CURRENT_STATE.md`, `docs/skills/SENIOR_REACT_FRONTEND.md`, `docs/AI_COLLABORATION_LOG.md`
