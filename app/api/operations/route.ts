@@ -3,6 +3,7 @@ import { ensureBaseTables, getDb } from "../../../db";
 import { exportControlSettings, exportMilestones, importerClients, industrialPlans, masterProducts, operationDocuments, operations, operationStageSettings, ruralProperties, suppliers } from "../../../db/schema";
 import { addDays, EXPORT_ORDER_MILESTONES } from "../../../lib/export-control";
 import { normalizeMasterName } from "../../../lib/master-data";
+import { sanitizeLogisticsCosts } from "../../../lib/logistics-costs";
 import { calculateReadiness, hasPolygonGeometry } from "../../../lib/readiness";
 import { audit, requireSecurityContext } from "../../../lib/security";
 
@@ -239,6 +240,11 @@ async function ensureExportControlForOperation(db: Awaited<ReturnType<typeof get
 const EDITABLE_TEXT = new Set(["euImporter", "contractNumber", "product", "hsCode", "destinationCountry", "incoterm", "currency", "quantityUnit", "rawMaterial", "species", "forestOriginType", "exporterName", "exporterTaxId", "productionUnit", "productionLocation", "lotCodes", "transportMode", "portOfLoading", "portOfDischarge", "shipmentDate", "carrier", "bookingNumber", "billOfLadingNumber", "containerNumbers", "vesselVoyage", "euOperatorEori", "eudrReference", "internalResponsible", "responsibleEmail"]);
 const EDITABLE_NUMBER = new Set(["commercialValue", "quantity", "volumeM3", "netWeightKg", "grossWeightKg"]);
 
+/** Prévia dos custos logísticos: só grava quando enviada (o PUT do app anterior não a apaga). */
+function logisticsCostsField(body: Record<string, unknown>) {
+  return body.logisticsCosts && typeof body.logisticsCosts === "object" ? { logisticsCostsJson: JSON.stringify(sanitizeLogisticsCosts(body.logisticsCosts)) } : {};
+}
+
 function values(body: Record<string, unknown>, supplier: { id: number; legalName: string; taxId: string; city: string; state: string; country: string }, master: { importerClientId: number | null; masterProductId: number | null }) {
   const exporterName = String(body.exporterName ?? "").trim() || supplier.legalName;
   const supplierIsExporter = exporterName.toLocaleLowerCase("pt-BR") === supplier.legalName.toLocaleLowerCase("pt-BR");
@@ -386,7 +392,7 @@ export async function POST(request: Request) {
     const supplier = await supplierFor(db, supplierId, context.organizationId);
     if (!supplier) return Response.json({ error: "Fornecedor não encontrado." }, { status: 404 });
     const master = await safeMasterLinks(db, body, context.organizationId);
-    const [operation] = await db.insert(operations).values({ ...values(body, supplier, master), organizationId: context.organizationId }).returning();
+    const [operation] = await db.insert(operations).values({ ...values(body, supplier, master), ...logisticsCostsField(body), organizationId: context.organizationId }).returning();
     await ensureExportControlForOperation(db, operation, context.organizationId);
     try { await audit(context, "OPERATION_CREATED", "operation", String(operation.id), { reference: operation.reference }); } catch (auditError) { console.error("OPERATION_AUDIT_FAILED", auditError); }
     return Response.json({ operation }, { status: 201 });
@@ -412,7 +418,7 @@ export async function PUT(request: Request) {
     const supplier = await supplierFor(db, supplierId, context.organizationId);
     if (!supplier) return Response.json({ error: "Fornecedor não encontrado." }, { status: 404 });
     const master = await safeMasterLinks(db, body, context.organizationId);
-    const [operation] = await db.update(operations).set(values(body, supplier, master)).where(and(eq(operations.id, id), eq(operations.organizationId, context.organizationId))).returning();
+    const [operation] = await db.update(operations).set({ ...values(body, supplier, master), ...logisticsCostsField(body) }).where(and(eq(operations.id, id), eq(operations.organizationId, context.organizationId))).returning();
     if (!operation) return Response.json({ error: "Operação não encontrada." }, { status: 404 });
     await ensureExportControlForOperation(db, operation, context.organizationId);
     try { await audit(context, "OPERATION_UPDATED", "operation", String(id), { reference: operation.reference }); } catch (auditError) { console.error("OPERATION_AUDIT_FAILED", auditError); }
@@ -458,6 +464,12 @@ export async function PATCH(request: Request) {
         }
         if (EDITABLE_NUMBER.has(key)) changes[key] = numeric(raw);
         else if (EDITABLE_TEXT.has(key)) changes[key] = key === "responsibleEmail" ? String(raw ?? "").trim().toLowerCase() : String(raw ?? "").trim();
+      }
+      if ("logisticsCosts" in fields) {
+        if ("logisticsCostsJson" in original && String(original.logisticsCostsJson ?? "") !== String(current.logisticsCostsJson ?? "")) {
+          return Response.json({ error: "Outra pessoa alterou os dados do pedido enquanto você editava.", conflict: true, current }, { status: 409 });
+        }
+        changes.logisticsCostsJson = JSON.stringify(sanitizeLogisticsCosts(fields.logisticsCosts));
       }
       if ("supplierId" in fields) {
         const supplier = await supplierFor(db, Number(fields.supplierId), context.organizationId);

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { api, normalize, processHref } from "./format";
+import { api, money, normalize, processHref } from "./format";
+import { LOGISTICS_COST_FIELDS } from "../../lib/logistics-costs";
 
 type Supplier = { id: number; legalName: string; tradeName: string; taxId: string; city: string; state: string; country: string; products: string; productionUnits: string };
 type Client = { id: number; legalName: string; aliases: string; country: string; eori: string; preferredPort: string; preferredIncoterm?: string; preferredCurrency?: string };
@@ -16,11 +17,21 @@ const EMPTY = {
   quantity: "", quantityUnit: "MT", volumeM3: "", netWeightKg: "", grossWeightKg: "", incoterm: "FOB", currency: "USD", commercialValue: "",
   transportMode: "Marítimo", shipmentDate: "", destinationCountry: "", portOfLoading: "", portOfDischarge: "", carrier: "", bookingNumber: "", billOfLadingNumber: "", containerNumbers: "", vesselVoyage: "",
   supplyChainNotes: "",
+  lcCurrency: "BRL", lcInlandFreight: "", lcPortCharges: "", lcCustomsBroker: "", lcOceanFreight: "", lcInsurance: "", lcOther: "", lcNotes: "",
 };
 type Form = typeof EMPTY;
 type Key = Exclude<keyof Form, "propertyIds">;
 
 const DRAFT_KEY = "et2-novo-processo-rascunho";
+
+/** Campo do formulário de cada custo logístico (ex.: inlandFreight → lcInlandFreight). */
+const costKey = (key: string) => `lc${key[0].toUpperCase()}${key.slice(1)}` as Key;
+/** Valor digitado no padrão brasileiro (1.234,56) ou internacional (1234.56). */
+const amount = (value: unknown) => {
+  const raw = String(value ?? "").replace(/\s/g, "");
+  const parsed = Number(raw.includes(",") || /^\d{1,3}(\.\d{3})+$/.test(raw) ? raw.replace(/\./g, "").replace(",", ".") : raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
 
 const SECTIONS = [
   { title: "Identificação da operação", hint: "Referência, produto, contrato", description: "Se a referência ficar vazia, o sistema gera uma automaticamente." },
@@ -78,6 +89,10 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
 
   // O exportador (quem aparece nos documentos) é o próprio fornecedor ou uma trading do cadastro;
   // nome e CNPJ vêm do cadastro.
+  function logisticsCosts() {
+    return { currency: form.lcCurrency, notes: form.lcNotes, ...Object.fromEntries(LOGISTICS_COST_FIELDS.map(([key]) => [key, amount(form[costKey(key)])])) };
+  }
+
   function pickSupplier(id: string) {
     const chosen = suppliers.find((item) => String(item.id) === id);
     setForm((current) => current.exporterId && current.exporterId !== id
@@ -137,7 +152,7 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
     }
     setSaving(true);
     try {
-      const result = await api<{ operation: { id: number; reference: string }; duplicate?: boolean }>("/api/operations", { method: "POST", body: JSON.stringify(form) });
+      const result = await api<{ operation: { id: number; reference: string }; duplicate?: boolean }>("/api/operations", { method: "POST", body: JSON.stringify({ ...form, logisticsCosts: logisticsCosts() }) });
       if (result.duplicate) {
         setError(`Já existe um processo com a referência ${result.operation.reference}. Use outra referência ou deixe em branco.`);
         setStep(0);
@@ -292,6 +307,16 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
               {input("billOfLadingNumber", "BL / Bill of Lading", { placeholder: "Ex.: SA0600284400" })}
               {input("containerNumbers", "Contêiner(es)")}
               {input("vesselVoyage", "Navio / viagem")}
+            </div>}
+            {step === 4 && <div style={{ marginTop: 22 }}>
+              <div style={{ fontWeight: 500 }}>Prévia dos custos logísticos</div>
+              <small className="et2-sub" style={{ display: "block", margin: "2px 0 10px" }}>Estimativa para o financeiro calcular a margem do pedido. Pode ser ajustada depois, dentro do pedido.</small>
+              <div className="et2-grid">
+                {select("lcCurrency", "Moeda dos custos", ["BRL", "USD", "EUR"])}
+                {LOGISTICS_COST_FIELDS.map(([key, label]) => input(costKey(key), label, { placeholder: "0,00" }))}
+                {input("lcNotes", "Observações dos custos", { placeholder: "Ex.: cotação do armador, validade" })}
+              </div>
+              <div style={{ marginTop: 10, fontWeight: 600 }}>Total estimado: {money(LOGISTICS_COST_FIELDS.reduce((sum, [key]) => sum + amount(form[costKey(key)]), 0), form.lcCurrency)}</div>
             </div>}
 
             {step === 5 && <label className="et2-field">

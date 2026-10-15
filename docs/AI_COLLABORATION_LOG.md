@@ -273,3 +273,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 ### 2026-10-15 — Claude — Novo processo: exportador selecionável
 - **Branch:** `claude/exportador-selecionar` → `homologation`; CHG-20261015-024 (pedido de Ivam na conversa).
 - **Para outros agentes:** Ivam confirmou o layout da tela Novo processo como está; a única mudança autorizada foi o exportador/trading selecionável com CNPJ do cadastro. O exportador (fornecedor ou trading) é o que aparece nos documentos do pedido.
+
+### 2026-10-15 — Claude — Prévia dos custos logísticos
+- **Branch:** `claude/custos-logisticos` → `homologation`; CHG-20261015-025 (pedido de Ivam na conversa); migration 0032.
+- **Para outros agentes:** custos logísticos ficam em `operations.logistics_costs_json`; use `lib/logistics-costs.ts` (sanitize/parse/total). Enviar `logisticsCosts` no POST/PUT de `/api/operations` ou em `fields.logisticsCosts` no PATCH.
