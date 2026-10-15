@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Cadastros · ExportaTrust</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F4F6}
+a{color:#1D4ED8}a:hover{color:#1E3A8A}
+</style>
+</helmet>
+<div style="min-height: 100vh; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #111827; background: #F3F4F6; font-size: 14px">
+  <header style="background: #0F1B2D; color: #FFFFFF">
+    <div style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 0 24px; min-height: 56px; display: flex; flex-wrap: wrap; align-items: center; gap: 28px">
+      <div style="display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; letter-spacing: 0.2px">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5FD3A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l6 6L21 6"></path></svg>
+        ExportaTrust
+      </div>
+      <nav aria-label="Navegação principal" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1">
+        <a href="Main.dc.html" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8; text-decoration: none">Painel</a>
+        <a href="Processos.dc.html" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8; text-decoration: none">Pedidos</a>
+        <a href="Cadastros.dc.html" aria-current="page" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #FFFFFF; text-decoration: none; font-weight: 500; box-shadow: inset 0 -3px 0 #5FD3A6">Cadastros</a>
+        <a href="EUDR.dc.html" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8; text-decoration: none">EUDR</a>
+        <a href="#" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8; text-decoration: none">Relatórios</a>
+      </nav>
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #C3CBD8">
+        <span style="padding: 3px 8px; border: 1px solid #3A4A63; border-radius: 4px; font-size: 11px; letter-spacing: 0.6px">HOMOLOGAÇÃO</span>
+        <span style="width: 30px; height: 30px; border-radius: 15px; background: #2B3A52; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 600">IV</span>
+      </div>
+    </div>
+  </header>
+
+  <main style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 28px 24px 48px; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between">
+      <div>
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600">Cadastros</h1>
+        <p style="margin: 4px 0 0; color: #4B5563">Base única reutilizada em todos os processos, documentos e no dossiê EUDR</p>
+      </div>
+      <button style="min-height: 40px; padding: 0 16px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; font-weight: 500; cursor: pointer">{{newLabel}}</button>
+    </div>
+
+    <div role="tablist" aria-label="Tipo de cadastro" style="display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid #D1D5DB">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+        <button role="tab" aria-selected="{{t.selected}}" onClick="{{t.pick}}" style="{{t.style}}">{{t.label}} <span style="{{t.countStyle}}">{{t.count}}</span></button>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start">
+      <section aria-label="Lista" style="flex: 1 1 420px; min-width: 0; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; overflow: hidden">
+        <div style="padding: 12px 14px; border-bottom: 1px solid #E5E7EB; display: flex; gap: 8px; flex-wrap: wrap">
+          <label style="flex: 1 1 200px; display: flex"><span style="position: absolute; left: -9999px">Buscar</span>
+            <input placeholder="{{searchHint}}" style="flex: 1; min-height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit">
+          </label>
+          <select aria-label="Filtro" style="min-height: 36px; padding: 0 8px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; background: #FFFFFF">
+            <option>Todos</option><option>Incompletos</option><option>Possível duplicidade</option><option>Inativos</option>
+          </select>
+        </div>
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+          <button onClick="{{r.pick}}" aria-pressed="{{r.pressed}}" style="{{r.style}}">
+            <span style="display: flex; justify-content: space-between; gap: 10px; width: 100%">
+              <span style="font-weight: 500; min-width: 0">{{r.name}}</span>
+              <span style="{{r.badgeStyle}}">{{r.status}}</span>
+            </span>
+            <span style="font-size: 12px; color: #6B7280">{{r.sub}}</span>
+            <span style="display: flex; align-items: center; gap: 8px; width: 100%">
+              <span style="flex: 1; height: 4px; background: #E5E7EB; border-radius: 2px; overflow: hidden"><span style="{{r.barStyle}}"></span></span>
+              <span style="font-size: 11px; color: #6B7280; width: 82px; text-align: right">{{r.completeness}} completo</span>
+            </span>
+            <sc-if value="{{r.hasWarn}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: #92400E">⚠ {{r.warn}}</span></sc-if>
+          </button>
+        </sc-for>
+      </section>
+
+      <section aria-labelledby="ficha" style="flex: 999 1 560px; min-width: 0; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+        <div style="padding: 16px 20px; border-bottom: 1px solid #E5E7EB; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: flex-start">
+          <div>
+            <div style="font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px">{{detail.kind}}</div>
+            <h2 id="ficha" style="margin: 2px 0 0; font-size: 18px; font-weight: 600">{{detail.name}}</h2>
+            <div style="margin-top: 4px; font-size: 13px; color: #4B5563">{{detail.sub}}</div>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap">
+            <button style="min-height: 36px; padding: 0 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">Histórico</button>
+            <button style="min-height: 36px; padding: 0 12px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer">Editar</button>
+          </div>
+        </div>
+
+        <sc-if value="{{detail.hasMissing}}" hint-placeholder-val="{{ true }}">
+          <div style="margin: 16px 20px 0; padding: 10px 12px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 6px; font-size: 13px">
+            <b>Cadastro {{detail.completeness}} completo.</b> Falta: {{detail.missing}}.
+          </div>
+        </sc-if>
+
+        <div style="padding: 8px 20px 20px; display: flex; flex-direction: column">
+          <sc-for list="{{detail.groups}}" as="g" hint-placeholder-count="3">
+            <div style="padding: 14px 0; border-bottom: 1px solid #F0F1F3">
+              <h3 style="margin: 0 0 10px; font-size: 13px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.4px">{{g.title}}</h3>
+              <dl style="margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 16px">
+                <sc-for list="{{g.fields}}" as="f" hint-placeholder-count="6">
+                  <div style="{{f.wrapStyle}}">
+                    <dt style="font-size: 12px; color: #6B7280">{{f.label}} <span style="{{f.newStyle}}">{{f.tag}}</span></dt>
+                    <dd style="{{f.valueStyle}}">{{f.value}}</dd>
+                  </div>
+                </sc-for>
+              </dl>
+            </div>
+          </sc-for>
+
+          <div style="padding: 14px 0">
+            <h3 style="margin: 0 0 10px; font-size: 13px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.4px">{{detail.relatedTitle}}</h3>
+            <sc-for list="{{detail.related}}" as="x" hint-placeholder-count="3">
+              <div style="display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid #F0F1F3; font-size: 13px">
+                <span><span style="font-family: 'IBM Plex Mono', monospace">{{x.ref}}</span> · {{x.text}}</span>
+                <span style="{{x.style}}">{{x.status}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { tab: 0, sel: 0 }; }
+  renderVals() {
+    const badge = (bg, fg) => 'display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; background: ' + bg + '; color: ' + fg;
+    const TONE = { ok: ['#ECFDF5', '#047857'], warn: ['#FFFBEB', '#92400E'], bad: ['#FEF2F2', '#B91C1C'], todo: ['#F3F4F6', '#4B5563'] };
+    // [rótulo, valor, novo?, largura total?]
+    const F = (label, value, isNew, wide) => ({ label, value, isNew: Boolean(isNew), wide: Boolean(wide) });
+    const TABS = [
+      { label: 'Clientes', kind: 'Cliente importador', newLabel: '+ Novo cliente', search: 'Buscar por nome, alias, VAT ou EORI',
+        rows: [
+          ['[CLIENTE A]', 'Itália · Ravenna', 'Validado', 'ok', 95, ''], ['[CLIENTE B]', 'Alemanha · Hamburgo', 'Validado', 'ok', 80, ''],
+          ['[CLIENTE C]', 'Holanda · Rotterdam', 'Pendente', 'warn', 55, 'Possível duplicidade com [CLIENTE C SRL]'], ['[CLIENTE D]', 'Espanha · Valência', 'Validado', 'ok', 100, ''] ],
+        groups: [
+          { title: 'Identificação', fields: [F('Razão social', '[RAZÃO SOCIAL]'), F('Também conhecido como', '[ALIASES] · nomes usados no Asana, e-mails e documentos'), F('País', 'Itália'), F('Tipo fiscal', 'VAT'), F('Número fiscal', 'IT[NÚMERO]'), F('EORI', '[EORI]')] },
+          { title: 'Endereço e contato', fields: [F('Endereço', '[ENDEREÇO]', false, true), F('Cidade', '[CIDADE]'), F('Estado / região', '[REGIÃO]'), F('CEP / postcode', '[CEP]'), F('Contato', '[NOME]'), F('E-mail', '[E-MAIL]'), F('Telefone', '[TELEFONE]')] },
+          { title: 'Comercial e logística', fields: [F('Porto preferencial', 'Ravenna'), F('Condição de pagamento', '30% adiantado · 70% contra BL'), F('Incoterm preferido', 'FOB', true), F('Moeda preferida', 'USD', true), F('Notify party padrão', '[NOTIFY]', true), F('Dados bancários', '[BANCO / IBAN / SWIFT]')] },
+          { title: 'Exigências documentais', fields: [F('Requisitos por cliente / país', 'COO, fitossanitário, FSC, packing list, idioma inglês, DDS EUDR', false, true)] } ],
+        missing: 'notify party padrão', relatedTitle: 'Processos deste cliente',
+        related: [['GBU002/26', 'Wood pellets · Embarque', 'Em andamento', 'warn'], ['[REF]', 'Wood pellets · Entregue', 'Concluído', 'ok']] },
+      { label: 'Fornecedores', kind: 'Fornecedor', newLabel: '+ Novo fornecedor', search: 'Buscar por nome, alias ou CNPJ',
+        rows: [
+          ['[FORNECEDOR A]', 'Timbó · SC · Brasil', 'Homologado', 'ok', 92, ''], ['[FORNECEDOR B]', 'União da Vitória · PR · Brasil', 'Homologado', 'ok', 64, 'Sem dados bancários'],
+          ['[FORNECEDOR C]', 'Misiones · Argentina', 'Homologado', 'ok', 58, 'Sem produtos e unidades produtivas'], ['[FORNECEDOR D]', 'Itapúa · Paraguai', 'Em análise', 'warn', 40, 'Licença ambiental vencida'] ],
+        groups: [
+          { title: 'Identificação', fields: [F('Razão social', '[RAZÃO SOCIAL]'), F('Nome fantasia', '[FANTASIA]'), F('CNPJ / ID fiscal', '[CNPJ] · validado'), F('País', 'Brasil'), F('Estado / UF', 'SC'), F('Município', 'Timbó'), F('Endereço', '[ENDEREÇO]', true, true), F('Também conhecido como', '[ALIASES]', false, true)] },
+          { title: 'Contato', fields: [F('Responsável', '[NOME]'), F('E-mail', '[E-MAIL]'), F('Telefone / WhatsApp', '[TELEFONE]')] },
+          { title: 'Produção e certificação', fields: [F('Certificações', 'FSC + PEFC'), F('Produtos vinculados', 'Wood pellets, madeira serrada'), F('Unidades produtivas', 'Planta Timbó'), F('Origens CAR', '2 imóveis vinculados'), F('Status', 'Homologado')] },
+          { title: 'Financeiro', fields: [F('Dados bancários', '[BANCO / AGÊNCIA / CONTA / PIX]', false, true)] },
+          { title: 'Licenças e certidões', fields: [F('Licença ambiental', 'Válida até [DATA]', true), F('CTF IBAMA', 'Válido até [DATA]', true), F('Certidão negativa IBAMA', 'Emitida em [DATA]', true)] } ],
+        missing: 'nenhum campo obrigatório · licenças com validade cadastradas', relatedTitle: 'Processos deste fornecedor',
+        related: [['GBU002/26', 'Wood pellets · Embarque', 'Em andamento', 'warn'], ['[REF]', 'Madeira serrada · Produção', 'Em andamento', 'warn'], ['[REF]', 'Wood pellets · Entregue', 'Concluído', 'ok']] },
+      { label: 'Produtos', kind: 'Produto', newLabel: '+ Novo produto', search: 'Buscar por produto, NCM ou espécie',
+        rows: [
+          ['Wood pellets ENplus A1', 'NCM 4401.31 · Pinus', 'Completo', 'ok', 100, ''], ['Madeira serrada', 'NCM 4407.11 · Pinus', 'Completo', 'ok', 90, ''],
+          ['Molduras', 'NCM 4409.10 · Pinus', 'Pendente', 'warn', 60, 'Sem fornecedores aptos'] ],
+        groups: [
+          { title: 'Identificação', fields: [F('Produto', 'Wood pellets ENplus A1'), F('NCM / HS', '4401.31'), F('Tipo de origem', 'Reflorestamento'), F('Matéria-prima', 'Resíduo de pinus'), F('Espécie', 'Pinus'), F('Nome científico', 'Pinus taeda / P. elliottii')] },
+          { title: 'Especificação técnica', fields: [F('Grade', 'A1'), F('Especificação dimensional', '6 mm · comprimento 3,15–40 mm'), F('Umidade', '≤ 10%'), F('KD (secagem)', 'Sim'), F('HT (tratamento térmico)', 'Sim'), F('Certificações', 'ENplus A1')] },
+          { title: 'Comercial', fields: [F('Unidade de venda padrão', 'MT (tonelada)', true), F('Embalagem padrão', 'Big bag 1 MT', true), F('Fornecedores aptos', '[FORNECEDOR A], [FORNECEDOR B]'), F('EUDR', 'Exigido para destino UE (cap. 44)', true)] } ],
+        missing: 'nenhum', relatedTitle: 'Processos com este produto',
+        related: [['GBU002/26', 'Itália · Embarque', 'Em andamento', 'warn'], ['[REF]', 'Holanda · Documentos', 'Em andamento', 'warn']] },
+      { label: 'Florestas (CAR)', kind: 'Origem florestal · CAR', newLabel: '+ Nova floresta', search: 'Buscar CAR, coordenadas, UTM, município ou fornecedor',
+        rows: [
+          ['Fazenda [NOME]', 'SC-4205407-A1B2… · Timbó · SC', 'Ativo', 'ok', 100, ''], ['Sítio [NOME]', 'SC-4215802-C3D4… · Doutor Pedrinho · SC', 'Ativo', 'ok', 85, ''],
+          ['Fazenda [NOME]', 'PR-4128203-E5F6… · União da Vitória · PR', 'Ativo', 'ok', 70, 'Sem geometria SICAR'] ],
+        groups: [
+          { title: 'Imóvel', fields: [F('Código CAR', 'SC-4205407-A1B2…'), F('Nome do imóvel', 'Fazenda [NOME]'), F('Município', 'Timbó · SC'), F('Fornecedor', '[FORNECEDOR A]'), F('Área total', '412,5 ha'), F('Área nativa', '96,0 ha')] },
+          { title: 'Situação e risco', fields: [F('Status CAR', 'Ativo'), F('Risco', 'Baixo'), F('Triagem IBAMA', 'Sem embargos'), F('Última consulta SICAR', '[DATA]', true), F('Geometria', 'Polígono SICAR · mapa satélite'), F('Arquivo de origem', 'Recibo CAR (PDF)')] } ],
+        missing: 'nenhum', relatedTitle: 'Processos que usam esta origem',
+        related: [['GBU002/26', 'Wood pellets · Itália', 'Em andamento', 'warn']] },
+      { label: 'Parceiros logísticos', kind: 'Parceiro logístico', newLabel: '+ Novo parceiro', search: 'Buscar armador, transportadora ou despachante',
+        rows: [
+          ['[ARMADOR]', 'Armador', 'Ativo', 'ok', 90, ''], ['[TRANSPORTADORA]', 'Transporte ao porto', 'Ativo', 'ok', 80, ''], ['[DESPACHANTE]', 'Despachante aduaneiro', 'Ativo', 'ok', 75, ''] ],
+        groups: [
+          { title: 'Identificação', fields: [F('Empresa', '[ARMADOR]', true), F('Tipo', 'Armador', true), F('País', 'Brasil', true), F('Contato', '[NOME]', true), F('E-mail', '[E-MAIL]', true), F('Telefone', '[TELEFONE]', true)] } ],
+        missing: 'nenhum', relatedTitle: 'Processos com este parceiro',
+        related: [['GBU002/26', 'Booking MSC', 'Em andamento', 'warn']] },
+    ];
+    const tab = TABS[this.state.tab];
+    const tabs = TABS.map((t, i) => {
+      const on = this.state.tab === i;
+      return { label: t.label, count: String(t.rows.length), selected: on ? 'true' : 'false', pick: () => this.setState({ tab: i, sel: 0 }),
+        style: 'min-height: 42px; padding: 0 14px; border: 0; background: transparent; font: inherit; cursor: pointer; color: ' + (on ? '#111827' : '#4B5563') + '; font-weight: ' + (on ? '600' : '400') + '; box-shadow: ' + (on ? 'inset 0 -2px 0 #0F1B2D' : 'none'),
+        countStyle: 'font-size: 12px; color: #6B7280; font-weight: 400' };
+    });
+    const rows = tab.rows.map(([name, sub, status, t, pct, warn], i) => {
+      const on = this.state.sel === i;
+      return { name, sub, status, completeness: pct + '%', warn, hasWarn: Boolean(warn), pressed: on ? 'true' : 'false',
+        pick: () => this.setState({ sel: i }),
+        badgeStyle: badge(TONE[t][0], TONE[t][1]),
+        barStyle: 'display: block; height: 100%; width: ' + pct + '%; background: ' + (pct >= 90 ? '#047857' : pct >= 60 ? '#F59E0B' : '#B91C1C'),
+        style: 'width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 14px; border: 0; border-top: 1px solid #F0F1F3; font: inherit; color: #111827; text-align: left; cursor: pointer; background: ' + (on ? '#F3F4F6' : '#FFFFFF') + '; box-shadow: ' + (on ? 'inset 3px 0 0 #0F1B2D' : 'none') };
+    });
+    const row = tab.rows[this.state.sel];
+    const groups = tab.groups.map((g) => ({ title: g.title, fields: g.fields.map((f) => ({ label: f.label, value: f.value, tag: f.isNew ? 'NOVO' : '',
+      newStyle: f.isNew ? 'display: inline-block; padding: 0 5px; border-radius: 3px; font-size: 10px; font-weight: 600; background: #EFF6FF; color: #1D4ED8' : 'display: none',
+      valueStyle: 'margin: 3px 0 0; white-space: pre-line; color: ' + (/^\[/.test(f.value) ? '#374151' : '#111827'),
+      wrapStyle: f.wide ? 'grid-column: 1 / -1' : '' })) }));
+    const detail = { kind: tab.kind, name: row[0], sub: row[1], completeness: row[4] + '%', hasMissing: row[4] < 100, missing: row[5] || tab.missing,
+      groups, relatedTitle: tab.relatedTitle,
+      related: tab.related.map(([ref, text, status, t]) => ({ ref, text, status, style: badge(TONE[t][0], TONE[t][1]) })) };
+    return { tabs, rows, detail, newLabel: tab.newLabel, searchHint: tab.search };
+  }
+}
+</script>
+</body>
+</html>

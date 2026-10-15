@@ -1,6 +1,6 @@
 # ExportaTrust — Estado Atual
 
-Atualizado em: 2026-10-14
+Atualizado em: 2026-10-15
 
 ## Fonte de verdade
 
@@ -51,6 +51,13 @@ Atualizado em: 2026-10-14
   - autenticação validada (o login de homologação não é o modelo final de produção);
   - documentos R2 testados;
   - homologação aprovada.
+
+## Interface (redesign em andamento)
+
+- Plano, decisões aprovadas e pendências: `docs/redesign/PLANO_REDESIGN.md`; protótipo em `docs/redesign/prototipo/`.
+- Etapa 1 (branch `claude/redesign-etapa1`): `/` Painel, `/pedidos`, `/novo-processo`, `/cadastros`; o app anterior inteiro fica em `/classico`.
+- Pedido em 6 fases (`lib/order-phases.ts`): Pedido → Produção → Embarque → Documentos → Trânsito → Entregue.
+- Migration `0029` (aditiva): campos novos de cadastro (endereço do fornecedor, notify party/incoterm/moeda do cliente, unidade de venda/embalagem do produto).
 
 ## Avaliação funcional
 

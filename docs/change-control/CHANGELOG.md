@@ -146,3 +146,33 @@
 - **Rollback:** reverter o merge deste PR.
 - **Conflitos/coordenação com outros agentes:** a correção de JavaScript do importador R2 do PR #72 (fix/r2-import-inline-script-syntax → main) já estava no código de `homologation`; o PR #72 pode ser fechado como já incorporado.
 - **Status:** em andamento
+
+
+## 2026-10-15 — Claude — Redesign etapa 1: novo visual, Painel, Pedidos, Novo processo, Cadastros
+
+- **ID:** CHG-20261015-007
+- **Branch:** `claude/redesign-etapa1`
+- **PR:** a preencher
+- **Destino:** homologation
+- **Tipo:** feature / frontend / migration (aditiva)
+- **Arquivos/módulos alterados:** `app/page.tsx` (novo Painel), `app/classico/page.tsx` (app anterior preservado), `app/pedidos/`, `app/novo-processo/`, `app/cadastros/`, `app/ui/*` (novo), `app/api/overview/route.ts` (novo), `lib/order-phases.ts` (novo), `lib/registration-columns.ts` (novo), `app/api/{importer-clients,master-products,suppliers}/route.ts`, `app/client-app.tsx` (abrir `?processo=` e `?module=` de cadastro), `db/schema.ts`, `drizzle/0029_redesign_registration_fields.sql`, `tests/order-phases.test.mjs`, `docs/redesign/*`.
+- **Motivo:** redesign aprovado pelo Ivam (protótipo em `docs/redesign/prototipo/`; plano e decisões em `docs/redesign/PLANO_REDESIGN.md`).
+- **O que mudou:**
+  - nova barra superior e menu: Painel · Pedidos · Cadastros · EUDR · Relatórios;
+  - Painel com pedidos por fase (6 fases), pendências com prazo e próximos embarques;
+  - Pedidos com filtro por fase, andamento e próximo passo;
+  - "+ Novo processo" com o formulário de 6 seções do app antigo, preenchido a partir dos cadastros;
+  - Cadastros (Clientes, Fornecedores, Produtos, Florestas, Equipe) com completude, duplicidades, processos relacionados e campos novos;
+  - o app anterior continua inteiro em `/classico` (link "Versão anterior").
+- **Impacto esperado:** a página inicial passa a ser o Painel novo; todas as funções antigas seguem acessíveis em `/classico`.
+- **Riscos:** baixo/moderado (tela inicial muda). As APIs são as mesmas; nenhuma rota antiga removida.
+- **Dados/migração:** `0029` só adiciona 6 colunas texto com default `''`; também criadas sob demanda (`ensureRegistrationColumns`). Campos novos só são gravados quando enviados, para o app clássico não apagá-los. Correção: dados bancários do cliente eram descartados ao salvar.
+- **Compatibilidade:** ChatGPT Sites/Cloudflare e Railway.
+- **Testes executados:** `node --test` 59/59 (3 novos de fases); build Railway OK (rotas `/`, `/pedidos`, `/novo-processo`, `/cadastros`, `/classico`); runtime local em PostgreSQL 16: migration 0029 aplicada; Playwright: criação de processo pelo assistente → redireciona para `/classico?processo=<id>`; edição de cliente (EORI, notify party, dados bancários) e de produto (unidade de venda) persistem sem perder demais campos; todas as telas sem erro de console; eslint sem erros nos arquivos novos; `tsc` 89 erros (baseline 88 — os novos são do mesmo tipo pré-existente: módulo `cloudflare:workers` sem tipos e a cópia da página antiga em `/classico`).
+- **CI:** não configurado.
+- **Railway homologation:** deploy automático após merge (aplicará a migration 0029).
+- **Railway production:** sem alteração.
+- **Rollback:** reverter o merge; as colunas novas podem permanecer (aditivas, sem impacto).
+- **Conflitos/coordenação com outros agentes:** nenhum; `homologation` em `eb3b526` sem mudanças de outros agentes. PRs #72 e #40 (destino `main`) não foram tocados.
+- **Pendências:** login individual no Railway (desenho em `docs/redesign/PLANO_REDESIGN.md`); parceiros logísticos; etapas 2–5 do redesign; cópia dos dados de produção para homologação (precisa do endereço do ChatGPT Sites de produção).
+- **Status:** em andamento

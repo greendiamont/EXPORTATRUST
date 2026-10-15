@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { translateToEnglish, type Language } from "./i18n";
 import { parseGeographicInput } from "../lib/geo-input";
 import { SUPPLY_CHAIN_STAGES } from "../lib/supply-chain-stages";
@@ -45,6 +45,8 @@ function translateInterface(root: Node, language: Language) {
 
 const nav = ["Dashboard", "Processos", "Relatórios"];
 const protectedModules = ["Integrações"];
+// Telas de cadastro que a interface nova abre diretamente (?module=Florestas, por exemplo).
+const linkableRegistrationModules = ["Fornecedores", "Clientes", "Produtos", "Duplicidades", "Florestas"];
 const SHOW_ENVIRONMENTAL_NEWS = false;
 const SHOW_LEGACY_TRACKING = false;
 const brazilStates = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
@@ -736,7 +738,7 @@ export default function Home({ initialData }: { initialData: InitialAppData }) {
   const [active, setActive] = useState(() => {
     if (typeof window === "undefined") return "Dashboard";
     const requested = new URLSearchParams(window.location.search).get("module");
-    return requested && [...nav, ...protectedModules].includes(requested) ? requested : "Dashboard";
+    return requested && [...nav, ...protectedModules, ...linkableRegistrationModules].includes(requested) ? requested : "Dashboard";
   });
   const [drawer, setDrawer] = useState<"operation" | "supplier" | null>(null);
   const [notice, setNotice] = useState("");
@@ -765,6 +767,20 @@ export default function Home({ initialData }: { initialData: InitialAppData }) {
   const [historyPartners, setHistoryPartners] = useState<PartnerRecord[]>(initialData.partners);
   const [detailSupplier, setDetailSupplier] = useState<SupplierRecord | null>(null);
   const [detailOperation, setDetailOperation] = useState<OperationRecord | null>(null);
+  // A interface nova abre um processo aqui com /classico?processo=<id>.
+  const requestedOperationOpened = useRef(false);
+  useEffect(() => {
+    if (requestedOperationOpened.current) return;
+    const requestedId = Number(new URLSearchParams(window.location.search).get("processo"));
+    if (!requestedId) return;
+    const requested = operations.find((operation) => operation.id === requestedId);
+    if (requested) {
+      requestedOperationOpened.current = true;
+      // Abre uma única vez o processo pedido no link (?processo=), vindo da interface nova.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDetailOperation(requested);
+    }
+  }, [operations]);
   const [exceptionActions, setExceptionActions] = useState<ExceptionActionRecord[]>(initialData.actions);
   const [allDocuments, setAllDocuments] = useState<DocumentRecord[]>(initialData.documents);
   const [savingBase, setSavingBase] = useState(false);
