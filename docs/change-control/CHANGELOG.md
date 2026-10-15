@@ -6,7 +6,7 @@
 
 - **ID:** CHG-20261014-001
 - **Branch:** `docs/change-control-registry`
-- **PR:** #96
+- **PR:** a preencher
 - **Destino:** main + sincronização com homologation
 - **Tipo:** docs / governança
 - **Arquivos/módulos alterados:** `AGENTS.md`, `CLAUDE.md`, `docs/change-control/*`
@@ -310,7 +310,7 @@
 
 - **ID:** CHG-20261015-015
 - **Branch:** `claude/importacao-automatica-fornecedores`
-- **PR:** a preencher
+- **PR:** #96
 - **Destino:** homologation
 - **Tipo:** infra / dados
 - **Arquivos/módulos alterados:** `server/railway/startup-import.mjs` (novo), `server/railway/server.mjs` (chama a importação após iniciar).
