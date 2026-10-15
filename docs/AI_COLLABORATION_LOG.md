@@ -260,3 +260,8 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Branch:** `claude/pedido-colaborativo` → `homologation`; PR #102; CHG-20261015-020.
 - **Alteração:** tarefas interativas, comentários com @menções, presença, aviso de alterações e conflito de edição na página do pedido; migration 0030 (tabelas novas).
 - **Para outros agentes:** ao salvar etapa/tarefa pela tela nova, envie `expectedUpdatedAt`; a API devolve 409 `{conflict, current}` quando outra pessoa salvou antes.
+
+### 2026-10-15 — Claude — Página do pedido no layout aprovado
+- **Branch:** `claude/pedido-layout-aprovado` → `homologation`; CHG-20261015-021.
+- **Alteração:** `app/ui/pedido-view.tsx` refeito seguindo `docs/redesign/prototipo/Processo.dc.html`; migration 0031 aditiva.
+- **Para outros agentes:** o protótipo é a referência visual da página do pedido; não voltar ao layout de cartões dos PRs #101/#102. Ao salvar dados comerciais pela tela nova, envie `expectedUpdatedAt` = `settings.updatedAt`.

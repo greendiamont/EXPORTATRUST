@@ -424,3 +424,25 @@
 - **Rollback:** reverter o merge; tabelas novas podem permanecer.
 - **Conflitos/coordenação com outros agentes:** alteração aditiva em `export-control/route.ts` (código existente preservado); base `homologation` @ `9abed8b`.
 - **Status:** em andamento
+
+## 2026-10-15 — Claude — Página do pedido no layout aprovado (protótipo Processo.dc.html)
+
+- **ID:** CHG-20261015-021
+- **Branch:** `claude/pedido-layout-aprovado`
+- **PR:** #103
+- **Destino:** homologation
+- **Tipo:** feature / frontend / migration aditiva
+- **Arquivos/módulos alterados:** `app/ui/pedido-view.tsx`, `app/ui/et2.css`, `lib/document-phase.ts`, `app/api/export-control/route.ts`, `app/api/operation-activity/route.ts`, `drizzle/0031_operation_collaboration_targets.sql`
+- **Motivo:** a página do pedido (PRs #101/#102) não seguia o layout aprovado em `docs/redesign/prototipo/Processo.dc.html`.
+- **O que mudou:** cabeçalho com 6 dados-chave e botões (Seguir pedido, Enviar atualização ao cliente, Concluir etapa); fases em linha do tempo; na fase Pedido, emissão de documentos com abas (Sales Order, Pedido de compra, Invoice, Packing List) editáveis, com itens, totais, salvamento automático, Visualizar/PDF/Word e conflito campo a campo (Descartar/Manter/Combinar); etapas e tarefas em tabela com check redondo e gaveta lateral (responsável, prazo, situação, seguidores, comentários com @ e anexar arrastando); arquivos da fase com visualização em janela; lateral com Documentos do pedido, Atividade da equipe e Financeiro; aviso (toast) quando outra pessoa altera o pedido. API: snapshot inclui `orderDetails`; `order-commercial` aceita `expectedUpdatedAt` (409 com versão atual); `operation-activity` ganha comentário por etapa/tarefa (`target`), documento em edição na presença e seguidores (`action: follow`).
+- **Impacto esperado:** a tela do pedido fica igual ao protótipo aprovado, com dados reais.
+- **Riscos:** baixo; mudanças de API aditivas (sem `expectedUpdatedAt` o comportamento antigo é mantido).
+- **Dados/migração:** 0031 aditiva (colunas `operation_comments.target_key`, `operation_presence.editing`; tabela `operation_followers`). Nada apagado.
+- **Compatibilidade:** `/classico` e chamadas antigas inalteradas.
+- **Testes executados:** tsc (sem erros novos), eslint, build Railway, Playwright local (autosave, conflito combinado gravando as duas alterações, visualizar, comentário com @, check de tarefa, seguir, toast de alteração de outro usuário).
+- **CI:** pendente.
+- **Railway homologation:** deploy automático após merge.
+- **Railway production:** sem mudança.
+- **Rollback:** reverter o PR; a migração 0031 pode permanecer (só adiciona).
+- **Conflitos/coordenação com outros agentes:** nenhum conflito encontrado.
+- **Status:** em andamento

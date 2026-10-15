@@ -26,3 +26,20 @@ export const PHASE_UPLOAD_CATEGORY = [
   "Export Control · Embarcado",
   "Export Control · Entrega final",
 ];
+
+// Tarefas do checklist (estilo Asana) não têm fase gravada: a fase sai do texto. A ordem
+// importa ("Confirmar frete com a trading" é Embarque, não Pedido). Sem correspondência,
+// a tela mostra a tarefa na fase atual do pedido.
+const TASK_PHASE: Array<[RegExp, number]> = [
+  [/frete|booking|estufagem|cut.?off|cont[eê]iner|aprova[çc][aã]o de embarque/i, 2],
+  [/draft|documentos|shipment advice|certificado|\bbl\b|despacho|du-?e/i, 3],
+  [/tr[aâ]nsito|tracking|chegada|embarcad/i, 4],
+  [/entreg|saldo|encerr/i, 5],
+  [/produ[çc]|qualidade|laudo|origem|eudr|\bcar\b|inspe[çc]/i, 1],
+  [/\bs\.?o\b|sales order|adiantamento|pedido|\bht\b|trading|contrato/i, 0],
+];
+
+export function taskPhaseIndex(description: string): number | null {
+  for (const [pattern, phase] of TASK_PHASE) if (pattern.test(description)) return phase;
+  return null;
+}
