@@ -471,7 +471,7 @@
 
 - **ID:** CHG-20261015-024
 - **Branch:** `claude/exportador-selecionar`
-- **PR:** a preencher
+- **PR:** #106
 - **Destino:** homologation
 - **Tipo:** frontend
 - **Arquivos/módulos alterados:** `app/ui/novo-processo-view.tsx`
