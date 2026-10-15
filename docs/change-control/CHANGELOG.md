@@ -253,7 +253,7 @@
 ## 2026-10-15 — Codex/Jarvis — Empresa inicial por CNPJ e olho de senha
 
 - **ID:** CHG-20261015-012
-- **Branch:** `codex/cnpj-onboarding`; PR a preencher; destino exclusivo `homologation`.
+- **Branch:** `codex/cnpj-onboarding`; PR #93; destino exclusivo `homologation`.
 - **Pedido:** Ivam quer CNPJ como código, criação inicial da estrutura da empresa e olho para conferir senha.
 - **Alteração:** cadastro cria empresa vazia isolada + novo administrador + senha individual + sessão. Equipe solicita pelo CNPJ; não recria empresa nem substitui conta/senha existente. Mostrar/Ocultar em todos os campos de senha.
 - **Arquivos:** runtime Railway, Equipe, testes e docs de primeiro acesso/coordenação.
