@@ -451,7 +451,7 @@
 
 - **ID:** CHG-20261015-023
 - **Branch:** `claude/editar-dados-pedido`
-- **PR:** a preencher
+- **PR:** #105
 - **Destino:** homologation
 - **Tipo:** feature / frontend / API aditiva
 - **Arquivos/módulos alterados:** `app/ui/pedido-view.tsx`, `app/api/operations/route.ts`
