@@ -4,12 +4,17 @@ Data: 2026-10-15 · Codex/Jarvis · branch `codex/individual-login` · PR #88.
 
 ## Estado e dependência
 
-Implementação proposta, **não publicada nem homologada no Railway**. Branch criada
+Implementação **publicada para testes em homologação, ainda não homologada funcionalmente**. Branch criada
 do commit `b1ae21f02491f85cda3039df9bf0a8f567ba2053` de `claude/redesign-etapa1`, pois
 o PR #87 ainda não estava integrado em `homologation` no início. Ivam autorizou
 publicar somente em homologação para testes; o #87 foi integrado em `0bbaff14`.
 A branch remota deste trabalho parte desse merge e preserva o trabalho do Claude.
 `main` e produção não foram alterados.
+
+PR #88 integrado em `fd20afb3652e10b6426134e3409ccb77f00e0c49`; deploy Railway
+`f7ad5232-19ff-4b94-bd69-a24a10025d9d` SUCCESS em 2026-10-15. Healthcheck passou;
+Web/API, agente e banco online, sem trabalho pendente na conferência. Os testes
+autenticados com usuários reais ainda devem ser feitos pela equipe.
 
 ## Comportamento
 
