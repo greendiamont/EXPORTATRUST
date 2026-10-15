@@ -221,3 +221,17 @@
 - **Validação:** build Railway passou; 68 testes locais com PGlite passaram; ESLint sem erros. OAuth real ainda pendente das credenciais Google. Roteiro em `docs/redesign/GOOGLE_LOGIN.md`.
 - **Rollback:** reverter só o PR, preservar tabela/vínculos e variáveis para auditoria; não apagar usuários.
 - **Status:** em andamento; não autorizado para produção.
+
+## 2026-10-15 — Codex/Jarvis — Verificação de homologação e correção de 401 nos cadastros
+
+- **ID:** CHG-20261015-010
+- **Branch:** `fix/catalog-auth-homologation`; destino `homologation`.
+- **PR:** #91.
+- **Motivo:** Ivam pediu testar todas as abas antes de decidir produção.
+- **Resultado inicial:** ambiente online; 15 verificações públicas, 13 esperadas e dois GETs (Clientes/Produtos) retornando 500 em vez de 401. Navegador sem sessão, Google ainda não configurado: testes internos autenticados bloqueados.
+- **Correção:** capturar e devolver Response de autenticação nos dois GETs; preservar escopo por empresa e comportamento das consultas.
+- **Arquivos:** `app/api/{importer-clients,master-products}/route.ts`, `tests/catalog-auth-response.test.mjs`, relatório em `docs/reviews/HOMOLOGATION_TESTS_2026-10-15.md` e registros de coordenação.
+- **Dados:** nenhuma migração, exclusão ou escrita em dados de negócio/documentos. Produção não alterada.
+- **Validação:** regressão comportamental contra os handlers compilados; build Railway, 69/69 testes com PGlite e ESLint passaram. Revalidar as duas rotas no Railway após deploy.
+- **Risco/rollback:** baixo; reverter somente o PR. Falha real de banco continua respondendo 500 com mensagem de erro separada.
+- **Estado:** verificação parcial; não homologado funcionalmente nem autorizado para produção.
