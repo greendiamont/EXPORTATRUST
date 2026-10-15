@@ -84,7 +84,9 @@ function clientIp(req) {
 }
 
 function send(res, status, body, headers = {}) {
-  res.writeHead(status, { "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer", "x-frame-options": "DENY", ...headers });
+  // Form POSTs under no-referrer send Origin:null in browsers and fail CSRF.
+  // strict-origin keeps the same HTTPS origin, without exposing paths/tokens.
+  res.writeHead(status, { "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "strict-origin", "x-frame-options": "DENY", ...headers });
   res.end(body);
 }
 
