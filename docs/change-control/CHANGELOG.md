@@ -152,7 +152,7 @@
 
 - **ID:** CHG-20261015-007
 - **Branch:** `claude/redesign-etapa1`
-- **PR:** a preencher
+- **PR:** #87
 - **Destino:** homologation
 - **Tipo:** feature / frontend / migration (aditiva)
 - **Arquivos/módulos alterados:** `app/page.tsx` (novo Painel), `app/classico/page.tsx` (app anterior preservado), `app/pedidos/`, `app/novo-processo/`, `app/cadastros/`, `app/ui/*` (novo), `app/api/overview/route.ts` (novo), `lib/order-phases.ts` (novo), `lib/registration-columns.ts` (novo), `app/api/{importer-clients,master-products,suppliers}/route.ts`, `app/client-app.tsx` (abrir `?processo=` e `?module=` de cadastro), `db/schema.ts`, `drizzle/0029_redesign_registration_fields.sql`, `tests/order-phases.test.mjs`, `docs/redesign/*`.

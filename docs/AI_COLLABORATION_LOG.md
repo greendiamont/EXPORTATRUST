@@ -158,7 +158,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 
 ### 2026-10-15 — Claude
 - **Branch:** `claude/redesign-etapa1`
-- **PR:** ver CHG-20261015-007
+- **PR:** #87
 - **Tipo:** feature / frontend / migração aditiva
 - **Alteração:** etapa 1 do redesign — Painel, Pedidos, Novo processo e Cadastros (+ Equipe) com o novo visual; app anterior preservado em `/classico`.
 - **Motivo:** redesign aprovado pelo Ivam.
