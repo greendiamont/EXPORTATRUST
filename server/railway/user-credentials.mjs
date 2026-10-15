@@ -1,0 +1,164 @@
+// Credenciais individuais exclusivas do runtime Node/Railway.
+// Não altera o modelo de identidade do Cloudflare nem cadastra membros automaticamente.
+import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
+import { readCookie, readSession, verifyCredentials } from "./auth.mjs";
+
+const derive = promisify(scrypt);
+const SCRYPT_OPTIONS = { N: 32768, r: 8, p: 3, maxmem: 64 * 1024 * 1024 };
+const INVALID_LINK = "Link inválido, expirado ou já utilizado. Peça um novo link ao administrador.";
+export const passwordTokenHash = (token) => createHash("sha256").update(token).digest("hex");
+export const normalizeEmail = (email) => String(email ?? "").trim().toLowerCase();
+
+export function validPassword(password) {
+  return typeof password === "string" && password.length >= 10 && Buffer.byteLength(password, "utf8") <= 1024;
+}
+
+export async function hashPassword(password) {
+  if (!validPassword(password)) throw new Error("A senha deve ter no mínimo 10 caracteres e no máximo 1024 bytes.");
+  const salt = randomBytes(16).toString("hex");
+  const key = await derive(password, salt, 64, SCRYPT_OPTIONS);
+  return `scrypt-v1$${salt}$${key.toString("hex")}`;
+}
+
+export async function verifyPassword(password, stored) {
+  if (typeof password !== "string" || Buffer.byteLength(password, "utf8") > 1024) return false;
+  const [algorithm, salt, digest, extra] = String(stored ?? "").split("$");
+  if (algorithm !== "scrypt-v1" || !/^[a-f0-9]{32}$/.test(salt ?? "") || !/^[a-f0-9]{128}$/.test(digest ?? "") || extra !== undefined) return false;
+  const key = await derive(password, salt, 64, SCRYPT_OPTIONS);
+  return timingSafeEqual(key, Buffer.from(digest, "hex"));
+}
+
+function fail(status, message) {
+  throw Object.assign(new Error(message), { status });
+}
+
+export class UserCredentials {
+  constructor(pool) {
+    this.pool = pool;
+    // Mesmo custo de verificação para contas inexistentes, sem gravar um usuário.
+    this.dummyHash = hashPassword(randomBytes(32).toString("hex"));
+  }
+
+  async initialize() {
+    await this.pool.query(`CREATE TABLE IF NOT EXISTS railway_user_credentials (
+      email text PRIMARY KEY, password_hash text NOT NULL, session_version text NOT NULL,
+      updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await this.pool.query(`CREATE TABLE IF NOT EXISTS railway_password_tokens (
+      token_hash text PRIMARY KEY, email text NOT NULL, organization_id integer NOT NULL,
+      expires_at timestamptz NOT NULL, used_at timestamptz,
+      created_by text NOT NULL, created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+  }
+
+  async memberships(email, executor = this.pool) {
+    const { rows } = await executor.query(`SELECT m.organization_id, m.role, u.id AS user_id
+      FROM app_users u JOIN organization_memberships m ON m.user_id = u.id
+      JOIN organizations o ON o.id = m.organization_id
+      WHERE lower(u.email) = $1 AND u.status = 'Ativo' AND m.status = 'Ativo'
+      AND o.status = 'Ativa' ORDER BY m.id`, [email]);
+    return rows;
+  }
+
+  async authenticate(email, password, config) {
+    email = normalizeEmail(email);
+    const bootstrap = verifyCredentials(email, password, config);
+    const { rows: [credential] } = await this.pool.query(
+      "SELECT password_hash, session_version FROM railway_user_credentials WHERE email = $1", [email]);
+    const personal = await verifyPassword(password, credential?.password_hash ?? await this.dummyHash);
+    if (!bootstrap && !personal) return null;
+    const memberships = await this.memberships(email);
+    if (memberships.length) return { email, version: personal ? credential.session_version : undefined };
+    // Preserva somente o bootstrap da instalação inicial, antes do primeiro vínculo.
+    const { rows } = await this.pool.query("SELECT id FROM organization_memberships LIMIT 1");
+    return bootstrap && !rows.length ? { email } : null;
+  }
+
+  async sessionIdentity(cookieHeader, config) {
+    const session = readSession(cookieHeader, config);
+    if (!session) return null;
+    const email = normalizeEmail(session.e);
+    if (session.v) {
+      const { rows: [credential] } = await this.pool.query(
+        "SELECT session_version FROM railway_user_credentials WHERE email = $1", [email]);
+      if (!credential || session.v !== credential.session_version) return null;
+    } else if (!config.allowedEmails.includes(email)) return null;
+    // Sem cache: inativação ou troca de senha revoga no próximo request.
+    if ((await this.memberships(email)).length) return email;
+    if (session.v) return null;
+    const { rows } = await this.pool.query("SELECT id FROM organization_memberships LIMIT 1");
+    return rows.length ? null : email;
+  }
+
+  async issueLink(email, cookieHeader, config, origin) {
+    const actor = await this.sessionIdentity(cookieHeader, config);
+    if (!actor) fail(401, "Autenticação obrigatória.");
+    const memberships = await this.memberships(actor);
+    const requested = Number(readCookie(cookieHeader, "exportatrust_org"));
+    const current = memberships.find((item) => item.organization_id === requested) ?? memberships[0];
+    if (current?.role !== "administrador") fail(403, "Somente administradores podem gerar links de senha.");
+    email = normalizeEmail(email);
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const { rows: [target] } = await client.query(`SELECT u.id FROM app_users u
+        JOIN organization_memberships m ON m.user_id = u.id
+        WHERE lower(u.email) = $1 AND u.status = 'Ativo' AND m.status = 'Ativo'
+        AND m.organization_id = $2 FOR UPDATE OF u`, [email, current.organization_id]);
+      if (!target) fail(403, "Selecione um membro ativo desta empresa.");
+      const token = randomBytes(32).toString("base64url");
+      const expiresAt = new Date(Date.now() + 72 * 3600_000).toISOString();
+      // Novo link invalida os anteriores dessa pessoa, inclusive os de outra empresa.
+      await client.query("UPDATE railway_password_tokens SET used_at = CURRENT_TIMESTAMP WHERE email = $1 AND used_at IS NULL", [email]);
+      await client.query(`INSERT INTO railway_password_tokens
+        (token_hash, email, organization_id, expires_at, created_by) VALUES ($1, $2, $3, $4, $5)`,
+      [passwordTokenHash(token), email, current.organization_id, expiresAt, actor]);
+      await client.query("COMMIT");
+      const url = new URL("/__auth/definir-senha", origin);
+      url.searchParams.set("token", token);
+      return { url: url.href, expiresAt };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async setPassword(token, password) {
+    if (!/^[A-Za-z0-9_-]{43}$/.test(String(token ?? ""))) fail(400, INVALID_LINK);
+    if (!validPassword(password)) fail(400, "A senha deve ter no mínimo 10 caracteres e no máximo 1024 bytes.");
+    const tokenHash = passwordTokenHash(token);
+    const { rows: [pending] } = await this.pool.query(`SELECT email FROM railway_password_tokens
+      WHERE token_hash = $1 AND used_at IS NULL AND expires_at > CURRENT_TIMESTAMP`, [tokenHash]);
+    if (!pending) fail(400, INVALID_LINK);
+    const passwordHash = await hashPassword(password);
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      // Todos os emissores/consumidores bloqueiam primeiro o usuário para evitar replay.
+      await client.query("SELECT id FROM app_users WHERE lower(email) = $1 FOR UPDATE", [pending.email]);
+      const { rows: [used] } = await client.query(`UPDATE railway_password_tokens t
+        SET used_at = CURRENT_TIMESTAMP WHERE token_hash = $1 AND used_at IS NULL
+        AND expires_at > CURRENT_TIMESTAMP AND EXISTS (
+          SELECT 1 FROM app_users u JOIN organization_memberships m ON m.user_id = u.id
+          JOIN organizations o ON o.id = m.organization_id
+          WHERE lower(u.email) = t.email AND u.status = 'Ativo' AND m.status = 'Ativo'
+          AND m.organization_id = t.organization_id AND o.status = 'Ativa'
+        ) RETURNING email`, [tokenHash]);
+      if (!used) fail(400, INVALID_LINK);
+      await client.query(`INSERT INTO railway_user_credentials (email, password_hash, session_version)
+        VALUES ($1, $2, $3) ON CONFLICT (email) DO UPDATE SET
+        password_hash = EXCLUDED.password_hash, session_version = EXCLUDED.session_version,
+        updated_at = CURRENT_TIMESTAMP`, [used.email, passwordHash, randomUUID()]);
+      await client.query("UPDATE railway_password_tokens SET used_at = CURRENT_TIMESTAMP WHERE email = $1 AND used_at IS NULL", [used.email]);
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+}
