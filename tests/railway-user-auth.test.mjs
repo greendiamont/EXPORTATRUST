@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createSessionCookie, isSameOrigin, passwordPage, readSession, sessionEmail, stripIdentityHeaders } from "../server/railway/auth.mjs";
+import { createSessionCookie, isSameOrigin, loginPage, registrationPage, passwordPage, readSession, sessionEmail, stripIdentityHeaders } from "../server/railway/auth.mjs";
 import { hashPassword, passwordTokenHash, UserCredentials, validPassword, verifyPassword } from "../server/railway/user-credentials.mjs";
 
 const config = { ready: true, allowedEmails: ["admin@example.test"], password: "bootstrap-long-password", secret: "test-only-secret-32-characters-minimum" };
@@ -28,6 +28,11 @@ test("signed individual sessions are not mistaken for bootstrap and reject tampe
 });
 
 test("auth forms escape links and errors; cross-origin requests and forged identity are refused", () => {
+  assert.match(loginPage(), /href="\/__auth\/cadastrar"/);
+  assert.match(registrationPage(), /name="email"/);
+  assert.match(registrationPage(), /name="company"/);
+  assert.ok(!registrationPage({ error: '<script>alert(1)</script>' }).includes('<script>'));
+  assert.match(registrationPage({ success: true }), /Nenhum e-mail foi enviado/);
   const page = passwordPage({ token: '"><script>alert(1)</script>', error: "<img src=x>" });
   assert.ok(!page.includes("<script>"));
   assert.ok(!page.includes("<img src=x>"));
@@ -64,10 +69,10 @@ test("PostgreSQL: authorization, reset, replay, expiry, tenant isolation and imm
   };
   try {
     await database.exec(`
-      CREATE TABLE organizations (id integer PRIMARY KEY, status text);
+      CREATE TABLE organizations (id integer PRIMARY KEY, status text, slug text);
       CREATE TABLE app_users (id serial PRIMARY KEY, email text UNIQUE, status text, full_name text DEFAULT '', identity_provider text DEFAULT 'test');
       CREATE TABLE organization_memberships (id serial PRIMARY KEY, organization_id integer, user_id integer, role text, status text, invited_by text DEFAULT '', UNIQUE(organization_id, user_id));
-      INSERT INTO organizations VALUES (1, 'Ativa'), (2, 'Ativa');
+      INSERT INTO organizations VALUES (1, 'Ativa', 'company-one'), (2, 'Ativa', 'company-two');
       INSERT INTO app_users (id,email,status) VALUES (1, 'admin@example.test', 'Ativo'), (2, 'member@example.test', 'Ativo'), (3, 'other@example.test', 'Ativo');
       INSERT INTO organization_memberships (id,organization_id,user_id,role,status) VALUES (1, 1, 1, 'administrador', 'Ativo'), (2, 1, 2, 'analista', 'Ativo'), (3, 2, 3, 'analista', 'Ativo');
       SELECT setval('app_users_id_seq', 3); SELECT setval('organization_memberships_id_seq', 3);
@@ -76,6 +81,21 @@ test("PostgreSQL: authorization, reset, replay, expiry, tenant isolation and imm
     await store.initialize();
     await store.initialize(); // startup idempotence
     const admin = cookie("admin@example.test");
+    await assert.rejects(store.requestAccess({ email: "invalid", name: "Test", company: "company-one" }), { status: 400 });
+    await store.requestAccess({ email: " NEW@example.test ", name: "New Person", company: "company-one" });
+    await store.requestAccess({ email: "new@example.test", name: "Overwrite", company: "company-one" });
+    await store.requestAccess({ email: "other-request@example.test", name: "Other Person", company: "company-two" });
+    await store.requestAccess({ email: "member@example.test", name: "Existing", company: "company-one" });
+    await store.requestAccess({ email: "unknown@example.test", name: "Unknown", company: "missing-company" });
+    await assert.rejects(store.accessRequests("", config), { status: 401 });
+    const pendingRequests = await store.accessRequests(admin, config);
+    assert.equal(pendingRequests.companyCode, "company-one");
+    assert.equal(pendingRequests.requests.length, 1);
+    assert.equal(pendingRequests.requests[0].email, "new@example.test");
+    assert.equal(pendingRequests.requests[0].fullName, "New Person");
+    assert.equal((await pool.query("SELECT count(*)::int AS count FROM app_users")).rows[0].count, 3);
+    assert.equal((await pool.query("SELECT count(*)::int AS count FROM railway_user_credentials")).rows[0].count, 0);
+    assert.equal(await store.authenticate("new@example.test", "new-password", config), null);
     assert.equal((await store.authenticate(" ADMIN@example.test ", config.password, config)).email, "admin@example.test");
     assert.equal(await store.authenticate("unknown@example.test", "wrong-password", config), null);
     await assert.rejects(store.issueLink("member@example.test", "", config, "https://test.local"), { status: 401 });
@@ -96,6 +116,7 @@ test("PostgreSQL: authorization, reset, replay, expiry, tenant isolation and imm
     assert.ok(identity?.version);
     assert.equal(await store.authenticate("member@example.test", "wrong-password", config), null);
     const session = cookie(identity.email, identity.version);
+    await assert.rejects(store.accessRequests(session, config), { status: 403 });
     assert.equal(await store.sessionIdentity(session, config), identity.email);
     await assert.rejects(store.issueLink("admin@example.test", session, config, "https://test.local"), { status: 403 });
     const reset = await store.issueLink(identity.email, admin, config, "https://test.local");
@@ -111,6 +132,13 @@ test("PostgreSQL: authorization, reset, replay, expiry, tenant isolation and imm
     const expired = await store.issueLink(identity.email, admin, config, "https://test.local");
     await pool.query("UPDATE railway_password_tokens SET expires_at = CURRENT_TIMESTAMP - interval '1 minute' WHERE used_at IS NULL");
     await assert.rejects(store.setPassword(new URL(expired.url).searchParams.get("token"), "another-password"), { status: 400 });
+    // Simula a aprovação explícita pela API de equipe; o cadastro público não a faz.
+    const { rows: [newUser] } = await pool.query("INSERT INTO app_users (email,status) VALUES ('new@example.test','Ativo') RETURNING id");
+    await pool.query("INSERT INTO organization_memberships (organization_id,user_id,role,status) VALUES (1,$1,'analista','Ativo')", [newUser.id]);
+    assert.equal((await store.accessRequests(admin, config)).requests.length, 0);
+    const onboarding = await store.issueLink("new@example.test", admin, config, "https://test.local");
+    await store.setPassword(new URL(onboarding.url).searchParams.get("token"), "new-member-password");
+    assert.ok((await store.authenticate("new@example.test", "new-member-password", config))?.version);
     await pool.query("UPDATE app_users SET status = 'Inativo' WHERE id = 1");
     assert.equal(await store.sessionIdentity(admin, config), null);
     assert.equal(await store.authenticate("admin@example.test", config.password, config), null);
