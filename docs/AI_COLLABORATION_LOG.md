@@ -192,3 +192,10 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Arquivos/dados:** runtime Railway, dependência `google-auth-library`, testes; uma tabela de identidades Google. Sem mudança em produção ou documentos.
 - **Bloqueio real:** cliente OAuth Google ainda precisa ser criado/configurado por administrador; não há ID/secret no serviço. Botão indisponível até configuração, sem quebrar login atual.
 - **Próximo agente:** ler `docs/redesign/GOOGLE_LOGIN.md`; não usar credenciais de Gmail automaticamente nem publicar secrets. Não confundir autenticação Google com acesso público aos dados.
+
+### 2026-10-15 — Codex/Jarvis — Teste inicial das abas de homologação
+- **Branch:** `fix/catalog-auth-homologation` → `homologation`; PR #91.
+- **Escopo:** 15 verificações HTTP reais + observação da tela de login. Sem sessão, conteúdo das abas não foi validado; não declarar teste funcional aprovado.
+- **Falhas reais:** GETs de Clientes/Produtos retornam 500 por Response de autenticação não capturada. Correção localizada preserva 401/403, consultas e permissões; regressão testa os handlers compilados.
+- **Relatório:** `docs/reviews/HOMOLOGATION_TESTS_2026-10-15.md`, com matriz e roteiro dos testes autenticados.
+- **Dados/produção:** sem alterações em banco, documentos, R2 ou produção. Sem acesso ao Google Cloud, conforme preferência do Ivam.

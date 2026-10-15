@@ -34,7 +34,18 @@ const clean = (body: Record<string, unknown>) => ({
   ...presentText(body, ["bankDetails", "notifyParty", "preferredIncoterm", "preferredCurrency"]),
 });
 
-export async function GET() { const c = await requireSecurityContext("read"); await ensureRegistrationColumns(); const db = await getDb(); return Response.json({ clients: await db.select().from(importerClients).where(eq(importerClients.organizationId, c.organizationId)).orderBy(desc(importerClients.id)).limit(500) }); }
+export async function GET() {
+  try {
+    const c = await requireSecurityContext("read");
+    await ensureRegistrationColumns();
+    const db = await getDb();
+    return Response.json({ clients: await db.select().from(importerClients).where(eq(importerClients.organizationId, c.organizationId)).orderBy(desc(importerClients.id)).limit(500) });
+  } catch (error) {
+    if (error instanceof Response) return error;
+    console.error("IMPORTER_CLIENT_LIST_FAILED", error);
+    return Response.json({ error: "Não foi possível carregar os clientes." }, { status: 500 });
+  }
+}
 export async function POST(request: Request) {
   try { const c = await requireSecurityContext("write_supplier"); await ensureRegistrationColumns(); const body = await request.json() as Record<string, unknown>; const values = clean(body); if (!values.legalName || !values.country) return Response.json({ error: "Informe razão social e país." }, { status: 400 }); const db = await getDb();
     const [sameName] = await db.select().from(importerClients).where(and(eq(importerClients.organizationId, c.organizationId), eq(importerClients.normalizedName, values.normalizedName))).limit(1);
