@@ -178,3 +178,9 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Testes:** build Railway, 63 testes com PGlite, smoke HTTP local e ESLint passaram; TypeScript mantém 89 erros (nenhum no componente alterado).
 - **Autorização:** Ivam autorizou deixar as alterações em homologação para testes em 2026-10-15. Não autorizou produção.
 - **Para Claude/outros agentes:** leia `docs/redesign/LOGIN_INDIVIDUAL.md`; não há novo provedor externo nem envio de e-mail automático; não registrar links/tokens. Branch de origem do Claude preservada.
+
+### 2026-10-15 — Codex / Jarvis — Resultado de publicação dos PRs #87 e #88
+- Integrados somente em `homologation` com autorização do Ivam; commit funcional `fd20afb3`.
+- Railway de homologação: deploy `f7ad5232-19ff-4b94-bd69-a24a10025d9d` SUCCESS; healthcheck passou, serviços online sem pendências na conferência.
+- Código do Claude preservado; `main`, banco e serviços de produção não alterados. Não importamos dados/documentos nesta entrega.
+- Publicado para os testes da equipe, **não aprovado funcionalmente nem autorizado para produção**. Teste autenticado real, conferência dos dados e validações do roteiro seguem pendentes.

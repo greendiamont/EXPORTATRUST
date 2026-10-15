@@ -196,3 +196,13 @@
 - **Conflitos/coordenação:** branch criada do head exato do #87 (`b1ae21f`), por instrução do Ivam antes do merge. Não alterou a branch do Claude. Revisar/atualizar base antes da integração.
 - **Rollback:** reverter só este PR, preservando as tabelas de autenticação e os dados.
 - **Status:** em andamento — não homologado funcionalmente.
+
+### 2026-10-15 — Codex/Jarvis — Publicação em homologação (CHG-20261015-008)
+
+- **Autorização:** Ivam pediu publicar tudo em homologação para testar antes de produção.
+- **PR #87:** merge `0bbaff14cc697b8b523a3b10824e48dd4d58dd3a`, preservando os commits do Claude.
+- **PR #88:** merge `fd20afb3652e10b6426134e3409ccb77f00e0c49`.
+- **Deploy Railway:** `f7ad5232-19ff-4b94-bd69-a24a10025d9d` SUCCESS, healthcheck `/api/health` aprovado às 12:38:47 UTC. Web/API, agente e PostgreSQL online; nenhum deploy pendente na conferência posterior.
+- **Verificação pública:** `/api/health` 200, banco e armazenamento OK. Não executados resets de usuários reais nem criação de dados operacionais para teste.
+- **Produção:** nenhuma alteração; Web/API e agente de produção continuam sem deploy. Não houve exportação/importação de dados ou documentos nesta entrega.
+- **Estado:** publicado para testes, ainda **não homologado funcionalmente**. Validar acesso individual, permissões, cadastro, documentos e a cópia de dados antes de promover qualquer versão.
