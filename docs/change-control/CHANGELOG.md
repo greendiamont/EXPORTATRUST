@@ -235,3 +235,17 @@
 - **Validação:** regressão comportamental contra os handlers compilados; build Railway, 69/69 testes com PGlite e ESLint passaram. Revalidar as duas rotas no Railway após deploy.
 - **Risco/rollback:** baixo; reverter somente o PR. Falha real de banco continua respondendo 500 com mensagem de erro separada.
 - **Estado:** verificação parcial; não homologado funcionalmente nem autorizado para produção.
+
+## 2026-10-15 — Codex/Jarvis — Cadastro público de e-mail / primeiro acesso
+
+- **ID:** CHG-20261015-011
+- **Branch:** `codex/self-registration`; PR a preencher; destino exclusivo `homologation`.
+- **Motivo:** Ivam observou que a tela de login não oferecia onde cadastrar o próprio e-mail.
+- **Alteração:** link Cadastrar e-mail; formulário de solicitação com nome/e-mail/código da empresa; administrador revisa em Equipe, libera perfil e já recebe link privado para definição de senha. Sem envio automático de e-mail.
+- **Arquivos:** `server/railway/{auth,server,user-credentials}.mjs`, `app/ui/equipe-view.tsx`, teste de autenticação e docs de coordenação/primeiro acesso.
+- **Dados/risco:** tabela aditiva `railway_access_requests`, incluir no backup privado PostgreSQL. Nenhuma credencial, vínculo ou sessão é criada publicamente; não substitui senhas, não reativa membros, não expõe solicitações de outra empresa. Solicitações são dados declarados, exigem confirmação da identidade pelo administrador. Rate limit por IP/processo.
+- **Dependências:** primeiro administrador ainda exige bootstrap ou Google verificado; OAuth Google permanece não configurado.
+- **Validação:** build Railway, suíte PGlite e lint; teste manual autenticado pendente.
+- **Coordenação:** base `homologation` @ `675e65d`; preservados trabalho de Claude, app clássico, dados/documentos e produção.
+- **Rollback:** reverter somente o PR, preservar tabelas e dados.
+- **Status:** preparado para homologação; produção não autorizada.
