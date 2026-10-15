@@ -70,6 +70,7 @@ Atualizado em: 2026-10-15
 ## Avaliação funcional
 
 - Parecer e lacunas priorizadas: `docs/reviews/FUNCTIONAL_REVIEW_2026-10-14.md`.
+- Verificação real de acesso às abas em 2026-10-15: `docs/reviews/HOMOLOGATION_TESTS_2026-10-15.md`. Infraestrutura online, navegação autenticada bloqueada por falta de sessão/OAuth Google. PR #91 corrige os dois GETs de cadastro que devolviam 500 em vez de 401 (build e 69 testes locais passaram); não tratar as abas como aprovadas nem promover produção.
 
 ## Governança
 
