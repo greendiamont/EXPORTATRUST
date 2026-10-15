@@ -411,7 +411,7 @@
 
 - **ID:** CHG-20261015-020
 - **Branch:** `claude/pedido-colaborativo`
-- **PR:** a preencher
+- **PR:** #102
 - **Destino:** homologation
 - **Tipo:** feature / frontend / migration aditiva
 - **Arquivos/módulos alterados:** `app/ui/pedido-view.tsx`, `app/api/operation-activity/route.ts` (novo), `drizzle/0030_operation_collaboration.sql` (novo; tabelas `operation_comments` e `operation_presence`, também criadas sob demanda), `app/api/export-control/route.ts` (verificação opcional `expectedUpdatedAt` em etapa e tarefa).
