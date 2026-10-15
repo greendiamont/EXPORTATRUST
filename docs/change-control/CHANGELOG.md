@@ -346,3 +346,23 @@
 - **Rollback:** reverter o merge; cadastros importados permanecem.
 - **Conflitos/coordenação com outros agentes:** nenhum; base `homologation` @ `463a89e`.
 - **Status:** em andamento
+
+
+## 2026-10-15 — Claude — Importar processos do app antigo (parte 1: dados)
+
+- **ID:** CHG-20261015-017
+- **Branch:** `claude/importar-processos`
+- **PR:** a preencher
+- **Destino:** homologation
+- **Tipo:** feature / dados
+- **Arquivos/módulos alterados:** `lib/process-import.ts` (novo), `app/api/process-import/route.ts` (novo), `server/railway/startup-import.mjs` e `server.mjs` (etapa "processos"; variável em partes `…_B64_1..n` e conteúdo comprimido `gz:`), `tests/process-import.test.mjs` (novo).
+- **Motivo:** Ivam pediu os processos do app antigo no app novo (parte 1: dados; parte 2: arquivos).
+- **O que mudou:** importação, na empresa ativa, de 19 processos com todos os campos, vinculados aos fornecedores/clientes/produtos já importados (mapa id antigo → novo da auditoria); 3 florestas CAR com geometria; parceiros, avisos de embarque e plano industrial. O backup não tinha as etapas (`export_milestones`): elas são recriadas pelo status antigo (anteriores "Concluído", atual "Em andamento", seguintes "Pendente"). Prévia (dryRun), sem duplicar nem sobrescrever; auditoria `PROCESS_IMPORTED`, `PROPERTY_IMPORTED`, `PROCESS_IMPORT_FINISHED`.
+- **Riscos:** baixo/moderado. `operations.reference` e `rural_properties.car_code` são únicos no banco inteiro (não por empresa): a futura cópia integral da produção para a empresa 1 vai colidir com estes registros da empresa 2 e precisa tratar isso.
+- **Dados:** documentos dos processos (400 registros + 451 arquivos) ficam para a parte 2. Avisos de embarque mantêm `documentIdsJson` com ids antigos até lá.
+- **Testes executados:** `node --test` 84/84 (+2 skips; 4 novos); runtime local em PostgreSQL com o backup real: 19 processos, 266 etapas, 3 florestas, 2 parceiros, 10 avisos, 1 plano; vínculos conferidos processo a processo; reinício sem duplicação; tela Pedidos com fases corretas e sem erros; eslint sem erros; `tsc` 89 (baseline).
+- **Railway homologation:** merge autorizado por Ivam; importação automática por variável temporária em 2 partes, esvaziada após o uso.
+- **Railway production:** sem alteração.
+- **Rollback:** reverter o merge; processos importados permanecem.
+- **Conflitos/coordenação com outros agentes:** nenhum; base `homologation` @ `b2939b7`.
+- **Status:** em andamento

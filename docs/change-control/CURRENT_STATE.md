@@ -78,6 +78,8 @@ Atualizado em: 2026-10-15
 
 - Importação de clientes e produtos (CHG-20261015-016): mesma tela em Clientes/Produtos; sem tabela no arquivo, reconstrói pelos processos e marca "Pendente".
 
+- Importação de processos (CHG-20261015-017): 19 processos do backup de 2026-09-29 com etapas recriadas, florestas CAR, parceiros, avisos e plano industrial; documentos/arquivos pendentes (parte 2).
+
 ## Correção do primeiro acesso
 
 - `fix/auth-form-origin`: formulário era recusado por Origin:null sob no-referrer.
