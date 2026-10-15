@@ -40,8 +40,7 @@ export function money(value: number | null | undefined, currency = "USD") {
 }
 
 export function processHref(id: number) {
-  // A página nova do pedido vem na etapa 2; até lá abre o centro de comando atual.
-  return `/classico?processo=${id}`;
+  return `/pedidos/${id}`;
 }
 
 export function normalize(text: string) {
