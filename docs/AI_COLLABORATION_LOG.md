@@ -237,6 +237,6 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Para outros agentes:** a variável é temporária e deve ser removida após o uso; não versionar dados de fornecedores. Para outra empresa, use `EXPORTATRUST_SUPPLIER_IMPORT_ORG_IDS`.
 
 ### 2026-10-15 — Claude — Importar clientes e produtos do app antigo
-- **Branch:** `claude/importar-clientes-produtos` → `homologation`; CHG-20261015-016.
+- **Branch:** `claude/importar-clientes-produtos` → `homologation`; PR #98; CHG-20261015-016.
 - **Alteração:** `/api/registry-import` (clientes/produtos) e botão de importação em Clientes e Produtos; importação automática por `EXPORTATRUST_REGISTRY_IMPORT_B64`.
 - **Para outros agentes:** o backup de 2026-09-29 não tinha as tabelas de clientes/produtos; os cadastros foram reconstruídos pelos processos e estão "Pendente". Quando houver a exportação integral do app antigo, importe-a pela mesma tela: ela completa os campos vazios pelo id antigo, sem duplicar. Processos ainda não foram importados (próxima etapa).

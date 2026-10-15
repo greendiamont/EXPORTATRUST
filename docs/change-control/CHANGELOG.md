@@ -329,7 +329,7 @@
 
 - **ID:** CHG-20261015-016
 - **Branch:** `claude/importar-clientes-produtos`
-- **PR:** a preencher
+- **PR:** #98
 - **Destino:** homologation
 - **Tipo:** feature / dados
 - **Arquivos/módulos alterados:** `lib/registry-import.ts` (novo), `app/api/registry-import/route.ts` (novo), `app/ui/importar-fornecedores.tsx` (passa a servir fornecedores, clientes e produtos), `app/ui/cadastros-view.tsx` (botão "Importar do app antigo…" também em Clientes e Produtos), `server/railway/startup-import.mjs` e `server.mjs` (variável `EXPORTATRUST_REGISTRY_IMPORT_B64`: fornecedores → clientes → produtos), `tests/registry-import.test.mjs` (novo).
