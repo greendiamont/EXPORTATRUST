@@ -446,3 +446,25 @@
 - **Rollback:** reverter o PR; a migração 0031 pode permanecer (só adiciona).
 - **Conflitos/coordenação com outros agentes:** nenhum conflito encontrado.
 - **Status:** em andamento
+
+## 2026-10-15 — Claude — Protocolo de layout aprovado (regra de Ivam)
+
+- **ID:** CHG-20261015-022
+- **Branch:** `claude/protocolo-layout`
+- **PR:** a preencher
+- **Destino:** homologation
+- **Tipo:** docs / governança / CI
+- **Arquivos/módulos alterados:** `docs/change-control/LAYOUT_PROTOCOL.md` (novo), `.github/workflows/layout-guard.yml` (novo), `CLAUDE.md`, `AGENTS.md`, `docs/change-control/CURRENT_STATE.md`, `docs/skills/SENIOR_REACT_FRONTEND.md`, `docs/AI_COLLABORATION_LOG.md`
+- **Motivo:** o layout aprovado da página do pedido se perdeu e foi refeito (PR #103), gastando tempo e crédito. Ivam definiu como regra: layout aprovado não muda, não é sobrescrito nem recriado; só muda quando Ivam pedir.
+- **O que mudou:** protocolo com regras, fluxo de aprovação e registro dos layouts aprovados (protótipos 1–6); trava no GitHub que reprova PR que altera arquivos de layout sem a etiqueta `layout-autorizado-ivam` (só Ivam coloca); regra no topo de `CLAUDE.md` e `AGENTS.md`.
+- **Impacto esperado:** nenhum agente altera layout aprovado sem autorização explícita de Ivam.
+- **Riscos:** correções funcionais em arquivos de tela também precisam da etiqueta (intencional).
+- **Dados/migração:** nenhuma.
+- **Compatibilidade:** sem impacto no app.
+- **Testes executados:** documental; o próprio PR aciona a trava (toca arquivos protegidos).
+- **CI:** layout-guard.
+- **Railway homologation:** sem mudança de runtime.
+- **Railway production:** sem mudança.
+- **Rollback:** somente com autorização de Ivam.
+- **Conflitos/coordenação com outros agentes:** regra vale para todos os agentes a partir deste registro.
+- **Status:** em andamento

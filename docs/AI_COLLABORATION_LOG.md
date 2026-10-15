@@ -265,3 +265,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Branch:** `claude/pedido-layout-aprovado` → `homologation`; CHG-20261015-021.
 - **Alteração:** `app/ui/pedido-view.tsx` refeito seguindo `docs/redesign/prototipo/Processo.dc.html`; migration 0031 aditiva.
 - **Para outros agentes:** o protótipo é a referência visual da página do pedido; não voltar ao layout de cartões dos PRs #101/#102. Ao salvar dados comerciais pela tela nova, envie `expectedUpdatedAt` = `settings.updatedAt`.
+
+### 2026-10-15 — Claude — Protocolo de layout aprovado
+- **Branch:** `claude/protocolo-layout` → `homologation`; CHG-20261015-022.
+- **Para outros agentes (OBRIGATÓRIO):** leia `docs/change-control/LAYOUT_PROTOCOL.md`. Layout aprovado não muda, não é sobrescrito nem recriado; só muda quando Ivam pedir. PR que toca arquivos de layout é reprovado sem a etiqueta `layout-autorizado-ivam`, que só Ivam coloca.

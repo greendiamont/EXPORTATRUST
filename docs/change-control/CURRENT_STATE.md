@@ -2,6 +2,10 @@
 
 Atualizado em: 2026-10-15
 
+## Regra de layout aprovado (obrigatória)
+
+Layouts aprovados por Ivam estão travados: ver `docs/change-control/LAYOUT_PROTOCOL.md`. Só mudam quando Ivam solicitar; o GitHub reprova PRs que alteram arquivos de layout sem a etiqueta `layout-autorizado-ivam` (colocada só por Ivam).
+
 ## Fonte de verdade
 
 - Repositório: `greendiamont/EXPORTATRUST`

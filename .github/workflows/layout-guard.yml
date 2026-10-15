@@ -1,0 +1,39 @@
+name: Layout aprovado (trava)
+
+# Protocolo: docs/change-control/LAYOUT_PROTOCOL.md
+# Reprova PRs que alteram layouts aprovados sem a etiqueta "layout-autorizado-ivam".
+# Somente Ivam adiciona essa etiqueta. Agentes não alteram nem desativam este workflow.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  layout-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar arquivos de layout protegidos
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          files=$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)')
+          protected=$(printf '%s\n' "$files" | grep -E '^(docs/redesign/prototipo/|docs/change-control/LAYOUT_PROTOCOL\.md$|\.github/workflows/layout-guard\.yml$|app/ui/et2\.css$|app/ui/shell\.tsx$|app/ui/[^/]+-view\.tsx$)' | sort -u || true)
+          if [ -z "$protected" ]; then
+            echo "Nenhum arquivo de layout aprovado alterado."
+            exit 0
+          fi
+          echo "Arquivos de layout aprovado alterados:"
+          printf '  %s\n' $protected
+          if printf ',%s,' "$LABELS" | grep -q ',layout-autorizado-ivam,'; then
+            echo "Etiqueta layout-autorizado-ivam presente: alteração autorizada por Ivam."
+            exit 0
+          fi
+          echo "::error::Este PR altera layout aprovado. Pelo protocolo (docs/change-control/LAYOUT_PROTOCOL.md), só Ivam autoriza, adicionando a etiqueta 'layout-autorizado-ivam'."
+          exit 1

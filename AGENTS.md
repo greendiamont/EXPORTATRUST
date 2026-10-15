@@ -2,6 +2,16 @@
 
 Este repositório é trabalhado por múltiplos agentes (ChatGPT/Jarvis, Codex, Claude e outros).
 
+## REGRA DE LAYOUT APROVADO (obrigatória — definida por Ivam)
+
+Leia `docs/change-control/LAYOUT_PROTOCOL.md` antes de qualquer trabalho de interface.
+
+- Layout aprovado **não pode ser alterado, sobrescrito, substituído nem recriado**. Os protótipos em `docs/redesign/prototipo/` são a fonte da verdade e devem ser seguidos à risca.
+- **Layout só muda quando Ivam solicitar**, por escrito, para aquela tela.
+- Não criar telas, seções ou estruturas visuais novas por conta própria.
+- Correção funcional não pode mudar o visual; se precisar, pare e peça autorização.
+- PR que toca arquivos de layout protegidos é reprovado pelo GitHub sem a etiqueta `layout-autorizado-ivam`, que **só Ivam coloca**. Agentes nunca adicionam essa etiqueta nem alteram/desativam a trava.
+
 ## Antes de alterar qualquer coisa
 
 Leia, nesta ordem:
@@ -9,6 +19,7 @@ Leia, nesta ordem:
 1. `docs/change-control/CURRENT_STATE.md`
 2. `docs/change-control/CHANGELOG.md`
 3. `docs/AI_COLLABORATION_LOG.md`
+4. `docs/change-control/LAYOUT_PROTOCOL.md` — layouts aprovados são travados
 4. `docs/skills/SENIOR_REACT_FRONTEND.md` quando houver frontend React/TypeScript
 
 ## Regra de ambientes
