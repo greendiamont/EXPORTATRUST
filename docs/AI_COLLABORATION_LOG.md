@@ -225,7 +225,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Dados:** nenhum dado real modificado; checkout próprio preserva edição local alheia em EUDR.dc.html. Produção não alterada.
 
 ### 2026-10-15 — Claude — Importar fornecedores do app antigo
-- **Branch:** `claude/importar-fornecedores` → `homologation`; ver CHG-20261015-014.
+- **Branch:** `claude/importar-fornecedores` → `homologation`; PR #95; CHG-20261015-014.
 - **Conferência antes de alterar:** PRs #88–#94 (Codex/Jarvis) lidos e preservados; deploy `811b11cf` (commit `8f03d34`) SUCCESS; logs mostram cadastro por CNPJ concluído e telas novas respondendo 200.
 - **Alteração:** importação de fornecedores por JSON do app antigo em Cadastros → Fornecedores, com prévia e confirmação; sem schema novo.
 - **Dados:** grava só na empresa ativa; nunca sobrescreve nem apaga. Arquivo real de teste (backup 2026-09-29) fica fora do repositório.

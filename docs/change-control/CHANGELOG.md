@@ -283,7 +283,7 @@
 
 - **ID:** CHG-20261015-014
 - **Branch:** `claude/importar-fornecedores`
-- **PR:** a preencher
+- **PR:** #95
 - **Destino:** homologation
 - **Tipo:** feature / dados
 - **Arquivos/módulos alterados:** `app/api/suppliers/import/route.ts` (novo), `lib/supplier-import.ts` (novo), `app/ui/importar-fornecedores.tsx` (novo), `app/ui/cadastros-view.tsx` (botão "Importar do app antigo…" em Fornecedores), `tests/supplier-import.test.mjs` (novo).
