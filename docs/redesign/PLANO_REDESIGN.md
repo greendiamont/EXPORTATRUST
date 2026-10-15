@@ -71,7 +71,7 @@ Proteções para os dados existentes:
 
 ## Pendências da etapa 1
 
-1. **Login individual no Railway**, ainda não implementado. Desenho combinado:
+1. **Login individual no Railway**: implementação no PR #88 (`codex/individual-login`), continuação do PR #87; **ainda não validada funcionalmente no Railway**. Detalhes e roteiro: `docs/redesign/LOGIN_INDIVIDUAL.md`. Desenho combinado:
    - **Tabelas**, criadas no start do servidor:
      - `railway_user_credentials (email PK, password_hash, updated_at)`;
      - `railway_password_tokens (token_hash PK, email, expires_at, used_at, created_by, created_at)`.
