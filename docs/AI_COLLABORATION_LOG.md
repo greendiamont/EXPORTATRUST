@@ -167,3 +167,14 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Migração:** `0029` (6 colunas texto, aditiva).
 - **CI/deploy:** testes locais em PostgreSQL; deploy em homologação após merge autorizado.
 - **Para outros agentes (passagem para o ChatGPT):** leia `docs/redesign/PLANO_REDESIGN.md` antes de continuar. Ele traz as decisões aprovadas, as etapas 2–5 e o desenho do login individual (pendente). Telas novas ficam em `app/ui/` com CSS escopado em `.et2`; evite editar `app/client-app.tsx`.
+
+### 2026-10-15 — Codex / Jarvis
+- **Branch:** `codex/individual-login` (base: head do PR #87, `b1ae21f`).
+- **PR:** #88; destino `homologation`; #87 já integrado no commit `0bbaff14`.
+- **Alteração:** continuação da etapa 1 com login individual, link de senha por administrador da mesma empresa, transação de uso único, scrypt, CSRF e revogação imediata das sessões individuais após reset/inativação.
+- **Arquivos:** runtime `server/railway/`, `app/ui/equipe-view.tsx`, testes e docs de redesign/change control.
+- **Motivo:** executar a pendência documentada pelo Claude sem refazer as telas aprovadas.
+- **Dados/riscos:** duas tabelas novas no PostgreSQL (credenciais/tokens); sem escrita em produção, D1/R2 ou documentos. Backups integrais privados precisam incluir credenciais. Teste real de login de usuário permanece pendente até validação na homologação.
+- **Testes:** build Railway, 63 testes com PGlite, smoke HTTP local e ESLint passaram; TypeScript mantém 89 erros (nenhum no componente alterado).
+- **Autorização:** Ivam autorizou deixar as alterações em homologação para testes em 2026-10-15. Não autorizou produção.
+- **Para Claude/outros agentes:** leia `docs/redesign/LOGIN_INDIVIDUAL.md`; não há novo provedor externo nem envio de e-mail automático; não registrar links/tokens. Branch de origem do Claude preservada.
