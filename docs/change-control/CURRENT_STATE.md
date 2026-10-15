@@ -56,6 +56,12 @@ Atualizado em: 2026-10-15
 
 ## Interface (redesign em andamento)
 
+- Login Google no PR #90 (`codex/google-login`): botão padrão, conta Google
+  verificada + vínculo ativo. **Ainda falta criar/configurar cliente OAuth Google**
+  (`GOOGLE_LOGIN_CLIENT_ID` e `GOOGLE_LOGIN_CLIENT_SECRET`); botão desativado até
+  configurar. O primeiro e-mail de homologação será parametrizado na infraestrutura,
+  sem expor o endereço ou credenciais no código. Ver `docs/redesign/GOOGLE_LOGIN.md`.
+
 - Plano, decisões aprovadas e pendências: `docs/redesign/PLANO_REDESIGN.md`; protótipo em `docs/redesign/prototipo/`.
 - Etapa 1 (branch `claude/redesign-etapa1`): `/` Painel, `/pedidos`, `/novo-processo`, `/cadastros`; o app anterior inteiro fica em `/classico`.
 - Pedido em 6 fases (`lib/order-phases.ts`): Pedido → Produção → Embarque → Documentos → Trânsito → Entregue.
