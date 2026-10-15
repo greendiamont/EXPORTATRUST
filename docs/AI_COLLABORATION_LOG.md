@@ -252,6 +252,6 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Para outros agentes:** arquivos de dados e documentos ficam no storage (bucket) e no banco do Railway, nunca no repositório. O anexo `exportatrust-full-r2-2026-09-29.tar` do release público deve ser removido após a importação (autorizado por Ivam).
 
 ### 2026-10-15 — Claude — Página do pedido na interface nova
-- **Branch:** `claude/pagina-pedido` → `homologation`; CHG-20261015-019.
+- **Branch:** `claude/pagina-pedido` → `homologation`; PR #101; CHG-20261015-019.
 - **Alteração:** `/pedidos/<id>` substitui a abertura do app anterior ao clicar num pedido.
 - **Para outros agentes:** próximos passos da etapa 2 ainda pendentes: comentários/@menções, criar/concluir tarefas na tela nova, presença e proteção contra edição simultânea; etapa 4 (aba EUDR) substitui o link para a versão anterior.

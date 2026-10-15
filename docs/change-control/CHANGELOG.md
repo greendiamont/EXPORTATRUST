@@ -392,7 +392,7 @@
 
 - **ID:** CHG-20261015-019
 - **Branch:** `claude/pagina-pedido`
-- **PR:** a preencher
+- **PR:** #101
 - **Destino:** homologation
 - **Tipo:** feature / frontend
 - **Arquivos/módulos alterados:** `app/pedidos/[id]/page.tsx` (novo), `app/ui/pedido-view.tsx` (novo), `lib/document-phase.ts` (novo), `app/ui/format.ts` (`processHref` → `/pedidos/<id>`).
