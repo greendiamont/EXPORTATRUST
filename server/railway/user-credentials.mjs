@@ -3,6 +3,7 @@
 import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { readCookie, readSession, verifyCredentials } from "./auth.mjs";
+import { normalizeCnpj, validCnpj } from "./company-registration.mjs";
 
 const derive = promisify(scrypt);
 const SCRYPT_OPTIONS = { N: 32768, r: 8, p: 3, maxmem: 64 * 1024 * 1024 };
@@ -41,6 +42,10 @@ export class UserCredentials {
   }
 
   async initialize() {
+    await this.pool.query(`CREATE TABLE IF NOT EXISTS railway_company_registrations (
+      cnpj text PRIMARY KEY, organization_id integer UNIQUE,
+      created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
     await this.pool.query(`CREATE TABLE IF NOT EXISTS railway_access_requests (
       id serial PRIMARY KEY, organization_id integer NOT NULL, email text NOT NULL,
       full_name text NOT NULL, created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -73,13 +78,13 @@ export class UserCredentials {
   async requestAccess({ email, name, company }) {
     email = normalizeEmail(email);
     name = String(name ?? "").trim();
-    company = String(company ?? "").trim().toLowerCase();
-    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || name.length < 2 || name.length > 120 || !/^[a-z0-9-]{2,80}$/.test(company)) {
-      fail(400, "Informe nome, e-mail válido e o código da empresa fornecido pelo administrador.");
+    company = normalizeCnpj(company);
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || name.length < 2 || name.length > 120 || !validCnpj(company)) {
+      fail(400, "Informe nome, e-mail válido e o CNPJ válido da empresa.");
     }
     // Não confirma a existência da empresa/conta e não altera usuários ou credenciais.
     await this.pool.query(`INSERT INTO railway_access_requests (organization_id, email, full_name)
-      SELECT o.id, $1, $2 FROM organizations o WHERE o.slug = $3 AND o.status = 'Ativa'
+      SELECT o.id, $1, $2 FROM organizations o WHERE regexp_replace(o.tax_id, '[^0-9]', '', 'g') = $3 AND o.status = 'Ativa'
       AND NOT EXISTS (SELECT 1 FROM app_users u JOIN organization_memberships m ON m.user_id = u.id
         WHERE lower(u.email) = $1 AND m.organization_id = o.id)
       ON CONFLICT (organization_id, email) DO NOTHING`, [email, name, company]);
@@ -92,13 +97,61 @@ export class UserCredentials {
     const requested = Number(readCookie(cookieHeader, "exportatrust_org"));
     const current = memberships.find((item) => item.organization_id === requested) ?? memberships[0];
     if (current?.role !== "administrador") fail(403, "Somente administradores podem consultar solicitações.");
-    const { rows: [organization] } = await this.pool.query("SELECT slug FROM organizations WHERE id = $1", [current.organization_id]);
+    const { rows: [organization] } = await this.pool.query("SELECT tax_id FROM organizations WHERE id = $1", [current.organization_id]);
     const { rows } = await this.pool.query(`SELECT r.id, r.email, r.full_name AS "fullName", r.created_at AS "createdAt"
       FROM railway_access_requests r WHERE r.organization_id = $1 AND NOT EXISTS (
         SELECT 1 FROM app_users u JOIN organization_memberships m ON m.user_id = u.id
         WHERE lower(u.email) = r.email AND m.organization_id = r.organization_id
       ) ORDER BY r.created_at DESC LIMIT 100`, [current.organization_id]);
-    return { requests: rows, companyCode: organization.slug };
+    return { requests: rows, companyCode: normalizeCnpj(organization.tax_id) };
+  }
+
+  async registerCompany({ email, name, companyName, cnpj, password }) {
+    email = normalizeEmail(email);
+    name = String(name ?? "").trim();
+    companyName = String(companyName ?? "").trim();
+    cnpj = normalizeCnpj(cnpj);
+    if (!validCnpj(cnpj) || name.length < 2 || name.length > 120 || companyName.length < 2 || companyName.length > 160 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      fail(400, "Informe CNPJ válido, nome da empresa, seu nome e e-mail válido.");
+    }
+    if (!validPassword(password)) fail(400, "A senha deve ter no mínimo 10 caracteres e no máximo 1024 bytes.");
+    const passwordHash = await hashPassword(password);
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      // Reserva única na mesma transação: duas inscrições não criam dois donos.
+      const { rows: reservations } = await client.query(`INSERT INTO railway_company_registrations (cnpj)
+        VALUES ($1) ON CONFLICT (cnpj) DO NOTHING RETURNING cnpj`, [cnpj]);
+      if (!reservations.length) fail(409, "Empresa já cadastrada. Entre ou solicite acesso usando o CNPJ.");
+      const { rows: existing } = await client.query(`SELECT id FROM organizations
+        WHERE regexp_replace(tax_id, '[^0-9]', '', 'g') = $1 LIMIT 1`, [cnpj]);
+      if (existing.length) fail(409, "Empresa já cadastrada. Entre ou solicite acesso usando o CNPJ.");
+      // Nunca tomar conta de um e-mail já existente, mesmo sem senha individual.
+      const { rows: users } = await client.query(`INSERT INTO app_users (email, full_name, status, identity_provider)
+        SELECT $1, $2, 'Ativo', 'railway-password' WHERE NOT EXISTS (
+          SELECT 1 FROM app_users WHERE lower(email) = $1
+        ) ON CONFLICT (email) DO NOTHING RETURNING id`, [email, name]);
+      if (!users.length) fail(409, "Este e-mail já possui cadastro. Entre com sua conta ou peça ao administrador um link de senha.");
+      // A migração inicial grava a organização 1 com id explícito. Alinha a
+      // sequência sem recuar e bloqueia inserts concorrentes só durante o cadastro.
+      await client.query("LOCK TABLE organizations IN SHARE ROW EXCLUSIVE MODE");
+      await client.query(`SELECT setval(pg_get_serial_sequence('organizations', 'id'),
+        GREATEST(COALESCE(MAX(id), 0), nextval(pg_get_serial_sequence('organizations', 'id'))), true) FROM organizations`);
+      const { rows: [organization] } = await client.query(`INSERT INTO organizations (slug, name, tax_id, status, data_region)
+        VALUES ($1, $2, $3, 'Ativa', 'global') RETURNING id`, [`cnpj-${cnpj}`, companyName, cnpj]);
+      await client.query(`INSERT INTO organization_memberships (organization_id, user_id, role, status, invited_by)
+        VALUES ($1, $2, 'administrador', 'Ativo', 'company-registration')`, [organization.id, users[0].id]);
+      const version = randomUUID();
+      await client.query(`INSERT INTO railway_user_credentials (email, password_hash, session_version)
+        VALUES ($1, $2, $3)`, [email, passwordHash, version]);
+      await client.query("UPDATE railway_company_registrations SET organization_id = $2 WHERE cnpj = $1", [cnpj, organization.id]);
+      await client.query("COMMIT");
+      return { email, version, organizationId: organization.id };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      if (error.code === "23505") fail(409, "Cadastro já existente. Entre ou solicite acesso à empresa.");
+      throw error;
+    } finally { client.release(); }
   }
 
   async authenticate(email, password, config) {
