@@ -40,3 +40,10 @@ criadas publicamente e aprovação → link privado → senha → login. Teste m
 autenticado da Equipe permanece pendente; produção não autorizada.
 
 Rollback: reverter somente o PR e preservar solicitações/credenciais no banco.
+
+## Atualização — cadastro inicial por CNPJ
+
+O desenho acima foi substituído por pedido explícito de Ivam. Ver
+[PRIMEIRO_ACESSO_CNPJ.md](./PRIMEIRO_ACESSO_CNPJ.md): empresa nova cria seu primeiro
+administrador e senha; equipe solicita pelo CNPJ. Não depende de administrador
+anterior para criar uma empresa nova isolada.
