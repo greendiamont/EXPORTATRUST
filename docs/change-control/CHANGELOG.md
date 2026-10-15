@@ -239,7 +239,7 @@
 ## 2026-10-15 — Codex/Jarvis — Cadastro público de e-mail / primeiro acesso
 
 - **ID:** CHG-20261015-011
-- **Branch:** `codex/self-registration`; PR a preencher; destino exclusivo `homologation`.
+- **Branch:** `codex/self-registration`; PR #92; destino exclusivo `homologation`.
 - **Motivo:** Ivam observou que a tela de login não oferecia onde cadastrar o próprio e-mail.
 - **Alteração:** link Cadastrar e-mail; formulário de solicitação com nome/e-mail/código da empresa; administrador revisa em Equipe, libera perfil e já recebe link privado para definição de senha. Sem envio automático de e-mail.
 - **Arquivos:** `server/railway/{auth,server,user-credentials}.mjs`, `app/ui/equipe-view.tsx`, teste de autenticação e docs de coordenação/primeiro acesso.
