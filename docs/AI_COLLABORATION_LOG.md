@@ -255,3 +255,8 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Branch:** `claude/pagina-pedido` → `homologation`; PR #101; CHG-20261015-019.
 - **Alteração:** `/pedidos/<id>` substitui a abertura do app anterior ao clicar num pedido.
 - **Para outros agentes:** próximos passos da etapa 2 ainda pendentes: comentários/@menções, criar/concluir tarefas na tela nova, presença e proteção contra edição simultânea; etapa 4 (aba EUDR) substitui o link para a versão anterior.
+
+### 2026-10-15 — Claude — Pedido colaborativo (estilo Asana)
+- **Branch:** `claude/pedido-colaborativo` → `homologation`; CHG-20261015-020.
+- **Alteração:** tarefas interativas, comentários com @menções, presença, aviso de alterações e conflito de edição na página do pedido; migration 0030 (tabelas novas).
+- **Para outros agentes:** ao salvar etapa/tarefa pela tela nova, envie `expectedUpdatedAt`; a API devolve 409 `{conflict, current}` quando outra pessoa salvou antes.

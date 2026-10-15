@@ -82,6 +82,8 @@ Atualizado em: 2026-10-15
 
 - Importação de arquivos (CHG-20261015-018): 451 arquivos do pacote de 2026-09-29 no storage de homologação e 400 documentos ligados aos processos importados.
 
+- Página do pedido `/pedidos/<id>` (CHG-019/020): 6 fases, etapas editáveis, emissão de documentos, arquivos por fase, tarefas estilo Asana, comentários com @menções, presença e proteção contra edição simultânea (migration 0030).
+
 ## Correção do primeiro acesso
 
 - `fix/auth-form-origin`: formulário era recusado por Origin:null sob no-referrer.

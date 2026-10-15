@@ -703,6 +703,8 @@ export async function POST(request: Request) {
       const code = String(body.code ?? "");
       const milestone = (await db.select().from(exportMilestones).where(and(eq(exportMilestones.operationId, operationId), eq(exportMilestones.code, code), eq(exportMilestones.organizationId, context.organizationId))).limit(1))[0];
       if (!milestone) return Response.json({ error: "Etapa operacional não encontrada." }, { status: 404 });
+      // Tela nova: recusa salvar sobre uma alteração feita por outra pessoa depois da leitura.
+      if (body.expectedUpdatedAt && String(body.expectedUpdatedAt) !== String(milestone.updatedAt)) return Response.json({ error: "Outra pessoa alterou esta etapa enquanto você editava.", conflict: true, current: milestone }, { status: 409 });
       const status = ["Pendente", "Em andamento", "Aguardando aprovação", "Concluído", "Bloqueado", "Suspenso"].includes(String(body.status)) ? String(body.status) : milestone.status;
       const qualityStatus = ["Não iniciado", "Em inspeção", "Aprovado", "Com ressalvas", "Reprovado"].includes(String(body.qualityStatus)) ? String(body.qualityStatus) : milestone.qualityStatus;
       const shipmentApproval = ["Não aplicável", "Pendente", "Aprovado", "Reprovado"].includes(String(body.shipmentApproval)) ? String(body.shipmentApproval) : milestone.shipmentApproval;
@@ -795,6 +797,7 @@ export async function POST(request: Request) {
       const taskId = Number(body.taskId);
       const [task] = await db.select().from(operationTasks).where(and(eq(operationTasks.id, taskId), eq(operationTasks.operationId, operationId), eq(operationTasks.organizationId, context.organizationId))).limit(1);
       if (!task) return Response.json({ error: "Tarefa não encontrada." }, { status: 404 });
+      if (body.expectedUpdatedAt && String(body.expectedUpdatedAt) !== String(task.updatedAt)) return Response.json({ error: "Outra pessoa alterou esta tarefa enquanto você editava.", conflict: true, current: task }, { status: 409 });
       const responsibleEmail = String(body.responsibleEmail ?? "").trim().toLowerCase();
       if (responsibleEmail && !validEmail(responsibleEmail)) return Response.json({ error: "Informe um e-mail válido para o responsável da tarefa." }, { status: 400 });
       const status = ["Pendente", "Agendada", "Em andamento", "Concluído", "Atrasada"].includes(String(body.status)) ? String(body.status) : task.status;
