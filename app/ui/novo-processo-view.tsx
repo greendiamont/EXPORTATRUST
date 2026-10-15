@@ -1,16 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api, normalize, processHref } from "./format";
 
-type Supplier = { id: number; legalName: string; tradeName: string; city: string; state: string; country: string; products: string; productionUnits: string };
+type Supplier = { id: number; legalName: string; tradeName: string; taxId: string; city: string; state: string; country: string; products: string; productionUnits: string };
 type Client = { id: number; legalName: string; aliases: string; country: string; eori: string; preferredPort: string; preferredIncoterm?: string; preferredCurrency?: string };
 type Product = { id: number; name: string; hsCode: string; rawMaterial: string; species: string; originType: string; salesUnit?: string };
 type Property = { carCode: string; name: string; city: string; supplier: string; areaHa: number };
 
 const EMPTY = {
   reference: "", product: "", hsCode: "", contractNumber: "", internalResponsible: "", responsibleEmail: "",
-  supplierId: "", exporterName: "", exporterTaxId: "", euImporter: "", importerClientId: "", euOperatorEori: "", eudrReference: "",
+  supplierId: "", exporterId: "", exporterName: "", exporterTaxId: "", euImporter: "", importerClientId: "", euOperatorEori: "", eudrReference: "",
   rawMaterial: "", species: "", forestOriginType: "Reflorestamento", productionUnit: "", lotCodes: "", propertyIds: [] as string[],
   quantity: "", quantityUnit: "MT", volumeM3: "", netWeightKg: "", grossWeightKg: "", incoterm: "FOB", currency: "USD", commercialValue: "",
   transportMode: "Marítimo", shipmentDate: "", destinationCountry: "", portOfLoading: "", portOfDischarge: "", carrier: "", bookingNumber: "", billOfLadingNumber: "", containerNumbers: "", vesselVoyage: "",
@@ -73,6 +74,20 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
 
   function set(key: Key, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  // O exportador (quem aparece nos documentos) é o próprio fornecedor ou uma trading do cadastro;
+  // nome e CNPJ vêm do cadastro.
+  function pickSupplier(id: string) {
+    const chosen = suppliers.find((item) => String(item.id) === id);
+    setForm((current) => current.exporterId && current.exporterId !== id
+      ? { ...current, supplierId: id }
+      : { ...current, supplierId: id, exporterId: "", exporterName: chosen?.legalName ?? "", exporterTaxId: chosen?.taxId ?? "" });
+  }
+
+  function pickExporter(id: string) {
+    const chosen = suppliers.find((item) => String(item.id) === (id || form.supplierId));
+    setForm((current) => ({ ...current, exporterId: id, exporterName: chosen?.legalName ?? "", exporterTaxId: chosen?.taxId ?? "" }));
   }
 
   function pickClient(name: string) {
@@ -156,7 +171,7 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
 
   return (
     <main className="et2-main">
-      <nav className="et2-crumbs" aria-label="Caminho"><a href="/pedidos">Pedidos</a> / Novo processo</nav>
+      <nav className="et2-crumbs" aria-label="Caminho"><Link href="/pedidos">Pedidos</Link> / Novo processo</nav>
       <div className="et2-head">
         <div>
           <h1>Novo processo de exportação</h1>
@@ -215,14 +230,21 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
             {step === 1 && <div className="et2-grid">
               <label className="et2-field">
                 <span>Fornecedor principal<span className="et2-req"> *</span></span>
-                <select value={form.supplierId} onChange={(event) => set("supplierId", event.target.value)}>
+                <select value={form.supplierId} onChange={(event) => pickSupplier(event.target.value)}>
                   <option value="">Selecione…</option>
                   {suppliers.map((item) => <option key={item.id} value={item.id}>{item.legalName}</option>)}
                 </select>
                 <small>{supplier ? `${supplier.city}/${supplier.state} · ${supplier.country}` : <a href="/cadastros?tab=fornecedores">Cadastrar fornecedor</a>}</small>
               </label>
-              {input("exporterName", "Exportador / trading", { placeholder: "Vazio = o próprio fornecedor" })}
-              {input("exporterTaxId", "CNPJ do exportador")}
+              <label className="et2-field">
+                <span>Exportador / trading</span>
+                <select value={form.exporterId} onChange={(event) => pickExporter(event.target.value)}>
+                  <option value="">O próprio fornecedor{supplier ? ` (${supplier.legalName})` : ""}</option>
+                  {suppliers.filter((item) => String(item.id) !== form.supplierId).map((item) => <option key={item.id} value={item.id}>{item.legalName}</option>)}
+                </select>
+                <small>É quem aparece na documentação do pedido · <a href="/cadastros?tab=fornecedores">Cadastrar trading</a></small>
+              </label>
+              {input("exporterTaxId", "CNPJ do exportador", { help: "Preenchido do cadastro ao selecionar o exportador" })}
               {input("euImporter", "Importador / operador europeu", { list: "et2-clients", required: true, placeholder: "Selecione ou digite um novo", help: form.importerClientId ? "Cliente cadastrado: EORI, porto e pagamento preenchidos" : "Novo nome cria o cliente no cadastro", onChange: pickClient })}
               {input("euOperatorEori", "EORI do operador")}
               {input("eudrReference", "Referência DDS / EUDR", { placeholder: "Quando emitida no sistema europeu" })}
