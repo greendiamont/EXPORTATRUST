@@ -265,3 +265,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Branch:** `claude/pedido-layout-aprovado` → `homologation`; CHG-20261015-021.
 - **Alteração:** `app/ui/pedido-view.tsx` refeito seguindo `docs/redesign/prototipo/Processo.dc.html`; migration 0031 aditiva.
 - **Para outros agentes:** o protótipo é a referência visual da página do pedido; não voltar ao layout de cartões dos PRs #101/#102. Ao salvar dados comerciais pela tela nova, envie `expectedUpdatedAt` = `settings.updatedAt`.
+
+### 2026-10-15 — Claude — Editar dados do pedido
+- **Branch:** `claude/editar-dados-pedido` → `homologation`; CHG-20261015-023 (pedido de Ivam na conversa).
+- **Para outros agentes:** para alterar dados do pedido pela tela nova use `PATCH /api/operations` com `{ id, fields, original }` (só campos alterados). Não use o PUT, que regrava todos os campos.
