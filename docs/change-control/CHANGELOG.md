@@ -267,7 +267,7 @@
 ## 2026-10-15 — Codex/Jarvis — Correção do envio dos formulários de autenticação
 
 - **ID:** CHG-20261015-013
-- **Branch:** `fix/auth-form-origin`; PR a preencher; destino exclusivo `homologation`.
+- **Branch:** `fix/auth-form-origin`; PR #94; destino exclusivo `homologation`.
 - **Falha real:** Ivam enviou imagem de POST /__auth/cadastrar recusado com Origem da requisição não autorizada antes de gravar o cadastro.
 - **Causa:** Referrer-Policy no-referrer nos HTMLs faz basic form POST enviar Origin:null; validador CSRF exige mesma origem. Testes anteriores por fetch não simulavam essa política do navegador.
 - **Correção:** strict-origin nas respostas do runtime, preservando origem HTTPS e ocultando path/query/token do Referer. Validador CSRF permanece rejeitando Origin null/ausente/externo. Sem aceitar cabeçalhos de origem forjados ou desligar proteção.
