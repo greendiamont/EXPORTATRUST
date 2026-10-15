@@ -30,7 +30,10 @@ test("signed individual sessions are not mistaken for bootstrap and reject tampe
 test("auth forms escape links and errors; cross-origin requests and forged identity are refused", () => {
   assert.match(loginPage(), /href="\/__auth\/cadastrar"/);
   assert.match(registrationPage(), /name="email"/);
-  assert.match(registrationPage(), /name="company"/);
+  assert.match(registrationPage(), /name="cnpj"/);
+  assert.match(registrationPage(), /name="companyName"/);
+  assert.match(registrationPage(), /data-password-target="password"/);
+  assert.doesNotMatch(registrationPage({ mode: "team" }), /name="password"/);
   assert.ok(!registrationPage({ error: '<script>alert(1)</script>' }).includes('<script>'));
   assert.match(registrationPage({ success: true }), /Nenhum e-mail foi enviado/);
   const page = passwordPage({ token: '"><script>alert(1)</script>', error: "<img src=x>" });
@@ -69,10 +72,10 @@ test("PostgreSQL: authorization, reset, replay, expiry, tenant isolation and imm
   };
   try {
     await database.exec(`
-      CREATE TABLE organizations (id integer PRIMARY KEY, status text, slug text);
+      CREATE TABLE organizations (id integer PRIMARY KEY, status text, slug text, tax_id text);
       CREATE TABLE app_users (id serial PRIMARY KEY, email text UNIQUE, status text, full_name text DEFAULT '', identity_provider text DEFAULT 'test');
       CREATE TABLE organization_memberships (id serial PRIMARY KEY, organization_id integer, user_id integer, role text, status text, invited_by text DEFAULT '', UNIQUE(organization_id, user_id));
-      INSERT INTO organizations VALUES (1, 'Ativa', 'company-one'), (2, 'Ativa', 'company-two');
+      INSERT INTO organizations VALUES (1, 'Ativa', 'company-one', '04.252.011/0001-10'), (2, 'Ativa', 'company-two', '11222333000181');
       INSERT INTO app_users (id,email,status) VALUES (1, 'admin@example.test', 'Ativo'), (2, 'member@example.test', 'Ativo'), (3, 'other@example.test', 'Ativo');
       INSERT INTO organization_memberships (id,organization_id,user_id,role,status) VALUES (1, 1, 1, 'administrador', 'Ativo'), (2, 1, 2, 'analista', 'Ativo'), (3, 2, 3, 'analista', 'Ativo');
       SELECT setval('app_users_id_seq', 3); SELECT setval('organization_memberships_id_seq', 3);
@@ -82,14 +85,13 @@ test("PostgreSQL: authorization, reset, replay, expiry, tenant isolation and imm
     await store.initialize(); // startup idempotence
     const admin = cookie("admin@example.test");
     await assert.rejects(store.requestAccess({ email: "invalid", name: "Test", company: "company-one" }), { status: 400 });
-    await store.requestAccess({ email: " NEW@example.test ", name: "New Person", company: "company-one" });
-    await store.requestAccess({ email: "new@example.test", name: "Overwrite", company: "company-one" });
-    await store.requestAccess({ email: "other-request@example.test", name: "Other Person", company: "company-two" });
-    await store.requestAccess({ email: "member@example.test", name: "Existing", company: "company-one" });
-    await store.requestAccess({ email: "unknown@example.test", name: "Unknown", company: "missing-company" });
+    await store.requestAccess({ email: " NEW@example.test ", name: "New Person", company: "04252011000110" });
+    await store.requestAccess({ email: "new@example.test", name: "Overwrite", company: "04.252.011/0001-10" });
+    await store.requestAccess({ email: "other-request@example.test", name: "Other Person", company: "11222333000181" });
+    await store.requestAccess({ email: "member@example.test", name: "Existing", company: "04252011000110" });
     await assert.rejects(store.accessRequests("", config), { status: 401 });
     const pendingRequests = await store.accessRequests(admin, config);
-    assert.equal(pendingRequests.companyCode, "company-one");
+    assert.equal(pendingRequests.companyCode, "04252011000110");
     assert.equal(pendingRequests.requests.length, 1);
     assert.equal(pendingRequests.requests[0].email, "new@example.test");
     assert.equal(pendingRequests.requests[0].fullName, "New Person");
