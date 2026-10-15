@@ -83,6 +83,7 @@ Atualizado em: 2026-10-15
 - Importação de arquivos (CHG-20261015-018): 451 arquivos do pacote de 2026-09-29 no storage de homologação e 400 documentos ligados aos processos importados.
 
 - Página do pedido `/pedidos/<id>` (CHG-019/020): 6 fases, etapas editáveis, emissão de documentos, arquivos por fase, tarefas estilo Asana, comentários com @menções, presença e proteção contra edição simultânea (migration 0030).
+- Prévia dos custos logísticos por processo (`operations.logistics_costs_json`, migration 0032, `lib/logistics-costs.ts`): lançada na seção 5 do Novo processo, editável no pedido, usada na margem do card Financeiro.
 - Layout da página do pedido = protótipo aprovado `docs/redesign/prototipo/Processo.dc.html` (CHG-021): emissão de documentos editável na fase Pedido, etapas/tarefas em tabela com gaveta de comentários, seguidores e conflito campo a campo (migration 0031). Tarefas do checklist são distribuídas nas fases pelo texto (`taskPhaseIndex`).
 
 ## Correção do primeiro acesso

@@ -485,3 +485,22 @@
 - **Rollback:** reverter o PR.
 - **Conflitos/coordenação com outros agentes:** nenhum.
 - **Status:** em andamento
+
+## 2026-10-15 — Claude — Prévia dos custos logísticos (Novo processo e pedido)
+
+- **ID:** CHG-20261015-025
+- **Branch:** `claude/custos-logisticos`
+- **PR:** #107
+- **Destino:** homologation
+- **Tipo:** feature / frontend / API / migration aditiva
+- **Arquivos/módulos alterados:** `lib/logistics-costs.ts` (novo), `drizzle/0032_operation_logistics_costs.sql` (novo), `db/schema.ts`, `app/api/operations/route.ts`, `app/ui/novo-processo-view.tsx`, `app/ui/pedido-view.tsx`
+- **Autorização de Ivam (conversa, 2026-10-15):** "No campo de logística, tu coloca um campo onde a gente pode colocar uma prévia dos custos logísticos. Isso vai ajudar nosso financeiro para saber a margem que a gente vai ter nesse pedido. Então, coloca essa opção dentro do ponto 5, que é a logística internacional."
+- **O que mudou:** seção 5 (Logística internacional) do Novo processo ganhou "Prévia dos custos logísticos" (moeda, frete rodoviário, despesas portuárias/THC, despachante, frete marítimo, seguro, outros, observações, total). No pedido, o card Financeiro mostra "Logística (prévia)" e a margem passa a descontar a logística (quando venda, compra e custos estão na mesma moeda); os custos podem ser ajustados em "Todos os dados do pedido" → Editar dados. Corrigida a leitura de números com separador de milhar sem decimais ("4.500" era lido como 4,5) na edição de dados e no Novo processo.
+- **Dados/migração:** 0032 aditiva — coluna `operations.logistics_costs_json` (padrão `{}`). O PUT do app anterior não apaga a prévia (só grava quando enviada).
+- **Riscos:** baixo.
+- **Testes executados:** eslint, tsc (sem erros novos), build Railway, Playwright local (criação com custos → total no pedido → edição do seguro somou corretamente).
+- **Railway homologation:** deploy automático após merge (aplica a 0032).
+- **Railway production:** sem mudança.
+- **Rollback:** reverter o PR; a coluna pode permanecer.
+- **Conflitos/coordenação com outros agentes:** nenhum.
+- **Status:** em andamento
