@@ -199,3 +199,11 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Falhas reais:** GETs de Clientes/Produtos retornam 500 por Response de autenticação não capturada. Correção localizada preserva 401/403, consultas e permissões; regressão testa os handlers compilados.
 - **Relatório:** `docs/reviews/HOMOLOGATION_TESTS_2026-10-15.md`, com matriz e roteiro dos testes autenticados.
 - **Dados/produção:** sem alterações em banco, documentos, R2 ou produção. Sem acesso ao Google Cloud, conforme preferência do Ivam.
+
+### 2026-10-15 — Codex/Jarvis — Primeiro acesso visível no login
+- **Branch:** `codex/self-registration` → `homologation`; PR a preencher.
+- **Pedido:** Ivam precisa que o destinatário possa cadastrar o próprio e-mail na entrada.
+- **Entrega:** formulário público de solicitação por empresa, revisão em Equipe e geração do link de senha ao liberar acesso. Google permanece dependente do cliente OAuth.
+- **Dados:** só tabela aditiva de solicitações; sem autoaprovação, mudança de credenciais existentes, escrita em produção ou documentos.
+- **Validação:** build, testes PGlite e lint; validação manual autenticada ainda pendente.
+- **Passagem:** ler `docs/redesign/PRIMEIRO_ACESSO.md`. Cadastro público não equivale a administrador criado nem prova de propriedade do e-mail. Link de senha deve ser entregue ao destinatário confirmado; não há envio automático.
