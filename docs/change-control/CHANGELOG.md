@@ -263,3 +263,17 @@
 - **Riscos/limites:** CNPJ/e-mail declarados sem comprovação externa. Empresa nova não contém dados antigos. Google OAuth pendente. Reservas/auth no backup privado integral PostgreSQL.
 - **Rollback:** reverter código, preservar dados/tabelas.
 - **Status:** só homologação; sem autorização de produção.
+
+## 2026-10-15 — Codex/Jarvis — Correção do envio dos formulários de autenticação
+
+- **ID:** CHG-20261015-013
+- **Branch:** `fix/auth-form-origin`; PR #94; destino exclusivo `homologation`.
+- **Falha real:** Ivam enviou imagem de POST /__auth/cadastrar recusado com Origem da requisição não autorizada antes de gravar o cadastro.
+- **Causa:** Referrer-Policy no-referrer nos HTMLs faz basic form POST enviar Origin:null; validador CSRF exige mesma origem. Testes anteriores por fetch não simulavam essa política do navegador.
+- **Correção:** strict-origin nas respostas do runtime, preservando origem HTTPS e ocultando path/query/token do Referer. Validador CSRF permanece rejeitando Origin null/ausente/externo. Sem aceitar cabeçalhos de origem forjados ou desligar proteção.
+- **Arquivos:** server/railway/server.mjs, tests/auth-form-origin.test.mjs e docs de coordenação/primeiro acesso.
+- **Validação:** teste HTTP inicia servidor real isolado sem banco/contas; verifica headers nas três telas, POST mesma origem chega à validação de credencial (401), null/ausente/externo continua 403. Cadastro real depende da confirmação manual do Ivam; tentativa pelo browser remoto bloqueada pela política do navegador.
+- **Dados/produção:** nenhuma migração ou alteração de empresa, usuário, senha ou documento real. Produção intocada.
+- **Coordenação:** worktree próprio da homologation @85e99fa; alteração local não relacionada em docs/redesign/prototipo/EUDR.dc.html preservada no checkout original, fora deste PR.
+- **Rollback:** reverter somente este PR; dados preservados.
+- **Status:** correção preparada para homologação, validação manual pendente.

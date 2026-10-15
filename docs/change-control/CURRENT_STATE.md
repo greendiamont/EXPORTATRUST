@@ -74,6 +74,13 @@ Atualizado em: 2026-10-15
 - Pedido em 6 fases (`lib/order-phases.ts`): Pedido → Produção → Embarque → Documentos → Trânsito → Entregue.
 - Migration `0029` (aditiva): campos novos de cadastro (endereço do fornecedor, notify party/incoterm/moeda do cliente, unidade de venda/embalagem do produto).
 
+## Correção do primeiro acesso
+
+- `fix/auth-form-origin`: formulário era recusado por Origin:null sob no-referrer.
+  Runtime usa strict-origin, mantendo paths/tokens fora do Referer e validação CSRF
+  estrita. Sem alterações de dados. Cadastro manual real ainda precisa ser repetido
+  pelo Ivam após deploy; produção continua sem aprovação.
+
 ## Avaliação funcional
 
 - Parecer e lacunas priorizadas: `docs/reviews/FUNCTIONAL_REVIEW_2026-10-14.md`.

@@ -215,3 +215,11 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Dados:** reserva aditiva por CNPJ e transação organização/usuário/vínculo/credencial; alinhamento da sequência protege seed organização 1. Sem movimentação de documentos/dados existentes ou mudança de produção.
 - **Validação:** build, 72 testes PGlite e lint; teste manual real pendente.
 - **Passagem:** docs/redesign/PRIMEIRO_ACESSO_CNPJ.md substitui o desenho por slug de #92 conforme instrução do Ivam. Titularidade CNPJ/e-mail não verificada externamente; Google OAuth ainda pendente.
+
+### 2026-10-15 — Codex/Jarvis — Falha real no POST de cadastro
+- **Branch:** `fix/auth-form-origin` → `homologation`; PR #94.
+- **Evidência:** imagem do Ivam: Origem da requisição não autorizada após cadastro.
+- **Correção:** Referrer-Policy strict-origin em vez de no-referrer; origem preservada em basic form POST sem expor query/token. CSRF continua recusando null/ausente/externo.
+- **Teste:** servidor Node real isolado, sem banco nem conta; headers nas telas e diferença 401 mesma origem / 403 origem inválida. Fetch anterior não cobria o comportamento de Origin em form POST no browser.
+- **Limites:** browser remoto bloqueou ação de teste por política, sem contorno. Teste manual do cadastro permanece necessário após deploy.
+- **Dados:** nenhum dado real modificado; checkout próprio preserva edição local alheia em EUDR.dc.html. Produção não alterada.
