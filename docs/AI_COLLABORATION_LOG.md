@@ -269,3 +269,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 ### 2026-10-15 — Claude — Editar dados do pedido
 - **Branch:** `claude/editar-dados-pedido` → `homologation`; CHG-20261015-023 (pedido de Ivam na conversa).
 - **Para outros agentes:** para alterar dados do pedido pela tela nova use `PATCH /api/operations` com `{ id, fields, original }` (só campos alterados). Não use o PUT, que regrava todos os campos.
+
+### 2026-10-15 — Claude — Novo processo: exportador selecionável
+- **Branch:** `claude/exportador-selecionar` → `homologation`; CHG-20261015-024 (pedido de Ivam na conversa).
+- **Para outros agentes:** Ivam confirmou o layout da tela Novo processo como está; a única mudança autorizada foi o exportador/trading selecionável com CNPJ do cadastro. O exportador (fornecedor ou trading) é o que aparece nos documentos do pedido.

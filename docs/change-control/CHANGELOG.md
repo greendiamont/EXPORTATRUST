@@ -466,3 +466,22 @@
 - **Rollback:** reverter o PR.
 - **Conflitos/coordenação com outros agentes:** nenhum.
 - **Status:** em andamento
+
+## 2026-10-15 — Claude — Novo processo: exportador/trading selecionável com CNPJ automático
+
+- **ID:** CHG-20261015-024
+- **Branch:** `claude/exportador-selecionar`
+- **PR:** a preencher
+- **Destino:** homologation
+- **Tipo:** frontend
+- **Arquivos/módulos alterados:** `app/ui/novo-processo-view.tsx`
+- **Autorização de Ivam (conversa, 2026-10-15):** "essa fase da tela do novo processo ela pode ficar assim [...] ficou bem legal. Eu quero só fazer algumas alterações. No ponto 2 [...] o exportador, trading [...] esse campo também tem que ter um botão aqui de selecionar. O CNPJ do exportador, ele vai puxar automático dentro do cadastro [...] é só essa alteração por enquanto."
+- **O que mudou:** na seção 2 (Empresas da cadeia), "Exportador / trading" virou seleção do cadastro ("O próprio fornecedor" ou uma trading/empresa cadastrada); o CNPJ do exportador é preenchido do cadastro ao selecionar o fornecedor ou o exportador. O exportador é quem aparece na documentação do pedido. Resto da tela igual ao protótipo aprovado (NovoProcesso.dc.html), que Ivam confirmou.
+- **Riscos:** baixo; a API de criação do processo não mudou (continua recebendo exporterName/exporterTaxId).
+- **Dados/migração:** nenhuma.
+- **Testes executados:** eslint, tsc (sem erros novos), build Railway, Playwright local (próprio fornecedor e trading preenchem o CNPJ do cadastro).
+- **Railway homologation:** deploy automático após merge.
+- **Railway production:** sem mudança.
+- **Rollback:** reverter o PR.
+- **Conflitos/coordenação com outros agentes:** nenhum.
+- **Status:** em andamento
