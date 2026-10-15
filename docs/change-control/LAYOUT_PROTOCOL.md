@@ -12,21 +12,24 @@
 6. **Na dúvida, perguntar.** Se algo do protótipo não tiver dado real correspondente, o agente mantém o elemento do protótipo (com "—" ou o dado mais próximo) e informa Ivam; não remove nem redesenha.
 7. **Sem gastar crédito com refação.** Retrabalho de layout por não seguir o aprovado é falha do agente e deve ser evitado lendo este protocolo antes de qualquer trabalho de interface.
 
-## Fluxo de aprovação
+## Fluxo de aprovação (Ivam só fala na conversa — nada manual)
 
-1. Ivam pede uma tela nova ou uma mudança de layout.
+Ivam não precisa entrar no GitHub, no Railway nem em lugar nenhum. A palavra dele na conversa é a autorização; o agente executa o resto.
+
+1. Ivam pede uma tela nova ou uma mudança de layout na conversa.
 2. O agente faz a proposta **somente** em `docs/redesign/prototipo/` (protótipo navegável) e mostra a Ivam.
-3. Ivam aprova por escrito ("aprovado").
-4. O agente registra a aprovação na tabela abaixo (data, tela, arquivo) e no `CHANGELOG.md`.
+3. Ivam diz na conversa **"layout aprovado"** (ou equivalente claro).
+4. O agente **trava** o layout: registra na tabela "Layouts aprovados" e no histórico abaixo (data, tela, protótipo e a frase de Ivam) e no `CHANGELOG.md`.
 5. A implementação segue o protótipo aprovado à risca (regra 4).
-6. Ivam confere a tela em homologação; a partir daí ela fica **travada**.
+6. A partir daí a tela fica **travada**: só muda se Ivam pedir de novo, na conversa, para aquela tela.
 
 ## Trava automática no GitHub
 
 O workflow `.github/workflows/layout-guard.yml` reprova todo PR que altere arquivos de layout protegidos (lista abaixo) sem a etiqueta **`layout-autorizado-ivam`**.
 
-- **Somente Ivam coloca essa etiqueta.** Nenhum agente adiciona ou remove essa etiqueta em PR, nem altera/desativa o workflow, nem contorna a trava (por exemplo, movendo código de layout para outro arquivo).
-- Correções funcionais em arquivos protegidos também ficam bloqueadas até Ivam liberar: o agente explica o que muda e pede a etiqueta.
+- **A etiqueta só é colocada quando Ivam autorizou na conversa.** O agente coloca a etiqueta no PR em nome de Ivam e registra, no PR e no `CHANGELOG.md`, a frase exata de Ivam que autorizou. Sem frase de Ivam pedindo aquela mudança de layout, a etiqueta não é colocada.
+- Nenhum agente coloca a etiqueta por iniciativa própria, altera/desativa o workflow ou contorna a trava (por exemplo, movendo código de layout para outro arquivo).
+- Correções funcionais em arquivos protegidos também precisam da autorização de Ivam na conversa: o agente explica o que muda e pergunta antes.
 
 ### Arquivos protegidos
 
@@ -56,3 +59,4 @@ Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout n
 |---|---|---|
 | 2026-10-14 | Ivam | Aprovou o redesign (protótipos 1 a 6) — `docs/redesign/PLANO_REDESIGN.md` |
 | 2026-10-15 | Ivam | Reafirmou o layout aprovado do Pedido (fases e emissão de documentos) e criou esta regra |
+| 2026-10-15 | Ivam | Definiu que a autorização é dada só na conversa: "eu posso dizer assim, ó, a layout aprovado, aí vocês travam o layout que foi aprovado" — sem passos manuais |

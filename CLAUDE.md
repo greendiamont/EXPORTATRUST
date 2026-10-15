@@ -8,7 +8,8 @@ Leia `docs/change-control/LAYOUT_PROTOCOL.md` antes de qualquer trabalho de inte
 - **Layout só muda quando Ivam solicitar**, por escrito, para aquela tela.
 - Não criar telas, seções ou estruturas visuais novas por conta própria.
 - Correção funcional não pode mudar o visual; se precisar, pare e peça autorização.
-- PR que toca arquivos de layout protegidos é reprovado pelo GitHub sem a etiqueta `layout-autorizado-ivam`, que **só Ivam coloca**. Agentes nunca adicionam essa etiqueta nem alteram/desativam a trava.
+- Quando Ivam disser na conversa **"layout aprovado"**, o agente trava o layout: registra no `LAYOUT_PROTOCOL.md` e no `CHANGELOG.md`. Ivam não faz nada manual.
+- PR que toca arquivos de layout protegidos é reprovado pelo GitHub sem a etiqueta `layout-autorizado-ivam`. O agente só coloca essa etiqueta quando Ivam autorizou aquela mudança na conversa, e registra a frase dele no PR. Nunca por iniciativa própria; nunca alterar/desativar a trava.
 
 Antes de qualquer alteração, leia obrigatoriamente:
 

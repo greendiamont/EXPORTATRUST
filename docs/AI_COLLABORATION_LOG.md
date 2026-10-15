@@ -268,4 +268,4 @@ Este documento é o registro canônico de alterações realizadas por assistente
 
 ### 2026-10-15 — Claude — Protocolo de layout aprovado
 - **Branch:** `claude/protocolo-layout` → `homologation`; CHG-20261015-022.
-- **Para outros agentes (OBRIGATÓRIO):** leia `docs/change-control/LAYOUT_PROTOCOL.md`. Layout aprovado não muda, não é sobrescrito nem recriado; só muda quando Ivam pedir. PR que toca arquivos de layout é reprovado sem a etiqueta `layout-autorizado-ivam`, que só Ivam coloca.
+- **Para outros agentes (OBRIGATÓRIO):** leia `docs/change-control/LAYOUT_PROTOCOL.md`. Layout aprovado não muda, não é sobrescrito nem recriado; só muda quando Ivam pedir. PR que toca arquivos de layout é reprovado sem a etiqueta `layout-autorizado-ivam`, que o agente só coloca quando Ivam autorizou na conversa (registrando a frase dele). Ivam não faz nada manual: "layout aprovado" na conversa = travar.
