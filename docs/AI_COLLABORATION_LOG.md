@@ -155,3 +155,15 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Migração:** ver roteiro.
 - **CI/deploy:** testes locais em PostgreSQL; deploy em homologação após merge.
 - **Para outros agentes:** não cadastrar dados em homologação antes da importação inicial (a importação do banco exige destino vazio).
+
+### 2026-10-15 — Claude
+- **Branch:** `claude/redesign-etapa1`
+- **PR:** #87
+- **Tipo:** feature / frontend / migração aditiva
+- **Alteração:** etapa 1 do redesign — Painel, Pedidos, Novo processo e Cadastros (+ Equipe) com o novo visual; app anterior preservado em `/classico`.
+- **Motivo:** redesign aprovado pelo Ivam.
+- **Impacto:** nova página inicial; funções antigas acessíveis por "Versão anterior".
+- **Risco:** baixo/moderado.
+- **Migração:** `0029` (6 colunas texto, aditiva).
+- **CI/deploy:** testes locais em PostgreSQL; deploy em homologação após merge autorizado.
+- **Para outros agentes (passagem para o ChatGPT):** leia `docs/redesign/PLANO_REDESIGN.md` antes de continuar. Ele traz as decisões aprovadas, as etapas 2–5 e o desenho do login individual (pendente). Telas novas ficam em `app/ui/` com CSS escopado em `.et2`; evite editar `app/client-app.tsx`.

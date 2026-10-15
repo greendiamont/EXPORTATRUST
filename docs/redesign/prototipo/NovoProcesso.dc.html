@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Novo processo · ExportaTrust</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F4F6}
+a{color:#1D4ED8}a:hover{color:#1E3A8A}
+</style>
+</helmet>
+<div style="min-height: 100vh; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #111827; background: #F3F4F6; font-size: 14px">
+  <header style="background: #0F1B2D; color: #FFFFFF">
+    <div style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 0 24px; min-height: 56px; display: flex; flex-wrap: wrap; align-items: center; gap: 28px">
+      <div style="display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; letter-spacing: 0.2px">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5FD3A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l6 6L21 6"></path></svg>
+        ExportaTrust
+      </div>
+      <nav aria-label="Navegação principal" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1">
+        <a href="Main.dc.html" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8; text-decoration: none">Painel</a>
+        <a href="Processos.dc.html" aria-current="page" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #FFFFFF; text-decoration: none; font-weight: 500; box-shadow: inset 0 -3px 0 #5FD3A6">Pedidos</a>
+        <a href="Cadastros.dc.html" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8; text-decoration: none">Cadastros</a>
+        <a href="EUDR.dc.html" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8; text-decoration: none">EUDR</a>
+        <a href="#" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8; text-decoration: none">Relatórios</a>
+      </nav>
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #C3CBD8">
+        <span style="padding: 3px 8px; border: 1px solid #3A4A63; border-radius: 4px; font-size: 11px; letter-spacing: 0.6px">HOMOLOGAÇÃO</span>
+        <span style="width: 30px; height: 30px; border-radius: 15px; background: #2B3A52; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 600">IV</span>
+      </div>
+    </div>
+  </header>
+
+  <main style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 20px 24px 48px; display: flex; flex-direction: column; gap: 18px">
+    <nav aria-label="Caminho" style="font-size: 13px; color: #6B7280"><a href="Processos.dc.html" style="text-decoration: none">Pedidos</a> / Novo processo</nav>
+    <div>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 600">Novo processo de exportação</h1>
+      <p style="margin: 4px 0 0; color: #4B5563">Registre pedido, participantes, produto, origem, volumes e logística. Estes dados alimentam o acompanhamento, os documentos e o dossiê EUDR.</p>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start">
+      <aside style="flex: 1 1 260px; min-width: 0; max-width: 300px; display: flex; flex-direction: column; gap: 14px">
+        <nav aria-label="Seções do formulário" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 8px">
+          <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px">
+            <sc-for list="{{sections}}" as="s" hint-placeholder-count="6">
+              <li>
+                <button onClick="{{s.pick}}" aria-current="{{s.current}}" style="{{s.style}}">
+                  <span style="{{s.dotStyle}}">{{s.mark}}</span>
+                  <span style="display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0">
+                    <span style="font-weight: 500">{{s.title}}</span>
+                    <span style="font-size: 12px; color: #6B7280">{{s.hint}}</span>
+                  </span>
+                </button>
+              </li>
+            </sc-for>
+          </ol>
+        </nav>
+        <section aria-labelledby="resumo" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 14px 16px">
+          <h2 id="resumo" style="margin: 0 0 10px; font-size: 14px; font-weight: 600">Resumo</h2>
+          <dl style="margin: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px">
+            <div><dt style="color: #6B7280; font-size: 12px">Referência</dt><dd style="margin: 2px 0 0; font-family: 'IBM Plex Mono', monospace">GBU003/26 (automática)</dd></div>
+            <div><dt style="color: #6B7280; font-size: 12px">Cliente</dt><dd style="margin: 2px 0 0">[CLIENTE] · Itália</dd></div>
+            <div><dt style="color: #6B7280; font-size: 12px">Fornecedor</dt><dd style="margin: 2px 0 0">[FORNECEDOR]</dd></div>
+            <div><dt style="color: #6B7280; font-size: 12px">Produto</dt><dd style="margin: 2px 0 0">Wood pellets · 4401.31</dd></div>
+            <div><dt style="color: #6B7280; font-size: 12px">EUDR</dt><dd style="margin: 2px 0 0"><span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; background: #FFFBEB; color: #92400E">Exigido · destino UE + NCM 44</span></dd></div>
+          </dl>
+        </section>
+      </aside>
+
+      <section aria-labelledby="secao" style="flex: 999 1 640px; min-width: 0; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+        <div style="padding: 16px 24px; border-bottom: 1px solid #E5E7EB">
+          <div style="font-size: 12px; color: #6B7280">Seção {{stepNumber}} de 6</div>
+          <h2 id="secao" style="margin: 2px 0 0; font-size: 18px; font-weight: 600">{{current.title}}</h2>
+          <p style="margin: 4px 0 0; font-size: 13px; color: #4B5563">{{current.description}}</p>
+        </div>
+
+        <div style="padding: 20px 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+          <sc-for list="{{current.fields}}" as="f" hint-placeholder-count="6">
+            <label style="{{f.wrapStyle}}">
+              <span>{{f.label}}<span style="color: #B91C1C">{{f.req}}</span></span>
+              <sc-if value="{{f.isInput}}" hint-placeholder-val="{{ true }}">
+                <input placeholder="{{f.placeholder}}" value="{{f.value}}" style="min-height: 38px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; color: #111827; background: #FFFFFF">
+              </sc-if>
+              <sc-if value="{{f.isSelect}}" hint-placeholder-val="{{ false }}">
+                <select style="min-height: 38px; box-sizing: border-box; padding: 0 8px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; color: #111827; background: #FFFFFF">
+                  <sc-for list="{{f.options}}" as="o" hint-placeholder-count="3"><option>{{o}}</option></sc-for>
+                </select>
+              </sc-if>
+              <sc-if value="{{f.isText}}" hint-placeholder-val="{{ false }}">
+                <textarea placeholder="{{f.placeholder}}" rows="5" style="box-sizing: border-box; padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; color: #111827; resize: vertical"></textarea>
+              </sc-if>
+              <span style="font-size: 12px; color: #6B7280">{{f.help}}</span>
+            </label>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{showCars}}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 0 24px 20px">
+            <div style="font-size: 13px; font-weight: 500; margin-bottom: 8px">Origens CAR deste processo</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px">
+              <sc-for list="{{cars}}" as="c" hint-placeholder-count="3">
+                <button onClick="{{c.toggle}}" aria-pressed="{{c.pressed}}" style="{{c.style}}"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px">{{c.code}}</span> · {{c.name}}</button>
+              </sc-for>
+            </div>
+            <div style="margin-top: 6px; font-size: 12px; color: #6B7280">Imóveis do fornecedor selecionado. Ficam vinculados ao dossiê EUDR.</div>
+          </div>
+        </sc-if>
+
+        <div style="padding: 14px 24px; border-top: 1px solid #E5E7EB; display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center">
+          <button onClick="{{back}}" style="min-height: 38px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; cursor: pointer">← Voltar</button>
+          <div style="display: flex; gap: 8px">
+            <button style="min-height: 38px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; cursor: pointer">Salvar rascunho</button>
+            <sc-if value="{{isLast}}" hint-placeholder-val="{{ false }}">
+              <a href="Processo.dc.html" style="min-height: 38px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 6px; background: #047857; color: #FFFFFF; font-weight: 500; text-decoration: none">Criar processo ✓</a>
+            </sc-if>
+            <sc-if value="{{notLast}}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{next}}" style="min-height: 38px; padding: 0 16px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; font-weight: 500; cursor: pointer">Próximo →</button>
+            </sc-if>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { step: 0, cars: [0] }; }
+  renderVals() {
+    const inp = (label, o = {}) => ({ kind: 'input', label, ...o });
+    const sel = (label, options, o = {}) => ({ kind: 'select', label, options, ...o });
+    const SECTIONS = [
+      { title: 'Identificação da operação', hint: 'Referência, produto, contrato', description: 'Se a referência ficar vazia, o sistema gera automaticamente.', fields: [
+        inp('Referência da operação', { placeholder: 'Ex.: GBU003/26 · vazio gera automático' }),
+        sel('Produto', ['Wood pellets', 'Madeira serrada', 'Classificar depois'], { help: 'Do cadastro de produtos; preenche NCM e espécie' }),
+        inp('NCM / HS Code', { value: '4401.31', placeholder: 'Pode preencher depois' }),
+        inp('Contrato / PO do cliente'), inp('Responsável interno', { value: 'Ivam' }), inp('E-mail do responsável') ] },
+      { title: 'Empresas da cadeia', hint: 'Cliente, fornecedor, exportador', description: 'Selecione dos cadastros; os dados de cada empresa são puxados automaticamente.', fields: [
+        sel('Fornecedor principal', ['[FORNECEDOR]', '+ Cadastrar novo fornecedor'], { req: ' *', help: 'Preenche local de produção e origens CAR' }),
+        inp('Exportador / trading', { placeholder: 'Fornecedor selecionado ou outra trading' }), inp('CNPJ do exportador'),
+        sel('Importador / operador europeu', ['[CLIENTE]', '+ Cadastrar novo cliente'], { req: ' *', help: 'Preenche EORI, porto preferido e pagamento' }),
+        inp('EORI do operador', { value: '[EORI]' }), inp('Referência DDS / EUDR', { placeholder: 'Preencher quando emitida no sistema europeu' }) ] },
+      { title: 'Produto, origem e rastreabilidade', hint: 'Matéria-prima, espécie, CAR', description: 'Base da rastreabilidade EUDR deste processo.', fields: [
+        inp('Matéria-prima', { value: 'Resíduo de pinus' }), inp('Espécie(s)', { value: 'Pinus taeda / P. elliottii' }),
+        sel('Tipo de origem', ['Reflorestamento', 'Plantação', 'Floresta natural', 'Reciclado', 'Mista']),
+        inp('Unidade produtiva', { placeholder: 'Planta ou unidade' }), inp('Local da produção', { placeholder: 'Preenchido ao selecionar o fornecedor' }),
+        inp('Códigos dos lotes', { placeholder: 'Separar por vírgula' }) ] },
+      { title: 'Quantidades e condição comercial', hint: 'Volumes, incoterm, valor', description: 'Os itens detalhados (preço por unidade) entram depois na emissão do pedido.', fields: [
+        inp('Quantidade'), sel('Unidade', ['MT', 'KG', 'M³', 'Unidades', 'Contêineres']), inp('Volume (m³)'),
+        inp('Peso líquido (kg)'), inp('Peso bruto (kg)'), sel('Incoterm', ['FOB', 'EXW', 'FCA', 'CFR', 'CIF', 'DAP', 'DDP']),
+        sel('Moeda', ['USD', 'EUR', 'GBP', 'BRL']), inp('Valor comercial') ] },
+      { title: 'Logística internacional', hint: 'Modal, portos, booking', description: 'Pode ser completada depois, quando houver booking.', fields: [
+        sel('Modal', ['Marítimo', 'Rodoviário', 'Ferroviário', 'Aéreo', 'Multimodal']), inp('Data prevista de embarque', { placeholder: 'dd/mm/aaaa' }), inp('País de destino', { value: 'Itália' }),
+        inp('Porto / local de embarque', { value: 'Itajaí' }), inp('Porto / local de destino', { value: 'Ravenna' }), inp('Armador / transportadora', { placeholder: 'Histórico de parceiros' }),
+        inp('Booking'), inp('BL / Bill of Lading', { placeholder: 'Ex.: SA0600284400' }), inp('Contêiner(es)'), inp('Navio / viagem') ] },
+      { title: 'Observações da supply chain', hint: 'Fluxo e particularidades', description: 'Participantes ainda não cadastrados e particularidades do caminho até o importador.', fields: [
+        { kind: 'text', label: 'Fluxo, particularidades e participantes', placeholder: 'Descreva o caminho da matéria-prima até o importador europeu…', wide: true } ] },
+    ];
+    const step = this.state.step;
+    const sections = SECTIONS.map((s, i) => {
+      const on = i === step;
+      const done = i < step;
+      return { title: s.title, hint: s.hint, mark: done ? '✓' : String(i + 1), current: on ? 'step' : 'false',
+        pick: () => this.setState({ step: i }),
+        style: 'width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px; border: 0; border-radius: 6px; font: inherit; color: #111827; text-align: left; cursor: pointer; background: ' + (on ? '#F3F4F6' : 'transparent'),
+        dotStyle: 'flex: none; width: 26px; height: 26px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; background: ' + (done ? '#047857' : on ? '#0F1B2D' : '#FFFFFF') + '; color: ' + (done || on ? '#FFFFFF' : '#6B7280') + '; border: 1px solid ' + (done ? '#047857' : on ? '#0F1B2D' : '#D1D5DB') };
+    });
+    const s = SECTIONS[step];
+    const fields = s.fields.map((f) => ({ label: f.label, req: f.req || '', help: f.help || '', placeholder: f.placeholder || '', value: f.value || '', options: f.options || [],
+      isInput: f.kind === 'input', isSelect: f.kind === 'select', isText: f.kind === 'text',
+      wrapStyle: 'display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: #374151' + (f.wide ? '; grid-column: 1 / -1' : '') }));
+    const CARS = [['SC-4205407-A1B2…', 'Fazenda [NOME]'], ['SC-4215802-C3D4…', 'Sítio [NOME]'], ['SC-4209102-E5F6…', 'Fazenda [NOME]']];
+    const cars = CARS.map(([code, name], i) => {
+      const on = this.state.cars.includes(i);
+      return { code, name, pressed: on ? 'true' : 'false',
+        toggle: () => this.setState({ cars: on ? this.state.cars.filter((x) => x !== i) : [...this.state.cars, i] }),
+        style: 'min-height: 36px; padding: 0 12px; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; border: 1px solid ' + (on ? '#047857' : '#D1D5DB') + '; background: ' + (on ? '#ECFDF5' : '#FFFFFF') + '; color: ' + (on ? '#065F46' : '#374151') };
+    });
+    return {
+      sections, current: { title: s.title, description: s.description, fields }, stepNumber: String(step + 1),
+      showCars: step === 2, cars,
+      isLast: step === SECTIONS.length - 1, notLast: step < SECTIONS.length - 1,
+      next: () => this.setState({ step: Math.min(step + 1, SECTIONS.length - 1) }),
+      back: () => this.setState({ step: Math.max(step - 1, 0) }),
+    };
+  }
+}
+</script>
+</body>
+</html>
