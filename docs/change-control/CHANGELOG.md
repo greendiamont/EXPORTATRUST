@@ -386,3 +386,22 @@
 - **Rollback:** reverter o merge; arquivos e registros importados permanecem.
 - **Conflitos/coordenação com outros agentes:** nenhum; base `homologation` @ `71d3c7f`.
 - **Status:** em andamento
+
+
+## 2026-10-15 — Claude — Página do pedido na interface nova (redesign etapa 2, parte 1)
+
+- **ID:** CHG-20261015-019
+- **Branch:** `claude/pagina-pedido`
+- **PR:** #101
+- **Destino:** homologation
+- **Tipo:** feature / frontend
+- **Arquivos/módulos alterados:** `app/pedidos/[id]/page.tsx` (novo), `app/ui/pedido-view.tsx` (novo), `lib/document-phase.ts` (novo), `app/ui/format.ts` (`processHref` → `/pedidos/<id>`).
+- **Motivo:** Ivam testou e não quer que o clique no pedido abra o app anterior; os dados devem aparecer no layout novo aprovado.
+- **O que mudou:** clicar num pedido (Painel, Pedidos, Cadastros, Novo processo) abre `/pedidos/<id>`: cabeçalho com cliente/produto/destino, ETD, valor e EUDR; as 6 fases com etapas concluídas/total e fase atual; etapas da fase selecionada com situação, responsável, prazo e próxima ação editáveis (mesma API do app anterior, enviando a etapa completa); na fase Pedido, emissão de Sales Order, pedido de compra, invoice e packing list (visualizar/PDF e Word); arquivos da fase com visualizar, baixar e anexar; outros documentos; tarefas; todos os dados do pedido em grupos (comercial, produto e origem, logística, EUDR e responsáveis). Link discreto para a versão anterior mantido para EUDR/supply chain até a etapa 4.
+- **Riscos:** baixo. Sem migration; APIs existentes.
+- **Testes executados:** build Railway (rota `/pedidos/:id`); Playwright local com os 19 processos importados: clique em Pedidos abre a página nova, troca de fase, salvar etapa, sem erros de console; `node --test` 84/84; eslint sem erros; `tsc` 89 (baseline).
+- **Railway homologation:** deploy automático após merge (autorizado por Ivam).
+- **Railway production:** sem alteração.
+- **Rollback:** reverter o merge.
+- **Conflitos/coordenação com outros agentes:** nenhum; base `homologation` @ `7f6998d`.
+- **Status:** em andamento
