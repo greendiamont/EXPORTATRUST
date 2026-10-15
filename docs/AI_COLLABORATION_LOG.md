@@ -201,7 +201,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Dados/produção:** sem alterações em banco, documentos, R2 ou produção. Sem acesso ao Google Cloud, conforme preferência do Ivam.
 
 ### 2026-10-15 — Codex/Jarvis — Primeiro acesso visível no login
-- **Branch:** `codex/self-registration` → `homologation`; PR a preencher.
+- **Branch:** `codex/self-registration` → `homologation`; PR #92.
 - **Pedido:** Ivam precisa que o destinatário possa cadastrar o próprio e-mail na entrada.
 - **Entrega:** formulário público de solicitação por empresa, revisão em Equipe e geração do link de senha ao liberar acesso. Google permanece dependente do cliente OAuth.
 - **Dados:** só tabela aditiva de solicitações; sem autoaprovação, mudança de credenciais existentes, escrita em produção ou documentos.
