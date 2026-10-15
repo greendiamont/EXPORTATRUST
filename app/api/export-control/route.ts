@@ -355,6 +355,7 @@ async function snapshot(context: Awaited<ReturnType<typeof requireSecurityContex
   const opinion = `${verdict}: ${applicableStages.filter((stage) => stage.passed).length}/${applicableStages.length} etapas aplicáveis concluídas, exigências do destino em ${score}% e ${approvedSetDocuments} documento(s) aprovado(s) na Etapa 09.${eudrRequired ? ` Prontidão EUDR: ${operation.readiness}%.` : " EUDR não aplicável ao destino."}`;
   return {
     operation,
+    orderDetails: parsedOrderDetails(operation),
     settings: settings[0],
     milestones,
     tasks,
@@ -610,6 +611,11 @@ export async function POST(request: Request) {
     const now = new Date();
 
     if (action === "order-commercial") {
+      // Tela nova: recusa salvar sobre dados gravados por outra pessoa depois da leitura e
+      // devolve a versão atual para a tela combinar campo a campo.
+      if (body.expectedUpdatedAt && String(body.expectedUpdatedAt) !== String(settings.updatedAt)) {
+        return Response.json({ error: "Outra pessoa salvou os dados do pedido enquanto você editava.", conflict: true, current: { operation, orderDetails: parsedOrderDetails(operation), settings } }, { status: 409 });
+      }
       const orderItems = Array.isArray(body.orderItems) ? body.orderItems.map((item) => {
         const row = item as Record<string, unknown>;
         return { species: String(row.species ?? "").trim(), quality: String(row.quality ?? "").trim(), size: String(row.size ?? "").trim(), volume: safeNumber(row.volume), unitPrice: safeNumber(row.unitPrice) };
