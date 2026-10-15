@@ -433,7 +433,7 @@ export default function PedidoView({ operationId }: { operationId: number }) {
 
           <details className="pd-card">
             <summary style={{ padding: "14px 20px", cursor: "pointer", fontWeight: 600, fontSize: 16 }}>Todos os dados do pedido</summary>
-            <AllFields operation={operation} />
+            <AllFields operation={operation} onSaved={refreshAll} onError={setError} />
           </details>
         </div>
 
@@ -1096,8 +1096,18 @@ const FIELD_GROUPS: Array<{ title: string; fields: Array<[string, string]> }> = 
   { title: "Logística", fields: [["transportMode", "Modal"], ["portOfLoading", "Porto de embarque"], ["portOfDischarge", "Porto de destino"], ["destinationCountry", "País de destino"], ["shipmentDate", "ETD"], ["carrier", "Armador"], ["bookingNumber", "Booking"], ["billOfLadingNumber", "BL"], ["containerNumbers", "Contêineres"], ["vesselVoyage", "Navio / viagem"]] },
   { title: "EUDR e responsáveis", fields: [["euOperatorEori", "EORI"], ["eudrReference", "Referência DDS"], ["internalResponsible", "Responsável interno"], ["responsibleEmail", "E-mail do responsável"], ["status", "Situação"]] },
 ];
+const NUMBER_FIELDS = new Set(["commercialValue", "quantity", "volumeM3", "netWeightKg", "grossWeightKg"]);
+const READONLY_FIELDS = new Set(["status"]);
+type Option = { id: number; name: string };
 
-function AllFields({ operation }: { operation: Operation }) {
+/** Dados do pedido: leitura e edição (grava só os campos alterados, com aviso se outra pessoa mudou antes). */
+function AllFields({ operation, onSaved, onError }: { operation: Operation; onSaved: () => void; onError: (message: string) => void }) {
+  const [draft, setDraft] = useState<Record<string, string> | null>(null);
+  const [clients, setClients] = useState<Option[]>([]);
+  const [suppliers, setSuppliers] = useState<Option[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [conflict, setConflict] = useState("");
+  const original = (key: string) => key === "shipmentDate" ? text(operation[key]).slice(0, 10) : NUMBER_FIELDS.has(key) ? fmt(Number(operation[key]) || 0, 3) : text(operation[key]);
   const valueOf = (key: string) => {
     const value = operation[key];
     if (value === null || value === undefined || value === "") return "";
@@ -1106,14 +1116,92 @@ function AllFields({ operation }: { operation: Operation }) {
     if (typeof value === "number") return value ? value.toLocaleString("pt-BR") : "";
     return String(value);
   };
+
+  function startEdit() {
+    const next: Record<string, string> = {};
+    for (const group of FIELD_GROUPS) for (const [key] of group.fields) next[key] = original(key);
+    next.supplierId = text(operation.supplierId);
+    next.importerClientId = text(operation.importerClientId);
+    setDraft(next);
+    setConflict("");
+    api<{ clients: Array<{ id: number; legalName: string }> }>("/api/importer-clients").then((data) => setClients(data.clients.map((client) => ({ id: client.id, name: client.legalName })))).catch(() => {});
+    api<{ suppliers: Array<{ id: number; legalName: string }> }>("/api/suppliers").then((data) => setSuppliers(data.suppliers.map((supplier) => ({ id: supplier.id, name: supplier.legalName })))).catch(() => {});
+  }
+
+  async function save(force = false) {
+    if (!draft) return;
+    const fields: Record<string, unknown> = {};
+    const before: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(draft)) {
+      if (READONLY_FIELDS.has(key) || key === "supplierName") continue;
+      const was = key === "supplierId" || key === "importerClientId" ? text(operation[key]) : original(key);
+      if (value === was) continue;
+      fields[key] = NUMBER_FIELDS.has(key) ? num(value) : value;
+      if (key !== "supplierId" && key !== "importerClientId") before[key] = operation[key];
+    }
+    if (!Object.keys(fields).length) { setDraft(null); return; }
+    setBusy(true);
+    try {
+      const response = await fetch("/api/operations", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: operation.id, fields, ...(force ? {} : { original: before }) }) });
+      const result = await response.json().catch(() => ({})) as { error?: string; conflict?: boolean };
+      if (response.status === 409 && result.conflict) { setConflict(result.error ?? "Outra pessoa alterou os dados."); return; }
+      if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+      setDraft(null);
+      onSaved();
+    } catch (reason) {
+      onError(reason instanceof Error ? reason.message : "Falha ao salvar os dados do pedido.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const input = (key: string, label: string) => {
+    if (!draft) return null;
+    if (READONLY_FIELDS.has(key)) return <label key={key}>{label}<input className="pd-input" readOnly value={text(operation[key]) || "—"} title="Muda conforme as etapas" /></label>;
+    if (key === "supplierName") return (
+      <label key={key}>{label}
+        <select className="pd-input" value={draft.supplierId} onChange={(event) => setDraft({ ...draft, supplierId: event.target.value })}>
+          {!suppliers.some((item) => String(item.id) === draft.supplierId) && <option value={draft.supplierId}>{text(operation.supplierName) || "—"}</option>}
+          {suppliers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+      </label>
+    );
+    if (key === "euImporter") return (
+      <label key={key}>{label}
+        <select className="pd-input" value={clients.some((item) => String(item.id) === draft.importerClientId) ? draft.importerClientId : ""}
+          onChange={(event) => { const client = clients.find((item) => String(item.id) === event.target.value); setDraft({ ...draft, importerClientId: event.target.value, euImporter: client?.name ?? draft.euImporter }); }}>
+          <option value="">{draft.euImporter || "Selecione o cliente"}</option>
+          {clients.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+      </label>
+    );
+    return <label key={key}>{label}<input className="pd-input" type={key === "shipmentDate" ? "date" : "text"} inputMode={NUMBER_FIELDS.has(key) ? "decimal" : undefined} value={draft[key] ?? ""} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })} /></label>;
+  };
+
   return (
     <div style={{ padding: "0 20px 16px", display: "grid", gap: 16 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        {draft
+          ? <><button className="pd-btn pd-btn--sm" disabled={busy} onClick={() => setDraft(null)}>Cancelar</button><button className="pd-btn pd-btn--sm pd-btn--dark" disabled={busy} onClick={() => save()}>{busy ? "Salvando…" : "Salvar dados"}</button></>
+          : <button className="pd-btn pd-btn--sm" onClick={startEdit}>Editar dados</button>}
+      </div>
+      {conflict && (
+        <div className="et2-alert et2-alert--warn" role="alert">
+          <strong>{conflict}</strong>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button className="pd-btn pd-btn--sm" onClick={() => { setDraft(null); setConflict(""); onSaved(); }}>Usar a versão salva</button>
+            <button className="pd-btn pd-btn--sm pd-btn--dark" disabled={busy} onClick={() => { setConflict(""); save(true); }}>Manter a minha</button>
+          </div>
+        </div>
+      )}
       {FIELD_GROUPS.map((group) => (
         <div key={group.title}>
           <h3 style={{ margin: "8px 0", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--et2-muted)" }}>{group.title}</h3>
-          <dl className="et2-dl" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
-            {group.fields.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{valueOf(key) || <span className="muted">—</span>}</dd></div>)}
-          </dl>
+          {draft
+            ? <div className="pd-fields">{group.fields.map(([key, label]) => input(key, label))}</div>
+            : <dl className="et2-dl" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
+                {group.fields.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{valueOf(key) || <span className="muted">—</span>}</dd></div>)}
+              </dl>}
         </div>
       ))}
     </div>

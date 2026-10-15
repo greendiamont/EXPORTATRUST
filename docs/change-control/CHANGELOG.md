@@ -446,3 +446,23 @@
 - **Rollback:** reverter o PR; a migração 0031 pode permanecer (só adiciona).
 - **Conflitos/coordenação com outros agentes:** nenhum conflito encontrado.
 - **Status:** em andamento
+
+## 2026-10-15 — Claude — Editar dados do pedido na página do pedido
+
+- **ID:** CHG-20261015-023
+- **Branch:** `claude/editar-dados-pedido`
+- **PR:** a preencher
+- **Destino:** homologation
+- **Tipo:** feature / frontend / API aditiva
+- **Arquivos/módulos alterados:** `app/ui/pedido-view.tsx`, `app/api/operations/route.ts`
+- **Motivo / autorização de Ivam (conversa, 2026-10-15):** "Dentro de cada pedido, nós vamos ter que ter a opção de alterar dados do pedido. Porque, por exemplo, eu tenho o pedido 056-26, que o importador é diferente [...] eu vou ter que ter uma opção de entrar dentro da base do pedido para alterar as informações do pedido."
+- **O que mudou:** a seção já existente "Todos os dados do pedido" ganhou o botão "Editar dados": os campos viram editáveis; cliente/importador e fornecedor são escolhidos dos Cadastros. `PATCH /api/operations` com `fields` grava só os campos alterados (lista permitida), com `original` para detectar alteração simultânea (409). Ao trocar o importador, o comprador dos documentos acompanha quando era o mesmo nome. Auditoria `OPERATION_UPDATED` com valores anteriores.
+- **Layout:** nenhuma seção nova; o resto da página segue o protótipo aprovado.
+- **Riscos:** baixo; o PUT existente (app clássico) não mudou.
+- **Dados/migração:** nenhuma.
+- **Testes executados:** eslint, tsc (sem erros novos), build Railway, Playwright local (troca de importador, booking; comprador do Sales Order acompanhou).
+- **Railway homologation:** deploy automático após merge.
+- **Railway production:** sem mudança.
+- **Rollback:** reverter o PR.
+- **Conflitos/coordenação com outros agentes:** nenhum.
+- **Status:** em andamento
