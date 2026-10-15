@@ -184,3 +184,11 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - Railway de homologação: deploy `f7ad5232-19ff-4b94-bd69-a24a10025d9d` SUCCESS; healthcheck passou, serviços online sem pendências na conferência.
 - Código do Claude preservado; `main`, banco e serviços de produção não alterados. Não importamos dados/documentos nesta entrega.
 - Publicado para os testes da equipe, **não aprovado funcionalmente nem autorizado para produção**. Teste autenticado real, conferência dos dados e validações do roteiro seguem pendentes.
+
+### 2026-10-15 — Codex/Jarvis — Login padrão com Google
+- **Branch:** `codex/google-login` → `homologation`; PR #90.
+- **Motivo:** Ivam confirmou uso de Gmail e pediu a mesma forma de login para todos.
+- **Alteração:** Google OIDC via biblioteca oficial, PKCE/state/nonce e vínculo por subject; contas sem acesso ativo recusadas. Bootstrap de homologação parametrizado apenas para o e-mail escolhido pelo proprietário; sem reativar membros ou alterar perfis existentes.
+- **Arquivos/dados:** runtime Railway, dependência `google-auth-library`, testes; uma tabela de identidades Google. Sem mudança em produção ou documentos.
+- **Bloqueio real:** cliente OAuth Google ainda precisa ser criado/configurado por administrador; não há ID/secret no serviço. Botão indisponível até configuração, sem quebrar login atual.
+- **Próximo agente:** ler `docs/redesign/GOOGLE_LOGIN.md`; não usar credenciais de Gmail automaticamente nem publicar secrets. Não confundir autenticação Google com acesso público aos dados.
