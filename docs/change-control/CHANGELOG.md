@@ -429,7 +429,7 @@
 
 - **ID:** CHG-20261015-021
 - **Branch:** `claude/pedido-layout-aprovado`
-- **PR:** a preencher
+- **PR:** #103
 - **Destino:** homologation
 - **Tipo:** feature / frontend / migration aditiva
 - **Arquivos/módulos alterados:** `app/ui/pedido-view.tsx`, `app/ui/et2.css`, `lib/document-phase.ts`, `app/api/export-control/route.ts`, `app/api/operation-activity/route.ts`, `drizzle/0031_operation_collaboration_targets.sql`
