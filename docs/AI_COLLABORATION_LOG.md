@@ -209,7 +209,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Passagem:** ler `docs/redesign/PRIMEIRO_ACESSO.md`. Cadastro público não equivale a administrador criado nem prova de propriedade do e-mail. Link de senha deve ser entregue ao destinatário confirmado; não há envio automático.
 
 ### 2026-10-15 — Codex/Jarvis — Cadastro inicial por CNPJ
-- **Branch:** `codex/cnpj-onboarding` → `homologation`; PR a preencher.
+- **Branch:** `codex/cnpj-onboarding` → `homologation`; PR #93.
 - **Pedido explícito:** Ivam quer CNPJ como identificador, criar empresa/estrutura no primeiro cadastro e olho para conferir senha.
 - **Entrega:** empresa nova isolada + administrador com senha/sessão; equipe solicita pelo CNPJ. Duplicidade de CNPJ/e-mail não permite tomada de conta ou reset público. Olho acessível em todas as senhas.
 - **Dados:** reserva aditiva por CNPJ e transação organização/usuário/vínculo/credencial; alinhamento da sequência protege seed organização 1. Sem movimentação de documentos/dados existentes ou mudança de produção.
