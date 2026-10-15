@@ -352,7 +352,7 @@
 
 - **ID:** CHG-20261015-017
 - **Branch:** `claude/importar-processos`
-- **PR:** a preencher
+- **PR:** #99
 - **Destino:** homologation
 - **Tipo:** feature / dados
 - **Arquivos/módulos alterados:** `lib/process-import.ts` (novo), `app/api/process-import/route.ts` (novo), `server/railway/startup-import.mjs` e `server.mjs` (etapa "processos"; variável em partes `…_B64_1..n` e conteúdo comprimido `gz:`), `tests/process-import.test.mjs` (novo).
