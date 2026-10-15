@@ -405,3 +405,22 @@
 - **Rollback:** reverter o merge.
 - **Conflitos/coordenação com outros agentes:** nenhum; base `homologation` @ `7f6998d`.
 - **Status:** em andamento
+
+
+## 2026-10-15 — Claude — Pedido colaborativo: tarefas estilo Asana, comentários, presença e conflitos
+
+- **ID:** CHG-20261015-020
+- **Branch:** `claude/pedido-colaborativo`
+- **PR:** #102
+- **Destino:** homologation
+- **Tipo:** feature / frontend / migration aditiva
+- **Arquivos/módulos alterados:** `app/ui/pedido-view.tsx`, `app/api/operation-activity/route.ts` (novo), `drizzle/0030_operation_collaboration.sql` (novo; tabelas `operation_comments` e `operation_presence`, também criadas sob demanda), `app/api/export-control/route.ts` (verificação opcional `expectedUpdatedAt` em etapa e tarefa).
+- **Motivo:** Ivam quer manter o modelo combinado: checklist estilo Asana e várias pessoas alterando o mesmo pedido sem perda de dados.
+- **O que mudou:** tarefas com checkbox (concluir/reabrir), adicionar tarefa, abrir para editar responsável (membros da empresa), prazo, situação e nota; comentários com @menções (destaque para quem foi mencionado) e histórico de alterações da equipe; "vendo agora" com quem está no pedido (presença a cada 20 s); aviso quando outra pessoa altera o pedido, com botão Atualizar; proteção contra edição simultânea: salvar etapa/tarefa sobre uma alteração mais recente de outra pessoa abre a escolha "usar a versão salva" ou "manter a minha alteração". O app anterior não envia `expectedUpdatedAt` e continua com o comportamento atual.
+- **Riscos:** baixo. Migration só cria tabelas novas.
+- **Testes executados:** Playwright local com duas sessões no mesmo pedido: criar e concluir tarefa, comentar com menção, conflito detectado e resolvido mantendo a alteração; migration 0030 aplicada no PostgreSQL; `node --test` 84/84; eslint sem erros; `tsc` 92 (+3 do tipo já existente `cloudflare:workers` sem declaração).
+- **Railway homologation:** deploy automático após merge (autorizado por Ivam).
+- **Railway production:** sem alteração.
+- **Rollback:** reverter o merge; tabelas novas podem permanecer.
+- **Conflitos/coordenação com outros agentes:** alteração aditiva em `export-control/route.ts` (código existente preservado); base `homologation` @ `9abed8b`.
+- **Status:** em andamento
