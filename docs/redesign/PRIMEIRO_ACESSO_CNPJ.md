@@ -43,8 +43,9 @@ Login, cadastro, definição e confirmação de senha têm botão Mostrar/Oculta
 type=button, aria-controls/aria-pressed, teclado e campo inicialmente oculto.
 Script próprio `/__auth/password-visibility.js`, permitido pela CSP. Não armazena
 ou transmite a senha. Sem JS, formulários continuam funcionando com senha oculta.
-Rate limit, CSRF Origin, limite de corpo, escape HTML, no-store e no-referrer
-preservados. Erros mantêm apenas campos não secretos; nunca reexibem a senha.
+Rate limit, CSRF Origin, limite de corpo, escape HTML e no-store preservados.
+Referrer-Policy corrigida para strict-origin: basic form POST mantém Origin válido
+e o Referer não expõe path/query/token. no-referrer causava Origin:null e 403. Erros mantêm apenas campos não secretos; nunca reexibem a senha.
 
 Google continua dependendo das credenciais externas em GOOGLE_LOGIN.md, mas não
 é necessário para cadastro por CNPJ + senha. Backups integrais privados devem
