@@ -26,6 +26,7 @@ const allowPreviewHosts = process.env.EXPORTATRUST_ALLOW_PREVIEW_HOSTS === "1" &
 
 const { nodeToWebRequest, sendWebResponse, tryServeStatic } = await import("vinext/server/prod-server");
 const auth = await import("./auth.mjs");
+const { UserCredentials } = await import("./user-credentials.mjs");
 const { bindings, env } = await import("./cloudflare-workers-shim.mjs");
 
 if (!existsSync(entryPath)) {
@@ -40,6 +41,9 @@ if (bindings.DB && process.env.RUN_MIGRATIONS !== "0") {
   const { migrate } = await import("./migrate.mjs");
   await migrate({ connectionString: process.env.DATABASE_URL, migrationsDir: path.join(root, "drizzle") });
 }
+
+const credentials = bindings.DB ? new UserCredentials(bindings.DB.pool) : null;
+if (credentials) await credentials.initialize();
 
 if (bindings.BUCKET && process.env.STORAGE_SELF_TEST !== "0") {
   // Diagnóstico não fatal: confirma escrita/leitura/remoção no storage.
@@ -76,7 +80,7 @@ function clientIp(req) {
 }
 
 function send(res, status, body, headers = {}) {
-  res.writeHead(status, { "cache-control": "no-store", "x-content-type-options": "nosniff", ...headers });
+  res.writeHead(status, { "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer", "x-frame-options": "DENY", ...headers });
   res.end(body);
 }
 
@@ -84,7 +88,7 @@ function redirect(res, location, headers = {}) {
   send(res, 303, "", { location, ...headers });
 }
 
-async function readForm(req, limit = 16 * 1024) {
+async function readFormText(req, limit = 16 * 1024) {
   let size = 0;
   const chunks = [];
   for await (const chunk of req) {
@@ -92,11 +96,67 @@ async function readForm(req, limit = 16 * 1024) {
     if (size > limit) throw new Error("payload too large");
     chunks.push(chunk);
   }
-  return new URLSearchParams(Buffer.concat(chunks).toString("utf8"));
+  return Buffer.concat(chunks).toString("utf8");
 }
 
-async function handleAuthRoute(req, res, url) {
+async function readForm(req) {
+  return new URLSearchParams(await readFormText(req));
+}
+
+async function currentEmail(req) {
+  return credentials ? credentials.sessionIdentity(req.headers.cookie, authConfig) : auth.sessionEmail(req.headers.cookie, authConfig);
+}
+
+async function handleAuthRoute(req, res, url, origin) {
   const secure = isSecure(req);
+  const html = { "content-type": "text/html; charset=utf-8" };
+  const json = { "content-type": "application/json; charset=utf-8" };
+  // O browser envia Origin nos POSTs do formulário e de fetch; recusa CSRF.
+  if (req.method === "POST" && !auth.isSameOrigin(req.headers.origin, origin)) {
+    return send(res, 403, JSON.stringify({ error: "Origem da requisição não autorizada." }), json);
+  }
+  if (url.pathname === "/__auth/capabilities") {
+    if (req.method !== "GET") return send(res, 405, "Method Not Allowed", { allow: "GET" });
+    if (!await currentEmail(req)) return send(res, 401, JSON.stringify({ error: "Autenticação obrigatória." }), json);
+    return send(res, 200, JSON.stringify({ individualPasswords: Boolean(credentials && authConfig.ready) }), json);
+  }
+  if (url.pathname === "/__auth/invite-link") {
+    if (req.method !== "POST") return send(res, 405, "Method Not Allowed", { allow: "POST" });
+    if (!credentials || !authConfig.ready) return send(res, 503, JSON.stringify({ error: "Login individual indisponível." }), json);
+    if (!await currentEmail(req)) return send(res, 401, JSON.stringify({ error: "Autenticação obrigatória." }), json);
+    if (!auth.allowLoginAttempt(`invite:${clientIp(req)}`)) return send(res, 429, JSON.stringify({ error: "Muitas tentativas. Aguarde alguns minutos." }), json);
+    let body;
+    try { body = JSON.parse((await readFormText(req))); } catch {
+      return send(res, 400, JSON.stringify({ error: "Requisição inválida ou muito grande." }), json);
+    }
+    try {
+      const result = await credentials.issueLink(body?.email, req.headers.cookie, authConfig, origin);
+      return send(res, 200, JSON.stringify(result), json);
+    } catch (error) {
+      if (!error.status) console.error("[auth] falha ao gerar link de senha");
+      return send(res, error.status ?? 500, JSON.stringify({ error: error.status ? error.message : "Não foi possível gerar o link." }), json);
+    }
+  }
+  if (url.pathname === "/__auth/definir-senha") {
+    const privacy = { ...html, "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'" };
+    if (!credentials || !authConfig.ready) return send(res, 503, auth.passwordPage({ environment: appEnv, error: "Login individual indisponível." }), privacy);
+    if (req.method === "GET" || req.method === "HEAD") {
+      return send(res, 200, auth.passwordPage({ token: url.searchParams.get("token") ?? "", environment: appEnv, success: url.searchParams.get("success") === "1" }), privacy);
+    }
+    if (req.method !== "POST") return send(res, 405, "Method Not Allowed", { allow: "GET, POST" });
+    if (!auth.allowLoginAttempt(`password:${clientIp(req)}`)) return send(res, 429, auth.passwordPage({ environment: appEnv, error: "Muitas tentativas. Aguarde alguns minutos." }), privacy);
+    let form;
+    try { form = await readForm(req); } catch { return send(res, 413, "Payload Too Large"); }
+    const token = form.get("token") ?? "";
+    try {
+      if (form.get("password") !== form.get("confirm")) throw Object.assign(new Error("As senhas não coincidem."), { status: 400 });
+      await credentials.setPassword(token, form.get("password"));
+      return redirect(res, "/__auth/definir-senha?success=1", { "set-cookie": auth.clearSessionCookie(secure) });
+    } catch (error) {
+      if (!error.status) console.error("[auth] falha ao definir senha individual");
+      return send(res, error.status ?? 500, auth.passwordPage({ token, environment: appEnv, error: error.status ? error.message : "Não foi possível salvar a senha. Tente novamente." }), privacy);
+    }
+  }
   if (url.pathname === "/__auth/logout" || url.pathname === "/signout-with-chatgpt") {
     return redirect(res, "/__auth/login", { "set-cookie": auth.clearSessionCookie(secure) });
   }
@@ -105,10 +165,9 @@ async function handleAuthRoute(req, res, url) {
   }
   if (url.pathname !== "/__auth/login") return send(res, 404, "Not Found");
 
-  const html = { "content-type": "text/html; charset=utf-8" };
   if (req.method === "GET" || req.method === "HEAD") {
     const next = auth.safeNextPath(url.searchParams.get("next"));
-    if (auth.sessionEmail(req.headers.cookie, authConfig)) return redirect(res, next);
+    if (await currentEmail(req)) return redirect(res, next);
     return send(res, authConfig.ready ? 200 : 503, auth.loginPage({ next, environment: appEnv, unavailable: authConfig.ready ? [] : authConfig.problems }), html);
   }
   if (req.method !== "POST") return send(res, 405, "Method Not Allowed", { allow: "GET, POST" });
@@ -125,12 +184,15 @@ async function handleAuthRoute(req, res, url) {
     return send(res, 429, auth.loginPage({ next, environment: appEnv, error: "Muitas tentativas. Aguarde alguns minutos." }), html);
   }
   const email = String(form.get("email") ?? "").trim().toLowerCase();
-  if (!auth.verifyCredentials(email, form.get("password"), authConfig)) {
+  const identity = credentials
+    ? await credentials.authenticate(email, form.get("password"), authConfig)
+    : (auth.verifyCredentials(email, form.get("password"), authConfig) ? { email } : null);
+  if (!identity) {
     console.warn(`[auth] login recusado para ${email || "(vazio)"} de ${clientIp(req)}`);
     return send(res, 401, auth.loginPage({ next, environment: appEnv, error: "E-mail ou senha inválidos." }), html);
   }
   console.log(`[auth] login de ${email}`);
-  return redirect(res, next, { "set-cookie": auth.createSessionCookie(email, authConfig, secure) });
+  return redirect(res, next, { "set-cookie": auth.createSessionCookie(email, authConfig, secure, identity.version) });
 }
 
 function wantsPage(req, pathname) {
@@ -157,11 +219,12 @@ async function handle(req, res) {
 
   // 1. Nenhuma identidade vem do cliente.
   auth.stripIdentityHeaders(req.headers);
+  const requestOrigin = `${isSecure(req) ? "https" : "http"}://${req.headers.host}`;
   // lib/security.ts trata hosts locais como "preview" (admin automático).
   if (!allowPreviewHosts && PREVIEW_HOST.test(String(req.headers.host ?? ""))) req.headers.host = "railway.invalid";
 
   if (pathname.startsWith("/__auth/") || pathname === "/signin-with-chatgpt" || pathname === "/signout-with-chatgpt") {
-    return handleAuthRoute(req, res, url);
+    return handleAuthRoute(req, res, url, requestOrigin);
   }
 
   // 2. Arquivos estáticos públicos (assets com hash, favicon, marca).
@@ -170,7 +233,7 @@ async function handle(req, res) {
   }
 
   // 3. Sessão → identidade confiável para o app.
-  const email = auth.sessionEmail(req.headers.cookie, authConfig);
+  const email = await currentEmail(req);
   if (email) {
     req.headers["x-exportatrust-authenticated-user-email"] = email;
     req.headers["x-exportatrust-authenticated-user-name"] = email;
