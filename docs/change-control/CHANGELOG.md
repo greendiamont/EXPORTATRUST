@@ -490,7 +490,7 @@
 
 - **ID:** CHG-20261015-025
 - **Branch:** `claude/custos-logisticos`
-- **PR:** a preencher
+- **PR:** #107
 - **Destino:** homologation
 - **Tipo:** feature / frontend / API / migration aditiva
 - **Arquivos/módulos alterados:** `lib/logistics-costs.ts` (novo), `drizzle/0032_operation_logistics_costs.sql` (novo), `db/schema.ts`, `app/api/operations/route.ts`, `app/ui/novo-processo-view.tsx`, `app/ui/pedido-view.tsx`
