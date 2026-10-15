@@ -41,6 +41,10 @@ export class UserCredentials {
   }
 
   async initialize() {
+    await this.pool.query(`CREATE TABLE IF NOT EXISTS railway_google_identities (
+      subject text PRIMARY KEY, email text NOT NULL UNIQUE, user_id integer NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
     await this.pool.query(`CREATE TABLE IF NOT EXISTS railway_user_credentials (
       email text PRIMARY KEY, password_hash text NOT NULL, session_version text NOT NULL,
       updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -79,16 +83,56 @@ export class UserCredentials {
     const session = readSession(cookieHeader, config);
     if (!session) return null;
     const email = normalizeEmail(session.e);
-    if (session.v) {
+    if (session.g) {
+      const { rows: [linked] } = await this.pool.query(`SELECT g.subject FROM railway_google_identities g
+        JOIN app_users u ON u.id = g.user_id AND lower(u.email) = g.email
+        WHERE g.subject = $1 AND g.email = $2`, [session.g, email]);
+      if (!linked) return null;
+    } else if (session.v) {
       const { rows: [credential] } = await this.pool.query(
         "SELECT session_version FROM railway_user_credentials WHERE email = $1", [email]);
       if (!credential || session.v !== credential.session_version) return null;
     } else if (!config.allowedEmails.includes(email)) return null;
     // Sem cache: inativação ou troca de senha revoga no próximo request.
     if ((await this.memberships(email)).length) return email;
-    if (session.v) return null;
+    if (session.v || session.g) return null;
     const { rows } = await this.pool.query("SELECT id FROM organization_memberships LIMIT 1");
     return rows.length ? null : email;
+  }
+
+  async authorizeGoogle({ subject, email }, bootstrapEmail = "") {
+    email = normalizeEmail(email);
+    if (!subject || !email) return null;
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      if (email === normalizeEmail(bootstrapEmail)) {
+        // Opt-in de infraestrutura, somente na homologação: primeiro acesso do
+        // proprietário já escolhido. Nunca reativa usuário/vínculo inativado.
+        const { rows: [organization] } = await client.query("SELECT id FROM organizations WHERE id = 1 AND status = 'Ativa'");
+        if (organization) {
+          await client.query(`INSERT INTO app_users (email, full_name, status, identity_provider)
+            SELECT $1, $1, 'Ativo', 'google' WHERE NOT EXISTS (
+              SELECT 1 FROM app_users WHERE lower(email) = $1
+            ) ON CONFLICT (email) DO NOTHING`, [email]);
+          await client.query(`INSERT INTO organization_memberships (organization_id, user_id, role, status, invited_by)
+            SELECT 1, id, 'administrador', 'Ativo', 'google-bootstrap' FROM app_users
+            WHERE lower(email) = $1 AND status = 'Ativo'
+            ON CONFLICT (organization_id, user_id) DO NOTHING`, [email]);
+        }
+      }
+      const memberships = await this.memberships(email, client);
+      if (!memberships.length) { await client.query("ROLLBACK"); return null; }
+      const { rows: links } = await client.query("SELECT subject, email FROM railway_google_identities WHERE subject = $1 OR email = $2", [subject, email]);
+      if (links.some((link) => link.subject !== subject || link.email !== email)) { await client.query("ROLLBACK"); return null; }
+      await client.query(`INSERT INTO railway_google_identities (subject, email, user_id) VALUES ($1, $2, $3)
+        ON CONFLICT (subject) DO UPDATE SET user_id = EXCLUDED.user_id`, [subject, email, memberships[0].user_id]);
+      await client.query("COMMIT");
+      return { email, subject };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally { client.release(); }
   }
 
   async issueLink(email, cookieHeader, config, origin) {
