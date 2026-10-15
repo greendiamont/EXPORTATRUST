@@ -372,7 +372,7 @@
 
 - **ID:** CHG-20261015-018
 - **Branch:** `claude/importar-documentos`
-- **PR:** a preencher
+- **PR:** #100
 - **Destino:** homologation
 - **Tipo:** feature / dados
 - **Arquivos/módulos alterados:** `app/api/document-import/route.ts` (novo), `server/railway/startup-import.mjs` (`runStartupFileImport`), `server/railway/server.mjs`.
