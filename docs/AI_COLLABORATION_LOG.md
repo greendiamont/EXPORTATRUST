@@ -240,3 +240,8 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Branch:** `claude/importar-clientes-produtos` → `homologation`; PR #98; CHG-20261015-016.
 - **Alteração:** `/api/registry-import` (clientes/produtos) e botão de importação em Clientes e Produtos; importação automática por `EXPORTATRUST_REGISTRY_IMPORT_B64`.
 - **Para outros agentes:** o backup de 2026-09-29 não tinha as tabelas de clientes/produtos; os cadastros foram reconstruídos pelos processos e estão "Pendente". Quando houver a exportação integral do app antigo, importe-a pela mesma tela: ela completa os campos vazios pelo id antigo, sem duplicar. Processos ainda não foram importados (próxima etapa).
+
+### 2026-10-15 — Claude — Importar processos do app antigo (parte 1)
+- **Branch:** `claude/importar-processos` → `homologation`; PR #99; CHG-20261015-017.
+- **Alteração:** `/api/process-import` e etapa "processos" na importação automática.
+- **Para outros agentes:** referência de processo e código CAR são únicos no banco inteiro; a cópia integral da produção (PR #86) para a empresa 1 precisa tratar a colisão com os dados já importados na empresa 2 (HUB DAS AMÉRICAS). Parte 2 (arquivos) pendente: mapear `operation_documents`/`forest_documents` para os novos ids e enviar os 451 arquivos ao storage.

@@ -339,7 +339,7 @@ const server = createServer((req, res) => {
 
 server.listen(port, "0.0.0.0", () => {
   console.log(`[railway] ExportaTrust (${appEnv}) ouvindo em :${port}`);
-  if (bindings.DB && (process.env.EXPORTATRUST_REGISTRY_IMPORT_B64 || process.env.EXPORTATRUST_SUPPLIER_IMPORT_B64)) {
+  if (bindings.DB && Object.keys(process.env).some((name) => /^EXPORTATRUST_(PROCESS|REGISTRY|SUPPLIER)_IMPORT_B64(_\d+)?$/.test(name) && process.env[name])) {
     import("./startup-import.mjs")
       .then(({ runStartupSupplierImport }) => runStartupSupplierImport({ pool: bindings.DB.pool, worker, env, ctx, appEnv }))
       .catch((error) => console.error("[importação] falhou:", error));

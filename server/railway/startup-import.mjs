@@ -1,3 +1,5 @@
+import { gunzipSync } from "node:zlib";
+
 // Importação de cadastros na inicialização (somente homologação).
 //
 // Quando EXPORTATRUST_REGISTRY_IMPORT_B64 (fornecedores, clientes e produtos, nesta ordem)
@@ -16,7 +18,23 @@ const STEPS = {
   fornecedores: { path: "/api/suppliers/import" },
   clientes: { path: "/api/registry-import", kind: "clientes" },
   produtos: { path: "/api/registry-import", kind: "produtos" },
+  processos: { path: "/api/process-import" },
 };
+
+// Conteúdo da importação: variável única ou partes numeradas (…_B64_1, …_B64_2, …), para
+// arquivos maiores que o limite de uma variável. Prefixo "gz:" indica JSON comprimido (gzip).
+function readEncoded(name) {
+  if (process.env[name]) return process.env[name];
+  const parts = [];
+  for (let index = 1; process.env[`${name}_${index}`]; index += 1) parts.push(process.env[`${name}_${index}`]);
+  return parts.join("");
+}
+
+function decode(encoded) {
+  const compressed = encoded.startsWith("gz:");
+  const bytes = Buffer.from(compressed ? encoded.slice(3) : encoded, "base64");
+  return JSON.parse((compressed ? gunzipSync(bytes) : bytes).toString("utf8"));
+}
 
 async function targetOrganizations(pool) {
   const explicit = String(process.env.EXPORTATRUST_SUPPLIER_IMPORT_ORG_IDS ?? "").split(",").map((value) => Number(value.trim())).filter((value) => Number.isSafeInteger(value) && value > 0);
@@ -56,19 +74,20 @@ async function callImport(worker, env, ctx, organizationId, email, payload, dryR
 }
 
 export async function runStartupSupplierImport({ pool, worker, env, ctx, appEnv }) {
-  const full = process.env.EXPORTATRUST_REGISTRY_IMPORT_B64;
-  const encoded = full || process.env.EXPORTATRUST_SUPPLIER_IMPORT_B64;
+  const processes = readEncoded("EXPORTATRUST_PROCESS_IMPORT_B64");
+  const full = readEncoded("EXPORTATRUST_REGISTRY_IMPORT_B64");
+  const encoded = processes || full || process.env.EXPORTATRUST_SUPPLIER_IMPORT_B64;
   if (!encoded) return;
   if (appEnv === "production") {
     console.warn("[importação] variável de importação ignorada em produção.");
     return;
   }
-  const steps = full ? ["fornecedores", "clientes", "produtos"] : ["fornecedores"];
+  const steps = processes ? ["fornecedores", "clientes", "produtos", "processos"] : full ? ["fornecedores", "clientes", "produtos"] : ["fornecedores"];
   let payload;
   try {
-    payload = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
+    payload = decode(encoded);
   } catch {
-    console.error("[importação] EXPORTATRUST_SUPPLIER_IMPORT_B64 não contém um JSON válido em base64.");
+    console.error("[importação] a variável de importação não contém um JSON válido (base64 ou gz:base64).");
     return;
   }
   try {
