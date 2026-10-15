@@ -118,6 +118,25 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
+function passwordField(id, label, autocomplete) {
+  return `<label for="${id}">${label}</label><div class="password-field">
+    <input id="${id}" name="${id}" type="password" autocomplete="${autocomplete}" ${autocomplete === "new-password" ? 'minlength="10"' : ""} required>
+    <button class="password-toggle" type="button" data-password-target="${id}" aria-controls="${id}" aria-label="Mostrar ${label.toLowerCase()}" aria-pressed="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button></div>`;
+}
+
+export const passwordVisibilityScript = `document.addEventListener('click', function(event) {
+  const button = event.target.closest('[data-password-target]');
+  if (!button) return;
+  const input = document.getElementById(button.dataset.passwordTarget);
+  if (!input) return;
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  button.setAttribute('aria-pressed', String(show));
+  button.setAttribute('aria-label', (show ? 'Ocultar ' : 'Mostrar ') + (input.id === 'confirm' ? 'confirmação de senha' : 'senha'));
+});`;
+
 export function loginPage({ next = "/", error = "", environment = "", unavailable = [], content, googleReady = false } = {}) {
   const badge = environment && environment !== "production" ? `<span class="badge">${escapeHtml(environment)}</span>` : "";
   const googleButton = googleReady
@@ -129,8 +148,7 @@ export function loginPage({ next = "/", error = "", environment = "", unavailabl
         <input type="hidden" name="next" value="${escapeHtml(next)}">
         <label for="email">E-mail</label>
         <input id="email" name="email" type="email" autocomplete="username" required autofocus>
-        <label for="password">Senha de acesso</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        ${passwordField("password", "Senha de acesso", "current-password")}
         ${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ""}
         <button type="submit">Entrar</button>
       </form><p>Primeiro acesso? <a href="/__auth/cadastrar">Cadastrar e-mail</a></p>`));
@@ -147,8 +165,9 @@ label{display:block;margin:14px 0 6px;font-weight:600}input{width:100%;padding:1
 input:focus-visible,button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 button{margin-top:20px;width:100%;padding:11px;border:0;border-radius:8px;background:var(--brand);color:#fff;font:inherit;font-weight:700;cursor:pointer}
 .error{color:var(--error);margin:14px 0 0}
+.password-field{position:relative}.password-field input{padding-right:52px}.password-toggle{position:absolute;right:1px;top:1px;width:44px;min-height:42px;margin:0;padding:9px;background:transparent;color:var(--text);border-radius:7px}.password-toggle[aria-pressed="true"]{background:var(--border)}
 .google-login{display:block;text-align:center;padding:11px;border:1px solid var(--border);border-radius:8px;color:var(--text);font-weight:600;text-decoration:none}button:disabled{opacity:.5;cursor:not-allowed}
-</style></head><body><main><h1>EXPORTATRUST${badge}</h1><p class="sub">Acesso restrito à equipe autorizada.</p>${body}</main></body></html>`;
+</style><script src="/__auth/password-visibility.js" defer></script></head><body><main><h1>EXPORTATRUST${badge}</h1><p class="sub">Acesso à sua empresa.</p>${body}</main></body></html>`;
 }
 
 export function passwordPage({ token = "", error = "", environment = "", success = false } = {}) {
@@ -157,10 +176,8 @@ export function passwordPage({ token = "", error = "", environment = "", success
     : `<h2>Definir senha individual</h2><p>Use no mínimo 10 caracteres. O link só pode ser utilizado uma vez.</p>
       <form method="post" action="/__auth/definir-senha">
       <input type="hidden" name="token" value="${escapeHtml(token)}">
-      <label for="password">Nova senha</label>
-      <input id="password" name="password" type="password" autocomplete="new-password" minlength="10" required>
-      <label for="confirm">Confirmar senha</label>
-      <input id="confirm" name="confirm" type="password" autocomplete="new-password" minlength="10" required>
+      ${passwordField("password", "Nova senha", "new-password")}
+      ${passwordField("confirm", "Confirmar senha", "new-password")}
       ${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ""}
       <button type="submit">Salvar senha</button></form><p><a href="/__auth/login">Voltar ao login</a></p>`;
   return loginPage({ environment, content });
@@ -170,16 +187,21 @@ export function isSameOrigin(origin, expected) {
   try { return new URL(origin).origin === new URL(expected).origin; } catch { return false; }
 }
 
-export function registrationPage({ environment = "", error = "", success = false } = {}) {
+export function registrationPage({ environment = "", error = "", success = false, mode = "company", values = {} } = {}) {
+  const team = mode === "team";
   const content = success
-    ? '<h2>Solicitação registrada</h2><p role="status">Se os dados da empresa estiverem corretos, o administrador verá sua solicitação em Cadastros → Equipe. Aguarde o link privado para criar sua senha. Nenhum e-mail foi enviado automaticamente.</p><p><a href="/__auth/login">Voltar para entrar</a></p>'
-    : `<h2>Primeiro acesso</h2><p>Cadastre seu e-mail para solicitar acesso à sua empresa. Depois da aprovação, você recebe do administrador um link privado para criar sua senha.</p>
+    ? '<h2>Solicitação registrada</h2><p role="status">Se o CNPJ estiver cadastrado, o administrador verá sua solicitação em Cadastros → Equipe. Aguarde o link privado para criar sua senha. Nenhum e-mail foi enviado automaticamente.</p><p><a href="/__auth/login">Voltar para entrar</a></p>'
+    : `<h2>${team ? "Entrar na equipe" : "Cadastrar empresa"}</h2><p>${team ? "Informe o CNPJ da empresa e solicite sua liberação ao administrador." : "Crie a empresa e seu primeiro acesso como administrador. O CNPJ será o identificador da equipe."}</p>
       <form method="post" action="/__auth/cadastrar">
-      <label for="name">Nome completo</label><input id="name" name="name" autocomplete="name" maxlength="120" required>
-      <label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email" maxlength="254" required>
-      <label for="company">Código da empresa</label><input id="company" name="company" maxlength="80" required aria-describedby="company-help">
-      <p id="company-help">Peça ao administrador o código da empresa no ExportaTrust.</p>
+      <input type="hidden" name="mode" value="${team ? "team" : "company"}">
+      <label for="cnpj">CNPJ da empresa</label><input id="cnpj" name="cnpj" inputmode="numeric" placeholder="00.000.000/0000-00" maxlength="18" value="${escapeHtml(values.cnpj ?? "")}" required>
+      ${team ? "" : `<label for="companyName">Nome da empresa</label><input id="companyName" name="companyName" autocomplete="organization" maxlength="160" value="${escapeHtml(values.companyName ?? "")}" required>`}
+      <label for="name">Seu nome completo</label><input id="name" name="name" autocomplete="name" maxlength="120" value="${escapeHtml(values.name ?? "")}" required>
+      <label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email" maxlength="254" value="${escapeHtml(values.email ?? "")}" required>
+      ${team ? "" : `<p>Crie uma senha com pelo menos 10 caracteres.</p>${passwordField("password", "Senha", "new-password")}${passwordField("confirm", "Confirmar senha", "new-password")}`}
       ${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ""}
-      <button type="submit">Cadastrar e solicitar acesso</button></form><p>Já tem conta? <a href="/__auth/login">Entrar</a></p>`;
+      <button type="submit">${team ? "Solicitar acesso" : "Criar empresa e entrar"}</button></form>
+      <p><a href="/__auth/cadastrar${team ? "" : "?mode=team"}">${team ? "Cadastrar uma empresa nova" : "Minha empresa já está cadastrada — solicitar acesso"}</a></p>
+      <p>Já tem conta? <a href="/__auth/login">Entrar</a></p>`;
   return loginPage({ environment, content });
 }
