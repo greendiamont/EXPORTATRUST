@@ -48,8 +48,8 @@ function safeEqual(a, b) {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-export function createSessionCookie(email, config, secure) {
-  const payload = Buffer.from(JSON.stringify({ e: email, exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS })).toString("base64url");
+export function createSessionCookie(email, config, secure, version) {
+  const payload = Buffer.from(JSON.stringify({ e: email, ...(version ? { v: version } : {}), exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS })).toString("base64url");
   const value = `${payload}.${sign(payload, config.secret)}`;
   return `${SESSION_COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_SECONDS}${secure ? "; Secure" : ""}`;
 }
@@ -58,7 +58,7 @@ export function clearSessionCookie(secure) {
   return `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure ? "; Secure" : ""}`;
 }
 
-function readCookie(header, name) {
+export function readCookie(header, name) {
   for (const part of (header ?? "").split(";")) {
     const [key, ...rest] = part.trim().split("=");
     if (key === name) return rest.join("=");
@@ -67,19 +67,24 @@ function readCookie(header, name) {
 }
 
 /** Retorna o e-mail da sessão válida ou null. */
-export function sessionEmail(cookieHeader, config) {
+export function readSession(cookieHeader, config) {
   if (!config.ready) return null;
   const value = readCookie(cookieHeader, SESSION_COOKIE);
-  const [payload, signature] = value.split(".");
-  if (!payload || !signature || !safeEqual(signature, sign(payload, config.secret))) return null;
+  const [payload, signature, extra] = value.split(".");
+  if (!payload || !signature || extra !== undefined || !safeEqual(signature, sign(payload, config.secret))) return null;
   try {
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
     if (typeof data.e !== "string" || typeof data.exp !== "number" || data.exp < Date.now() / 1000) return null;
-    // Remover o e-mail da lista revoga a sessão imediatamente.
-    return config.allowedEmails.includes(data.e) ? data.e : null;
+    return data;
   } catch {
     return null;
   }
+}
+
+/** Compatibilidade do bootstrap; sessões individuais exigem validação no banco. */
+export function sessionEmail(cookieHeader, config) {
+  const data = readSession(cookieHeader, config);
+  return data && !data.v && config.allowedEmails.includes(data.e) ? data.e : null;
 }
 
 export function verifyCredentials(email, password, config) {
@@ -113,9 +118,9 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
-export function loginPage({ next = "/", error = "", environment = "", unavailable = [] } = {}) {
+export function loginPage({ next = "/", error = "", environment = "", unavailable = [], content } = {}) {
   const badge = environment && environment !== "production" ? `<span class="badge">${escapeHtml(environment)}</span>` : "";
-  const body = unavailable.length
+  const body = content ?? (unavailable.length
     ? `<p class="error" role="alert">Login indisponível: configure ${unavailable.map(escapeHtml).join(", ")} no serviço.</p>`
     : `<form method="post" action="/__auth/login">
         <input type="hidden" name="next" value="${escapeHtml(next)}">
@@ -125,7 +130,7 @@ export function loginPage({ next = "/", error = "", environment = "", unavailabl
         <input id="password" name="password" type="password" autocomplete="current-password" required>
         ${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ""}
         <button type="submit">Entrar</button>
-      </form>`;
+      </form>`);
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Entrar · ExportaTrust</title><link rel="icon" href="/favicon.svg">
 <style>
@@ -140,4 +145,23 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--brand);outline-
 button{margin-top:20px;width:100%;padding:11px;border:0;border-radius:8px;background:var(--brand);color:#fff;font:inherit;font-weight:700;cursor:pointer}
 .error{color:var(--error);margin:14px 0 0}
 </style></head><body><main><h1>EXPORTATRUST${badge}</h1><p class="sub">Acesso restrito à equipe autorizada.</p>${body}</main></body></html>`;
+}
+
+export function passwordPage({ token = "", error = "", environment = "", success = false } = {}) {
+  const content = success
+    ? '<p role="status">Senha definida. Entre com seu e-mail e sua nova senha.</p><p><a href="/__auth/login">Ir para o login</a></p>'
+    : `<h2>Definir senha individual</h2><p>Use no mínimo 10 caracteres. O link só pode ser utilizado uma vez.</p>
+      <form method="post" action="/__auth/definir-senha">
+      <input type="hidden" name="token" value="${escapeHtml(token)}">
+      <label for="password">Nova senha</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" minlength="10" required>
+      <label for="confirm">Confirmar senha</label>
+      <input id="confirm" name="confirm" type="password" autocomplete="new-password" minlength="10" required>
+      ${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ""}
+      <button type="submit">Salvar senha</button></form><p><a href="/__auth/login">Voltar ao login</a></p>`;
+  return loginPage({ environment, content });
+}
+
+export function isSameOrigin(origin, expected) {
+  try { return new URL(origin).origin === new URL(expected).origin; } catch { return false; }
 }

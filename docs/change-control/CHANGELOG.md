@@ -176,3 +176,23 @@
 - **Conflitos/coordenação com outros agentes:** nenhum; `homologation` em `eb3b526` sem mudanças de outros agentes. PRs #72 e #40 (destino `main`) não foram tocados.
 - **Pendências:** login individual no Railway (desenho em `docs/redesign/PLANO_REDESIGN.md`); parceiros logísticos; etapas 2–5 do redesign; cópia dos dados de produção para homologação (precisa do endereço do ChatGPT Sites de produção).
 - **Status:** em andamento
+
+## 2026-10-15 — Codex/Jarvis — Continuação do Claude: login individual Railway
+
+- **ID:** CHG-20261015-008
+- **Branch:** `codex/individual-login`
+- **PR:** #88; continuação do #87 (integrado em homologation, commit `0bbaff14`).
+- **Destino:** homologation apenas.
+- **Tipo:** feature / security / migration aditiva.
+- **Arquivos:** `server/railway/{auth,server,user-credentials}.mjs`, `app/ui/equipe-view.tsx`, `tests/railway-user-auth.test.mjs`, `docs/redesign/{PLANO_REDESIGN,LOGIN_INDIVIDUAL}.md`, registros de coordenação.
+- **Motivo:** concluir a pendência de login individual descrita pelo Claude no plano.
+- **O que mudou:** senhas individuais com scrypt; links privados de uso único por 72 h emitidos por administrador da empresa atual; proteção CSRF; troca de senha revoga sessões individuais; vínculo ativo revalidado em cada request; botão Gerar link de senha em Equipe somente no Railway.
+- **Dados:** cria duas tabelas de autenticação no PostgreSQL durante o startup. Não apaga/substitui dados de negócio ou documentos; D1/R2 não alterados. Backups privados de PostgreSQL devem incluir as tabelas de credenciais.
+- **Compatibilidade:** bootstrap mantido, app clássico preservado e autenticação Cloudflare inalterada.
+- **Testes:** build Railway passou; 63/63 testes com PostgreSQL embarcado/PGlite (sem skips); smoke HTTP local 8 verificações; ESLint dos arquivos alterados sem erros; TypeScript 89 erros preexistentes, nenhum em `equipe-view.tsx`.
+- **Riscos:** autenticação exige validação funcional no Railway. Rate limit continua por IP/processo; auditoria operacional de eventos de senha e modelo final de produção permanecem pendentes (detalhes no roteiro).
+- **CI/deploy:** validação local concluída; publicar somente na homologação autorizada, conferir deploy e healthcheck. Testes autenticados reais ainda pendentes.
+- **Autorização:** Ivam pediu em 2026-10-15 para deixar tudo em homologação e testar antes de produção; autorização não abrange `main`/produção.
+- **Conflitos/coordenação:** branch criada do head exato do #87 (`b1ae21f`), por instrução do Ivam antes do merge. Não alterou a branch do Claude. Revisar/atualizar base antes da integração.
+- **Rollback:** reverter só este PR, preservando as tabelas de autenticação e os dados.
+- **Status:** em andamento — não homologado funcionalmente.
