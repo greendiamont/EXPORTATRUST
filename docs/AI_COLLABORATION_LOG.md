@@ -245,3 +245,8 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Branch:** `claude/importar-processos` → `homologation`; PR #99; CHG-20261015-017.
 - **Alteração:** `/api/process-import` e etapa "processos" na importação automática.
 - **Para outros agentes:** referência de processo e código CAR são únicos no banco inteiro; a cópia integral da produção (PR #86) para a empresa 1 precisa tratar a colisão com os dados já importados na empresa 2 (HUB DAS AMÉRICAS). Parte 2 (arquivos) pendente: mapear `operation_documents`/`forest_documents` para os novos ids e enviar os 451 arquivos ao storage.
+
+### 2026-10-15 — Claude — Importar arquivos e documentos do app antigo (parte 2)
+- **Branch:** `claude/importar-documentos` → `homologation`; CHG-20261015-018.
+- **Alteração:** `/api/document-import` e importação do pacote de arquivos na inicialização (`EXPORTATRUST_FILES_IMPORT_URL`).
+- **Para outros agentes:** arquivos de dados e documentos ficam no storage (bucket) e no banco do Railway, nunca no repositório. O anexo `exportatrust-full-r2-2026-09-29.tar` do release público deve ser removido após a importação (autorizado por Ivam).

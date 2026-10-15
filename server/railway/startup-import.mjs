@@ -126,3 +126,106 @@ export async function runStartupSupplierImport({ pool, worker, env, ctx, appEnv 
     console.error("[importação] falhou:", error instanceof Error ? error.message : error);
   }
 }
+
+// Arquivos do app antigo (somente homologação): EXPORTATRUST_FILES_IMPORT_URL aponta para o
+// pacote "ExportaTrust Full R2 Export v1" (.tar com manifesto + objetos). Cada arquivo vai
+// para o storage com a mesma chave e metadados; arquivos já presentes com o mesmo tamanho são
+// pulados. Depois, o backup mais recente do pacote é usado para ligar os documentos aos
+// processos já importados (POST /api/document-import), na mesma empresa de destino.
+
+function readTar(buffer) {
+  const entries = new Map();
+  let offset = 0;
+  while (offset + 512 <= buffer.length) {
+    const header = buffer.subarray(offset, offset + 512);
+    if (header.every((byte) => byte === 0)) break;
+    const name = header.subarray(0, 100).toString("utf8").replace(/\0.*$/s, "");
+    const prefix = header.subarray(345, 500).toString("utf8").replace(/\0.*$/s, "");
+    const size = parseInt(header.subarray(124, 136).toString("utf8").replace(/\0.*$/s, "").trim() || "0", 8);
+    const type = String.fromCharCode(header[156] || 48);
+    const start = offset + 512;
+    if (type === "0" || type === "\0") entries.set(prefix ? `${prefix}/${name}` : name, buffer.subarray(start, start + size));
+    offset = start + Math.ceil(size / 512) * 512;
+  }
+  return entries;
+}
+
+export async function runStartupFileImport({ pool, worker, env, ctx, appEnv, bucket }) {
+  const url = process.env.EXPORTATRUST_FILES_IMPORT_URL;
+  if (!url) return;
+  if (appEnv === "production") {
+    console.warn("[arquivos] EXPORTATRUST_FILES_IMPORT_URL ignorada em produção.");
+    return;
+  }
+  if (!bucket) {
+    console.error("[arquivos] storage não configurado; nada importado.");
+    return;
+  }
+  try {
+    const { rows, explicit } = await targetOrganizations(pool);
+    if (rows.length !== 1 && !explicit) {
+      console.warn(`[arquivos] ${rows.length} empresas candidatas; defina EXPORTATRUST_SUPPLIER_IMPORT_ORG_IDS. Nada importado.`);
+      return;
+    }
+    console.log("[arquivos] baixando pacote...");
+    const response = await fetch(url, { redirect: "follow" });
+    if (!response.ok) throw new Error(`download falhou: HTTP ${response.status}`);
+    const entries = readTar(Buffer.from(await response.arrayBuffer()));
+    const manifestBytes = entries.get("exportatrust-r2-manifest.json");
+    if (!manifestBytes) throw new Error("pacote sem exportatrust-r2-manifest.json");
+    const manifest = JSON.parse(manifestBytes.toString("utf8"));
+    if (manifest.format !== "ExportaTrust Full R2 Export v1" || !Array.isArray(manifest.objects)) throw new Error("manifesto inválido");
+
+    let stored = 0, skipped = 0, failed = 0, bytes = 0;
+    for (const object of manifest.objects) {
+      const data = entries.get(object.archivePath);
+      if (!data || data.length !== object.size) {
+        failed += 1;
+        console.error(`[arquivos] ausente ou com tamanho divergente no pacote: ${object.key}`);
+        continue;
+      }
+      const current = await bucket.head(object.key).catch(() => null);
+      if (current && current.size === object.size) {
+        skipped += 1;
+        continue;
+      }
+      try {
+        await bucket.put(object.key, new Uint8Array(data), { httpMetadata: object.httpMetadata ?? {}, customMetadata: object.customMetadata ?? {} });
+        stored += 1;
+        bytes += object.size;
+      } catch (error) {
+        failed += 1;
+        console.error(`[arquivos] falha ao gravar ${object.key}:`, error instanceof Error ? error.message : error);
+      }
+    }
+    console.log(`[arquivos] ${manifest.objects.length} no pacote → ${stored} gravado(s) (${bytes} bytes), ${skipped} já existiam, ${failed} falha(s).`);
+
+    const backupKey = manifest.objects.map((object) => object.key).filter((key) => /^backups\/org-\d+\/.+\.json$/.test(key)).sort().pop();
+    const backupEntry = backupKey && manifest.objects.find((object) => object.key === backupKey);
+    if (!backupEntry) {
+      console.warn("[arquivos] pacote sem backup do banco; documentos não ligados aos processos.");
+      return;
+    }
+    const payload = JSON.parse(entries.get(backupEntry.archivePath).toString("utf8"));
+    const availableKeys = manifest.objects.map((object) => object.key);
+    for (const organization of rows) {
+      if (!organization.admin_email) continue;
+      const request = new Request("http://railway.invalid/api/document-import", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-exportatrust-authenticated-user-email": organization.admin_email,
+          "x-exportatrust-authenticated-user-name": organization.admin_email,
+          "x-exportatrust-auth-provider": "railway-startup-import",
+          cookie: `exportatrust_org=${organization.id}`,
+        },
+        body: JSON.stringify({ payload, availableKeys, dryRun: false }),
+      });
+      const result = await (await worker.fetch(request, env, ctx)).json().catch(() => ({}));
+      if (result.error) console.error(`[arquivos] documentos → empresa #${organization.id}: ${result.error}`);
+      else console.log(`[arquivos] documentos → empresa #${organization.id} ${result.organization}: ${JSON.stringify(result.summary)}${result.warnings?.length ? ` · avisos: ${result.warnings.join(" | ")}` : ""}`);
+    }
+  } catch (error) {
+    console.error("[arquivos] falhou:", error instanceof Error ? error.message : error);
+  }
+}
