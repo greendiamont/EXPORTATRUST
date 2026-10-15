@@ -140,6 +140,27 @@ async function handleAuthRoute(req, res, url, origin) {
   if (req.method === "POST" && !auth.isSameOrigin(req.headers.origin, origin)) {
     return send(res, 403, JSON.stringify({ error: "Origem da requisição não autorizada." }), json);
   }
+  if (url.pathname === "/__auth/cadastrar") {
+    const privacy = { ...html, "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'" };
+    if (!credentials || !authConfig.ready) return send(res, 503, "Cadastro temporariamente indisponível.", privacy);
+    if (req.method === "GET" || req.method === "HEAD") return send(res, 200, auth.registrationPage({ environment: appEnv, success: url.searchParams.get("success") === "1" }), privacy);
+    if (req.method !== "POST") return send(res, 405, "Method Not Allowed", { allow: "GET, POST" });
+    if (!auth.allowLoginAttempt(`register:${clientIp(req)}`)) return send(res, 429, auth.registrationPage({ environment: appEnv, error: "Muitas tentativas. Aguarde alguns minutos." }), privacy);
+    let form;
+    try { form = await readForm(req); } catch { return send(res, 413, "Payload Too Large"); }
+    try {
+      await credentials.requestAccess({ email: form.get("email"), name: form.get("name"), company: form.get("company") });
+      return redirect(res, "/__auth/cadastrar?success=1");
+    } catch (error) {
+      return send(res, error.status ?? 500, auth.registrationPage({ environment: appEnv, error: error.status ? error.message : "Não foi possível registrar. Tente novamente." }), privacy);
+    }
+  }
+  if (url.pathname === "/__auth/access-requests") {
+    if (req.method !== "GET") return send(res, 405, "Method Not Allowed", { allow: "GET" });
+    if (!credentials || !authConfig.ready) return send(res, 503, JSON.stringify({ error: "Cadastro indisponível." }), json);
+    try { return send(res, 200, JSON.stringify(await credentials.accessRequests(req.headers.cookie, authConfig)), json); }
+    catch (error) { return send(res, error.status ?? 500, JSON.stringify({ error: error.status ? error.message : "Falha ao consultar solicitações." }), json); }
+  }
   if (url.pathname === "/__auth/capabilities") {
     if (req.method !== "GET") return send(res, 405, "Method Not Allowed", { allow: "GET" });
     if (!await currentEmail(req)) return send(res, 401, JSON.stringify({ error: "Autenticação obrigatória." }), json);
