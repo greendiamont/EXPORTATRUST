@@ -7,6 +7,7 @@ import { api, formatDate } from "./format";
 // Links individuais só aparecem quando o runtime Railway anuncia suporte.
 
 type Member = { id: number; role: string; status: string; email: string; fullName: string; lastLoginAt: string | null };
+type AccessRequest = { id: number; email: string; fullName: string; createdAt: string };
 const ROLES = ["administrador", "analista", "fornecedor", "auditor", "cliente"];
 
 export default function EquipeView({ isAdmin, onCount }: { isAdmin: boolean; onCount: (count: number) => void }) {
@@ -17,6 +18,14 @@ export default function EquipeView({ isAdmin, onCount }: { isAdmin: boolean; onC
   const [busy, setBusy] = useState(false);
   const [passwordLinksAvailable, setPasswordLinksAvailable] = useState(false);
   const [passwordLink, setPasswordLink] = useState<{ email: string; url: string; expiresAt: string } | null>(null);
+  const [requests, setRequests] = useState<AccessRequest[]>([]);
+  const [companyCode, setCompanyCode] = useState("");
+
+  const loadRequests = useCallback(async () => {
+    const data = await api<{ requests: AccessRequest[]; companyCode: string }>("/__auth/access-requests");
+    setRequests(data.requests);
+    setCompanyCode(data.companyCode);
+  }, []);
 
   const load = useCallback(() => api<{ members: Member[] }>("/api/security").then((data) => {
     setMembers(data.members);
@@ -28,10 +37,15 @@ export default function EquipeView({ isAdmin, onCount }: { isAdmin: boolean; onC
     if (!isAdmin) return;
     let active = true;
     api<{ individualPasswords: boolean }>("/__auth/capabilities")
-      .then((data) => { if (active) setPasswordLinksAvailable(data.individualPasswords === true); })
+      .then(async (data) => {
+        if (active) {
+          setPasswordLinksAvailable(data.individualPasswords === true);
+          if (data.individualPasswords) await loadRequests();
+        }
+      })
       .catch(() => { if (active) setPasswordLinksAvailable(false); });
     return () => { active = false; };
-  }, [isAdmin]);
+  }, [isAdmin, loadRequests]);
 
   async function generatePasswordLink(email: string) {
     setBusy(true); setError(""); setNotice(""); setPasswordLink(null);
@@ -68,7 +82,14 @@ export default function EquipeView({ isAdmin, onCount }: { isAdmin: boolean; onC
   }
 
   async function sendInvite() {
-    if (await post({ action: "inviteUser", ...invite }, `Acesso liberado para ${invite.email}.`)) setInvite({ email: "", fullName: "", role: "analista" });
+    const email = invite.email;
+    if (await post({ action: "inviteUser", ...invite }, `Acesso liberado para ${email}.`)) {
+      setInvite({ email: "", fullName: "", role: "analista" });
+      if (passwordLinksAvailable) {
+        await generatePasswordLink(email);
+        await loadRequests().catch(() => setError("Acesso liberado; atualize a página para recarregar as solicitações."));
+      }
+    }
   }
 
   return (
@@ -97,6 +118,24 @@ export default function EquipeView({ isAdmin, onCount }: { isAdmin: boolean; onC
           </div>
           <div className="et2-card-body" style={{ display: "flex", justifyContent: "flex-end", paddingTop: 0 }}>
             <button className="et2-btn et2-btn--primary" disabled={busy || !invite.email.trim()} onClick={sendInvite}>Liberar acesso</button>
+          </div>
+        </section>
+      )}
+      {isAdmin && passwordLinksAvailable && (
+        <section className="et2-card" aria-labelledby="solicitacoes">
+          <div className="et2-card-head"><h2 id="solicitacoes">Solicitações de primeiro acesso</h2></div>
+          <div className="et2-card-body">
+            <p>Código da empresa: <strong>{companyCode || "Carregando…"}</strong>. Compartilhe com a equipe junto ao link de entrada.</p>
+            <p>Confira a identidade da pessoa, escolha o perfil em “Liberar acesso” e entregue o link de senha somente ao destinatário confirmado. Não há envio automático de e-mail.</p>
+            {requests.length === 0 ? <p>Nenhuma solicitação pendente.</p> : requests.map((request) => (
+              <p key={request.id}>{request.fullName} — {request.email} · {formatDate(request.createdAt)}{" "}
+                <button className="et2-btn" disabled={busy} onClick={() => {
+                  setInvite({ email: request.email, fullName: request.fullName, role: "analista" });
+                  document.getElementById("convidar")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  setNotice("Solicitação selecionada. Confira a pessoa e o perfil antes de liberar o acesso.");
+                }}>Revisar cadastro</button>
+              </p>
+            ))}
           </div>
         </section>
       )}
