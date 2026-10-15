@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, formatDate } from "./format";
 
 // Equipe: mesmas ações da versão anterior (/api/security inviteUser e updateMember).
-// O link individual de senha (login próprio de cada pessoa no Railway) ainda está pendente.
+// Links individuais só aparecem quando o runtime Railway anuncia suporte.
 
 type Member = { id: number; role: string; status: string; email: string; fullName: string; lastLoginAt: string | null };
 const ROLES = ["administrador", "analista", "fornecedor", "auditor", "cliente"];
@@ -15,6 +15,8 @@ export default function EquipeView({ isAdmin, onCount }: { isAdmin: boolean; onC
   const [notice, setNotice] = useState("");
   const [invite, setInvite] = useState({ email: "", fullName: "", role: "analista" });
   const [busy, setBusy] = useState(false);
+  const [passwordLinksAvailable, setPasswordLinksAvailable] = useState(false);
+  const [passwordLink, setPasswordLink] = useState<{ email: string; url: string; expiresAt: string } | null>(null);
 
   const load = useCallback(() => api<{ members: Member[] }>("/api/security").then((data) => {
     setMembers(data.members);
@@ -22,6 +24,33 @@ export default function EquipeView({ isAdmin, onCount }: { isAdmin: boolean; onC
   }).catch((reason: Error) => setError(reason.message || "Falha ao carregar a equipe.")), [onCount]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!isAdmin) return;
+    let active = true;
+    api<{ individualPasswords: boolean }>("/__auth/capabilities")
+      .then((data) => { if (active) setPasswordLinksAvailable(data.individualPasswords === true); })
+      .catch(() => { if (active) setPasswordLinksAvailable(false); });
+    return () => { active = false; };
+  }, [isAdmin]);
+
+  async function generatePasswordLink(email: string) {
+    setBusy(true); setError(""); setNotice(""); setPasswordLink(null);
+    try {
+      const link = await api<{ url: string; expiresAt: string }>("/__auth/invite-link", { method: "POST", body: JSON.stringify({ email }) });
+      setPasswordLink({ email, ...link });
+      setNotice("Link gerado. Entregue somente à pessoa indicada. Os links anteriores foram invalidados.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Falha ao gerar link de senha.");
+    } finally { setBusy(false); }
+  }
+
+  async function copyPasswordLink() {
+    if (!passwordLink) return;
+    try {
+      await navigator.clipboard.writeText(passwordLink.url);
+      setNotice("Link copiado. Entregue somente à pessoa indicada.");
+    } catch { setError("Não foi possível copiar automaticamente. Selecione e copie o link abaixo."); }
+  }
 
   async function post(body: Record<string, unknown>, message: string) {
     setBusy(true); setError(""); setNotice("");
@@ -46,6 +75,18 @@ export default function EquipeView({ isAdmin, onCount }: { isAdmin: boolean; onC
     <div style={{ display: "flex", flexDirection: "column", gap: 18, marginTop: 18 }}>
       {error && <div className="et2-alert et2-alert--bad" role="alert">{error}</div>}
       {notice && <div className="et2-alert et2-alert--ok" role="status">{notice}</div>}
+      {passwordLink && isAdmin && (
+        <section className="et2-card" aria-label="Link individual de senha">
+          <div className="et2-card-body">
+            <p>Definição de senha para <strong>{passwordLink.email}</strong>. Válido por 72 horas, até {formatDate(passwordLink.expiresAt)}; uso único.</p>
+            <label className="et2-field"><span>Link privado — não publique nem registre no histórico</span><input readOnly value={passwordLink.url} onFocus={(event) => event.target.select()} /></label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+              <button className="et2-btn" onClick={copyPasswordLink}>Copiar link</button>
+              <button className="et2-btn" onClick={() => setPasswordLink(null)}>Ocultar link</button>
+            </div>
+          </div>
+        </section>
+      )}
       {isAdmin && (
         <section className="et2-card" aria-labelledby="convidar">
           <div className="et2-card-head"><h2 id="convidar">Liberar acesso</h2></div>
@@ -61,7 +102,7 @@ export default function EquipeView({ isAdmin, onCount }: { isAdmin: boolean; onC
       )}
       <section className="et2-card et2-scroll" aria-label="Membros da equipe">
         <table className="et2-table">
-          <thead><tr><th>Pessoa</th><th>Perfil</th><th>Situação</th><th>Último acesso</th></tr></thead>
+          <thead><tr><th>Pessoa</th><th>Perfil</th><th>Situação</th><th>Último acesso</th>{isAdmin && passwordLinksAvailable && <th>Senha individual</th>}</tr></thead>
           <tbody>
             {(members ?? []).map((member) => (
               <tr key={member.id}>
@@ -73,11 +114,13 @@ export default function EquipeView({ isAdmin, onCount }: { isAdmin: boolean; onC
                   ? <select className="et2-input" style={{ width: 120 }} value={member.status} disabled={busy} onChange={(event) => post({ action: "updateMember", membershipId: member.id, role: member.role, status: event.target.value }, "Situação atualizada.")}><option>Ativo</option><option>Inativo</option></select>
                   : <span className={`et2-badge et2-badge--${member.status === "Ativo" ? "ok" : "todo"}`}>{member.status}</span>}</td>
                 <td>{formatDate(member.lastLoginAt)}</td>
+                {isAdmin && passwordLinksAvailable && <td><button className="et2-btn" disabled={busy || member.status !== "Ativo"} onClick={() => generatePasswordLink(member.email)}>Gerar link de senha</button></td>}
               </tr>
             ))}
           </tbody>
         </table>
         {!members && !error && <p className="et2-empty">Carregando…</p>}
+        {members?.length === 0 && <p className="et2-empty">Nenhum membro encontrado.</p>}
       </section>
     </div>
   );
