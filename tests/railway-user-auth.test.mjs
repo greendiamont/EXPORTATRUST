@@ -65,11 +65,12 @@ test("PostgreSQL: authorization, reset, replay, expiry, tenant isolation and imm
   try {
     await database.exec(`
       CREATE TABLE organizations (id integer PRIMARY KEY, status text);
-      CREATE TABLE app_users (id integer PRIMARY KEY, email text UNIQUE, status text);
-      CREATE TABLE organization_memberships (id integer PRIMARY KEY, organization_id integer, user_id integer, role text, status text);
+      CREATE TABLE app_users (id serial PRIMARY KEY, email text UNIQUE, status text, full_name text DEFAULT '', identity_provider text DEFAULT 'test');
+      CREATE TABLE organization_memberships (id serial PRIMARY KEY, organization_id integer, user_id integer, role text, status text, invited_by text DEFAULT '', UNIQUE(organization_id, user_id));
       INSERT INTO organizations VALUES (1, 'Ativa'), (2, 'Ativa');
-      INSERT INTO app_users VALUES (1, 'admin@example.test', 'Ativo'), (2, 'member@example.test', 'Ativo'), (3, 'other@example.test', 'Ativo');
-      INSERT INTO organization_memberships VALUES (1, 1, 1, 'administrador', 'Ativo'), (2, 1, 2, 'analista', 'Ativo'), (3, 2, 3, 'analista', 'Ativo');
+      INSERT INTO app_users (id,email,status) VALUES (1, 'admin@example.test', 'Ativo'), (2, 'member@example.test', 'Ativo'), (3, 'other@example.test', 'Ativo');
+      INSERT INTO organization_memberships (id,organization_id,user_id,role,status) VALUES (1, 1, 1, 'administrador', 'Ativo'), (2, 1, 2, 'analista', 'Ativo'), (3, 2, 3, 'analista', 'Ativo');
+      SELECT setval('app_users_id_seq', 3); SELECT setval('organization_memberships_id_seq', 3);
     `);
     const store = new UserCredentials(pool);
     await store.initialize();
@@ -113,6 +114,23 @@ test("PostgreSQL: authorization, reset, replay, expiry, tenant isolation and imm
     await pool.query("UPDATE app_users SET status = 'Inativo' WHERE id = 1");
     assert.equal(await store.sessionIdentity(admin, config), null);
     assert.equal(await store.authenticate("admin@example.test", config.password, config), null);
+    assert.equal(await store.authorizeGoogle({ subject: "unknown", email: "unknown@example.test" }), null);
+    const google = await store.authorizeGoogle({ subject: "member-google", email: "member@example.test" });
+    assert.equal(google.email, "member@example.test");
+    const googleCookie = createSessionCookie(google.email, config, true, undefined, google.subject);
+    assert.equal(await store.sessionIdentity(googleCookie, config), google.email);
+    assert.equal(await store.authorizeGoogle({ subject: "different-google", email: google.email }), null);
+    assert.equal(await store.authorizeGoogle({ subject: google.subject, email: "other@example.test" }), null);
+    await pool.query("UPDATE organization_memberships SET status = 'Inativo' WHERE user_id = 2");
+    assert.equal(await store.sessionIdentity(googleCookie, config), null);
+    assert.equal(await store.authorizeGoogle(google), null);
+    const bootstrapEmail = "owner@example.test";
+    const owner = await store.authorizeGoogle({ subject: "owner-google", email: bootstrapEmail }, bootstrapEmail);
+    const { rows: [ownerMembership] } = await pool.query("SELECT role FROM organization_memberships m JOIN app_users u ON u.id=m.user_id WHERE u.email=$1", [bootstrapEmail]);
+    assert.equal(ownerMembership.role, "administrador");
+    assert.ok(owner);
+    await pool.query("UPDATE organization_memberships SET status='Inativo' WHERE user_id IN (SELECT id FROM app_users WHERE email=$1)", [bootstrapEmail]);
+    assert.equal(await store.authorizeGoogle({ subject: "owner-google", email: bootstrapEmail }, bootstrapEmail), null);
   } finally {
     await database.close();
   }

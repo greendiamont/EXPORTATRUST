@@ -206,3 +206,18 @@
 - **Verificação pública:** `/api/health` 200, banco e armazenamento OK. Não executados resets de usuários reais nem criação de dados operacionais para teste.
 - **Produção:** nenhuma alteração; Web/API e agente de produção continuam sem deploy. Não houve exportação/importação de dados ou documentos nesta entrega.
 - **Estado:** publicado para testes, ainda **não homologado funcionalmente**. Validar acesso individual, permissões, cadastro, documentos e a cópia de dados antes de promover qualquer versão.
+
+## 2026-10-15 — Codex/Jarvis — Entrar com Google para a equipe
+
+- **ID:** CHG-20261015-009
+- **Branch:** `codex/google-login`; destino exclusivo `homologation`.
+- **PR:** #90.
+- **Motivo:** Ivam solicitou login padrão usando contas Google já existentes.
+- **Arquivos:** `server/railway/{auth,server,user-credentials,google-login}.mjs`, `package.json`/lock, testes de autenticação e documentação.
+- **O que mudou:** OIDC com biblioteca oficial Google, PKCE/state/nonce, verificação de ID token e e-mail, vínculo por subject e checagem ativa de empresa/membro. Bootstrap opcional apenas para e-mail explicitamente escolhido na infraestrutura de homologação.
+- **Dados:** tabela nova `railway_google_identities`; nenhuma alteração de dados de negócio, D1, R2 ou produção. Não reativa membros e não altera perfis existentes.
+- **Limite de acesso:** qualquer pessoa pode usar sua conta Google no login, mas só membros autorizados acessam os dados. Sem autoinscrição pública.
+- **Configuração pendente:** cliente OAuth Web Google (client ID/secret) ainda não disponível. Botão fica desativado e o login existente é preservado até configuração completa.
+- **Validação:** build Railway passou; 68 testes locais com PGlite passaram; ESLint sem erros. OAuth real ainda pendente das credenciais Google. Roteiro em `docs/redesign/GOOGLE_LOGIN.md`.
+- **Rollback:** reverter só o PR, preservar tabela/vínculos e variáveis para auditoria; não apagar usuários.
+- **Status:** em andamento; não autorizado para produção.

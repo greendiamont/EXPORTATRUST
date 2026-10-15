@@ -27,6 +27,7 @@ const allowPreviewHosts = process.env.EXPORTATRUST_ALLOW_PREVIEW_HOSTS === "1" &
 const { nodeToWebRequest, sendWebResponse, tryServeStatic } = await import("vinext/server/prod-server");
 const auth = await import("./auth.mjs");
 const { UserCredentials } = await import("./user-credentials.mjs");
+const { GoogleLogin, googleLoginConfig, clearGoogleCookie } = await import("./google-login.mjs");
 const { bindings, env } = await import("./cloudflare-workers-shim.mjs");
 
 if (!existsSync(entryPath)) {
@@ -67,6 +68,9 @@ if (!worker || typeof worker.fetch !== "function") {
 }
 
 const authConfig = auth.authConfig();
+const googleConfig = googleLoginConfig();
+const google = credentials && authConfig.ready && googleConfig.ready ? new GoogleLogin(googleConfig, authConfig.secret) : null;
+const loginPage = (options) => auth.loginPage({ ...options, googleReady: Boolean(google) });
 if (!authConfig.ready) console.warn(`[railway] login desabilitado até configurar: ${authConfig.problems.join(", ")}`);
 
 const PREVIEW_HOST = /localhost|127\.0\.0\.1|terminal\.local/i;
@@ -111,6 +115,27 @@ async function handleAuthRoute(req, res, url, origin) {
   const secure = isSecure(req);
   const html = { "content-type": "text/html; charset=utf-8" };
   const json = { "content-type": "application/json; charset=utf-8" };
+  if (url.pathname === "/__auth/google/start" || url.pathname === "/__auth/google/callback") {
+    if (req.method !== "GET") return send(res, 405, "Method Not Allowed", { allow: "GET" });
+    if (!google) return send(res, 503, loginPage({ environment: appEnv, error: "O login com Google ainda não foi configurado." }), html);
+    // A origem é explícita na configuração OAuth; não confia no Host recebido.
+    if (origin !== new URL(googleConfig.redirectUri).origin) return send(res, 400, "Origem de login inválida.");
+    if (!auth.allowLoginAttempt(`google:${clientIp(req)}`)) return send(res, 429, "Muitas tentativas. Aguarde alguns minutos.");
+    if (url.pathname === "/__auth/google/start") {
+      const started = await google.start(url.searchParams.get("next"), secure);
+      return redirect(res, started.url, { "set-cookie": started.cookie });
+    }
+    try {
+      const result = await google.finish(url.searchParams, req.headers.cookie);
+      const bootstrap = appEnv === "homologation" ? process.env.GOOGLE_LOGIN_BOOTSTRAP_EMAIL ?? "" : "";
+      const identity = await credentials.authorizeGoogle(result.identity, bootstrap);
+      if (!identity) return send(res, 403, loginPage({ environment: appEnv, error: "Sua conta Google foi identificada, mas não tem acesso ativo à empresa. Solicite liberação ao administrador." }), { ...html, "set-cookie": clearGoogleCookie(secure) });
+      return redirect(res, result.next, { "set-cookie": [clearGoogleCookie(secure), auth.createSessionCookie(identity.email, authConfig, secure, undefined, identity.subject)] });
+    } catch {
+      // Não registrar erros do provedor: podem conter códigos, tokens ou secrets.
+      return send(res, 401, loginPage({ environment: appEnv, error: "Não foi possível entrar com Google. Tente novamente pelo botão de login." }), { ...html, "set-cookie": clearGoogleCookie(secure) });
+    }
+  }
   // O browser envia Origin nos POSTs do formulário e de fetch; recusa CSRF.
   if (req.method === "POST" && !auth.isSameOrigin(req.headers.origin, origin)) {
     return send(res, 403, JSON.stringify({ error: "Origem da requisição não autorizada." }), json);
@@ -168,7 +193,7 @@ async function handleAuthRoute(req, res, url, origin) {
   if (req.method === "GET" || req.method === "HEAD") {
     const next = auth.safeNextPath(url.searchParams.get("next"));
     if (await currentEmail(req)) return redirect(res, next);
-    return send(res, authConfig.ready ? 200 : 503, auth.loginPage({ next, environment: appEnv, unavailable: authConfig.ready ? [] : authConfig.problems }), html);
+    return send(res, authConfig.ready ? 200 : 503, loginPage({ next, environment: appEnv, unavailable: authConfig.ready ? [] : authConfig.problems }), html);
   }
   if (req.method !== "POST") return send(res, 405, "Method Not Allowed", { allow: "GET, POST" });
 
@@ -179,9 +204,9 @@ async function handleAuthRoute(req, res, url, origin) {
     return send(res, 413, "Payload Too Large");
   }
   const next = auth.safeNextPath(form.get("next"));
-  if (!authConfig.ready) return send(res, 503, auth.loginPage({ next, environment: appEnv, unavailable: authConfig.problems }), html);
+  if (!authConfig.ready) return send(res, 503, loginPage({ next, environment: appEnv, unavailable: authConfig.problems }), html);
   if (!auth.allowLoginAttempt(clientIp(req))) {
-    return send(res, 429, auth.loginPage({ next, environment: appEnv, error: "Muitas tentativas. Aguarde alguns minutos." }), html);
+    return send(res, 429, loginPage({ next, environment: appEnv, error: "Muitas tentativas. Aguarde alguns minutos." }), html);
   }
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const identity = credentials
@@ -189,7 +214,7 @@ async function handleAuthRoute(req, res, url, origin) {
     : (auth.verifyCredentials(email, form.get("password"), authConfig) ? { email } : null);
   if (!identity) {
     console.warn(`[auth] login recusado para ${email || "(vazio)"} de ${clientIp(req)}`);
-    return send(res, 401, auth.loginPage({ next, environment: appEnv, error: "E-mail ou senha inválidos." }), html);
+    return send(res, 401, loginPage({ next, environment: appEnv, error: "E-mail ou senha inválidos." }), html);
   }
   console.log(`[auth] login de ${email}`);
   return redirect(res, next, { "set-cookie": auth.createSessionCookie(email, authConfig, secure, identity.version) });

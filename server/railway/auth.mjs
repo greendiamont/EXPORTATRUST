@@ -48,8 +48,8 @@ function safeEqual(a, b) {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-export function createSessionCookie(email, config, secure, version) {
-  const payload = Buffer.from(JSON.stringify({ e: email, ...(version ? { v: version } : {}), exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS })).toString("base64url");
+export function createSessionCookie(email, config, secure, version, googleSubject) {
+  const payload = Buffer.from(JSON.stringify({ e: email, ...(version ? { v: version } : {}), ...(googleSubject ? { g: googleSubject } : {}), exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS })).toString("base64url");
   const value = `${payload}.${sign(payload, config.secret)}`;
   return `${SESSION_COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_SECONDS}${secure ? "; Secure" : ""}`;
 }
@@ -84,7 +84,7 @@ export function readSession(cookieHeader, config) {
 /** Compatibilidade do bootstrap; sessões individuais exigem validação no banco. */
 export function sessionEmail(cookieHeader, config) {
   const data = readSession(cookieHeader, config);
-  return data && !data.v && config.allowedEmails.includes(data.e) ? data.e : null;
+  return data && !data.v && !data.g && config.allowedEmails.includes(data.e) ? data.e : null;
 }
 
 export function verifyCredentials(email, password, config) {
@@ -118,9 +118,12 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
-export function loginPage({ next = "/", error = "", environment = "", unavailable = [], content } = {}) {
+export function loginPage({ next = "/", error = "", environment = "", unavailable = [], content, googleReady = false } = {}) {
   const badge = environment && environment !== "production" ? `<span class="badge">${escapeHtml(environment)}</span>` : "";
-  const body = content ?? (unavailable.length
+  const googleButton = googleReady
+    ? `<p><a class="google-login" href="/__auth/google/start?next=${escapeHtml(encodeURIComponent(next))}">Entrar com Google</a></p><p class="sub">Ou use seu e-mail e senha individual:</p>`
+    : '<p><button type="button" disabled>Entrar com Google</button></p><p class="sub">Login com Google em configuração. O acesso por senha continua disponível.</p>';
+  const body = content ?? (googleButton + (unavailable.length
     ? `<p class="error" role="alert">Login indisponível: configure ${unavailable.map(escapeHtml).join(", ")} no serviço.</p>`
     : `<form method="post" action="/__auth/login">
         <input type="hidden" name="next" value="${escapeHtml(next)}">
@@ -130,7 +133,7 @@ export function loginPage({ next = "/", error = "", environment = "", unavailabl
         <input id="password" name="password" type="password" autocomplete="current-password" required>
         ${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ""}
         <button type="submit">Entrar</button>
-      </form>`);
+      </form>`));
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Entrar · ExportaTrust</title><link rel="icon" href="/favicon.svg">
 <style>
@@ -144,6 +147,7 @@ label{display:block;margin:14px 0 6px;font-weight:600}input{width:100%;padding:1
 input:focus-visible,button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 button{margin-top:20px;width:100%;padding:11px;border:0;border-radius:8px;background:var(--brand);color:#fff;font:inherit;font-weight:700;cursor:pointer}
 .error{color:var(--error);margin:14px 0 0}
+.google-login{display:block;text-align:center;padding:11px;border:1px solid var(--border);border-radius:8px;color:var(--text);font-weight:600;text-decoration:none}button:disabled{opacity:.5;cursor:not-allowed}
 </style></head><body><main><h1>EXPORTATRUST${badge}</h1><p class="sub">Acesso restrito à equipe autorizada.</p>${body}</main></body></html>`;
 }
 
