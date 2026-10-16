@@ -653,4 +653,5 @@
 - **Correções junto:** (1) a emissão do pedido (`order-commercial`) passa a preservar as demais chaves do JSON do pedido (ex.: `purchasePrice`); (2) na edição do processo, campos numéricos (quantidade, volume, pesos, valor) eram lidos no padrão brasileiro — "203.212" virava 203 mil; agora são lidos como número do navegador.
 - **Dados/migration:** nenhuma. Preço indicativo de compra em `operations.supply_chain_notes` (`purchasePrice: {unitPrice, currency}`), lido/gravado por `lib/order-terms.ts`.
 - **Testes:** tsc (sem erros novos), 94 testes unitários (3 novos), build Railway, Playwright local (210 m³ × US$ 230 / R$ 750, câmbio 5,40 → margem 39,6%, US$ 19.133,33 no formulário e no Financeiro; preço de compra mantido ao reabrir).
-- **Status:** em andamento
+- **Railway:** homologation deploy cfa7c6b0 SUCCESS; produção (PR #127) deploy 60e773ae SUCCESS.
+- **Status:** concluído — em produção
