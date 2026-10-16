@@ -16,7 +16,11 @@ Atualizado em: 2026-10-15
 - Serviço DB: PostgreSQL
 - Serviço app: `web-api`
 - APP_ENV: `production`
-- O app ainda não deve ser tratado como cutover final até concluir migração D1 → PostgreSQL e homologação.
+- Branch: `main` (autodeploy). Primeiro deploy em 2026-10-16 (deploy `9f22f759`, commit `aea61b6`, PR #108), autorizado por Ivam ("Pode produzir").
+- URL: https://web-api-production-e342.up.railway.app
+- Bucket: `documents-production` (sjc), referenciado nas variáveis `STORAGE_S3_*`.
+- Login: cadastro por CNPJ + senha individual (segredos próprios de produção, diferentes da homologação). Login Google não configurado em produção.
+- Banco criado vazio (33 migrações aplicadas). Carga dos dados do app antigo pendente: a importação na inicialização é bloqueada em produção por desenho e liberá-la exige autorização de Ivam.
 
 ### Homologação
 - Projeto: `ExportaTrust Homologation`
