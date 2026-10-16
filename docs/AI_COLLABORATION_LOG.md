@@ -266,6 +266,21 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Alteração:** `app/ui/pedido-view.tsx` refeito seguindo `docs/redesign/prototipo/Processo.dc.html`; migration 0031 aditiva.
 - **Para outros agentes:** o protótipo é a referência visual da página do pedido; não voltar ao layout de cartões dos PRs #101/#102. Ao salvar dados comerciais pela tela nova, envie `expectedUpdatedAt` = `settings.updatedAt`.
 
+### 2026-10-15 — Claude — Editar dados do pedido
+- **Branch:** `claude/editar-dados-pedido` → `homologation`; CHG-20261015-023 (pedido de Ivam na conversa).
+- **Para outros agentes:** para alterar dados do pedido pela tela nova use `PATCH /api/operations` com `{ id, fields, original }` (só campos alterados). Não use o PUT, que regrava todos os campos.
+
+### 2026-10-15 — Claude — Novo processo: exportador selecionável
+- **Branch:** `claude/exportador-selecionar` → `homologation`; CHG-20261015-024 (pedido de Ivam na conversa).
+- **Para outros agentes:** Ivam confirmou o layout da tela Novo processo como está; a única mudança autorizada foi o exportador/trading selecionável com CNPJ do cadastro. O exportador (fornecedor ou trading) é o que aparece nos documentos do pedido.
+
+### 2026-10-15 — Claude — Prévia dos custos logísticos
+- **Branch:** `claude/custos-logisticos` → `homologation`; CHG-20261015-025 (pedido de Ivam na conversa); migration 0032.
+- **Para outros agentes:** custos logísticos ficam em `operations.logistics_costs_json`; use `lib/logistics-costs.ts` (sanitize/parse/total). Enviar `logisticsCosts` no POST/PUT de `/api/operations` ou em `fields.logisticsCosts` no PATCH.
+
+### 2026-10-16 — Claude — Produção publicada
+- **PR #108** (homologation → main), autorizado por Ivam ("Pode produzir"); CHG-20261016-001.
+- **Para outros agentes:** produção em https://web-api-production-e342.up.railway.app (projeto Railway "ExportaTrust", `web-api` segue `main`). Banco de produção ainda sem os dados do app antigo; não carregar dados em produção sem autorização de Ivam.
 ### 2026-10-15 — Claude — Protocolo de layout aprovado
 - **Branch:** `claude/protocolo-layout` → `homologation`; CHG-20261015-022.
 - **Para outros agentes (OBRIGATÓRIO):** leia `docs/change-control/LAYOUT_PROTOCOL.md`. Layout aprovado não muda, não é sobrescrito nem recriado; só muda quando Ivam pedir. PR que toca arquivos de layout é reprovado sem a etiqueta `layout-autorizado-ivam`, que o agente só coloca quando Ivam autorizou na conversa (registrando a frase dele). Ivam não faz nada manual: "layout aprovado" na conversa = travar.

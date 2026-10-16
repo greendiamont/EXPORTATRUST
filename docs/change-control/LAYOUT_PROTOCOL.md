@@ -16,12 +16,14 @@
 
 Ivam não precisa entrar no GitHub, no Railway nem em lugar nenhum. A palavra dele na conversa é a autorização; o agente executa o resto.
 
-1. Ivam pede uma tela nova ou uma mudança de layout na conversa.
-2. O agente faz a proposta **somente** em `docs/redesign/prototipo/` (protótipo navegável) e mostra a Ivam.
-3. Ivam diz na conversa **"layout aprovado"** (ou equivalente claro).
-4. O agente **trava** o layout: registra na tabela "Layouts aprovados" e no histórico abaixo (data, tela, protótipo e a frase de Ivam) e no `CHANGELOG.md`.
-5. A implementação segue o protótipo aprovado à risca (regra 4).
-6. A partir daí a tela fica **travada**: só muda se Ivam pedir de novo, na conversa, para aquela tela.
+**Toda alteração (de layout ou de funcionamento) passa por aprovação de Ivam:**
+
+1. Ivam pede a alteração na conversa.
+2. O agente faz a alteração em homologação (ou, para layout novo, primeiro no protótipo em `docs/redesign/prototipo/`) e **envia para Ivam na conversa** o que mudou e onde conferir.
+3. Ivam confere e responde **"alteração aprovada"**. Sem essa frase, a alteração não é considerada aprovada.
+4. Com layout novo, Ivam diz **"layout aprovado"**; o agente trava o layout: registra na tabela "Layouts aprovados" e no histórico abaixo (data, tela, protótipo e a frase de Ivam) e no `CHANGELOG.md`.
+5. Produção só recebe a alteração quando Ivam disser **"pode produzir"**.
+6. Tela travada só muda se Ivam pedir de novo, na conversa, para aquela tela.
 
 ## Trava automática no GitHub
 
@@ -59,4 +61,5 @@ Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout n
 |---|---|---|
 | 2026-10-14 | Ivam | Aprovou o redesign (protótipos 1 a 6) — `docs/redesign/PLANO_REDESIGN.md` |
 | 2026-10-15 | Ivam | Reafirmou o layout aprovado do Pedido (fases e emissão de documentos) e criou esta regra |
+| 2026-10-16 | Ivam | Escolheu a trava automática ("aprovar uma permissão quando ela aparecer") e definiu: "Quando tiver qualquer alteração, você vai enviar para mim aqui e eu preciso dar o ok. Eu preciso falar alteração aprovada." |
 | 2026-10-15 | Ivam | Definiu que a autorização é dada só na conversa: "eu posso dizer assim, ó, a layout aprovado, aí vocês travam o layout que foi aprovado" — sem passos manuais |

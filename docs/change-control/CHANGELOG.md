@@ -447,6 +447,129 @@
 - **Conflitos/coordenação com outros agentes:** nenhum conflito encontrado.
 - **Status:** em andamento
 
+## 2026-10-15 — Claude — Editar dados do pedido na página do pedido
+
+- **ID:** CHG-20261015-023
+- **Branch:** `claude/editar-dados-pedido`
+- **PR:** #105
+- **Destino:** homologation
+- **Tipo:** feature / frontend / API aditiva
+- **Arquivos/módulos alterados:** `app/ui/pedido-view.tsx`, `app/api/operations/route.ts`
+- **Motivo / autorização de Ivam (conversa, 2026-10-15):** "Dentro de cada pedido, nós vamos ter que ter a opção de alterar dados do pedido. Porque, por exemplo, eu tenho o pedido 056-26, que o importador é diferente [...] eu vou ter que ter uma opção de entrar dentro da base do pedido para alterar as informações do pedido."
+- **O que mudou:** a seção já existente "Todos os dados do pedido" ganhou o botão "Editar dados": os campos viram editáveis; cliente/importador e fornecedor são escolhidos dos Cadastros. `PATCH /api/operations` com `fields` grava só os campos alterados (lista permitida), com `original` para detectar alteração simultânea (409). Ao trocar o importador, o comprador dos documentos acompanha quando era o mesmo nome. Auditoria `OPERATION_UPDATED` com valores anteriores.
+- **Layout:** nenhuma seção nova; o resto da página segue o protótipo aprovado.
+- **Riscos:** baixo; o PUT existente (app clássico) não mudou.
+- **Dados/migração:** nenhuma.
+- **Testes executados:** eslint, tsc (sem erros novos), build Railway, Playwright local (troca de importador, booking; comprador do Sales Order acompanhou).
+- **Railway homologation:** deploy automático após merge.
+- **Railway production:** sem mudança.
+- **Rollback:** reverter o PR.
+- **Conflitos/coordenação com outros agentes:** nenhum.
+- **Status:** em andamento
+
+## 2026-10-15 — Claude — Novo processo: exportador/trading selecionável com CNPJ automático
+
+- **ID:** CHG-20261015-024
+- **Branch:** `claude/exportador-selecionar`
+- **PR:** #106
+- **Destino:** homologation
+- **Tipo:** frontend
+- **Arquivos/módulos alterados:** `app/ui/novo-processo-view.tsx`
+- **Autorização de Ivam (conversa, 2026-10-15):** "essa fase da tela do novo processo ela pode ficar assim [...] ficou bem legal. Eu quero só fazer algumas alterações. No ponto 2 [...] o exportador, trading [...] esse campo também tem que ter um botão aqui de selecionar. O CNPJ do exportador, ele vai puxar automático dentro do cadastro [...] é só essa alteração por enquanto."
+- **O que mudou:** na seção 2 (Empresas da cadeia), "Exportador / trading" virou seleção do cadastro ("O próprio fornecedor" ou uma trading/empresa cadastrada); o CNPJ do exportador é preenchido do cadastro ao selecionar o fornecedor ou o exportador. O exportador é quem aparece na documentação do pedido. Resto da tela igual ao protótipo aprovado (NovoProcesso.dc.html), que Ivam confirmou.
+- **Riscos:** baixo; a API de criação do processo não mudou (continua recebendo exporterName/exporterTaxId).
+- **Dados/migração:** nenhuma.
+- **Testes executados:** eslint, tsc (sem erros novos), build Railway, Playwright local (próprio fornecedor e trading preenchem o CNPJ do cadastro).
+- **Railway homologation:** deploy automático após merge.
+- **Railway production:** sem mudança.
+- **Rollback:** reverter o PR.
+- **Conflitos/coordenação com outros agentes:** nenhum.
+- **Status:** em andamento
+
+## 2026-10-15 — Claude — Prévia dos custos logísticos (Novo processo e pedido)
+
+- **ID:** CHG-20261015-025
+- **Branch:** `claude/custos-logisticos`
+- **PR:** #107
+- **Destino:** homologation
+- **Tipo:** feature / frontend / API / migration aditiva
+- **Arquivos/módulos alterados:** `lib/logistics-costs.ts` (novo), `drizzle/0032_operation_logistics_costs.sql` (novo), `db/schema.ts`, `app/api/operations/route.ts`, `app/ui/novo-processo-view.tsx`, `app/ui/pedido-view.tsx`
+- **Autorização de Ivam (conversa, 2026-10-15):** "No campo de logística, tu coloca um campo onde a gente pode colocar uma prévia dos custos logísticos. Isso vai ajudar nosso financeiro para saber a margem que a gente vai ter nesse pedido. Então, coloca essa opção dentro do ponto 5, que é a logística internacional."
+- **O que mudou:** seção 5 (Logística internacional) do Novo processo ganhou "Prévia dos custos logísticos" (moeda, frete rodoviário, despesas portuárias/THC, despachante, frete marítimo, seguro, outros, observações, total). No pedido, o card Financeiro mostra "Logística (prévia)" e a margem passa a descontar a logística (quando venda, compra e custos estão na mesma moeda); os custos podem ser ajustados em "Todos os dados do pedido" → Editar dados. Corrigida a leitura de números com separador de milhar sem decimais ("4.500" era lido como 4,5) na edição de dados e no Novo processo.
+- **Dados/migração:** 0032 aditiva — coluna `operations.logistics_costs_json` (padrão `{}`). O PUT do app anterior não apaga a prévia (só grava quando enviada).
+- **Riscos:** baixo.
+- **Testes executados:** eslint, tsc (sem erros novos), build Railway, Playwright local (criação com custos → total no pedido → edição do seguro somou corretamente).
+- **Railway homologation:** deploy automático após merge (aplica a 0032).
+- **Railway production:** sem mudança.
+- **Rollback:** reverter o PR; a coluna pode permanecer.
+- **Conflitos/coordenação com outros agentes:** nenhum.
+- **Status:** em andamento
+
+## 2026-10-16 — Claude — Primeira publicação em produção
+
+- **ID:** CHG-20261016-001
+- **Branch:** `homologation` → `main`
+- **PR:** #108
+- **Destino:** main / Railway produção
+- **Tipo:** release / infraestrutura
+- **Autorização de Ivam (conversa, 2026-10-16):** "Pode produzir".
+- **O que mudou:** `homologation` promovida para `main` (merge sem squash). No projeto Railway "ExportaTrust" (produção): bucket `documents-production` criado; `web-api` ligado a `main` com build/start/healthcheck iguais à homologação; variáveis de storage, sessão, senha de acesso e e-mail autorizado definidas (segredos novos, só de produção); domínio https://web-api-production-e342.up.railway.app. Deploy `9f22f759` com sucesso: 33 migrações aplicadas, autoteste do storage OK.
+- **Dados/migração:** banco de produção era vazio; nenhuma tabela/dado existente foi alterado. Dados do app antigo ainda não carregados (pendente de autorização).
+- **Riscos:** baixo; app antigo (Cloudflare) não foi alterado.
+- **Railway homologation:** sem mudança.
+- **Rollback:** desligar a fonte do `web-api` de produção ou voltar `main` ao commit anterior (5a36e49).
+- **Conflitos/coordenação com outros agentes:** nenhum.
+- **Status:** em produção (sem dados)
+
+## 2026-10-16 — Claude — Liberação única da carga inicial em produção
+
+- **ID:** CHG-20261016-002
+- **Branch:** `claude/importacao-producao`
+- **PR:** #110, #111
+- **Destino:** homologation → main
+- **Tipo:** infraestrutura / dados
+- **Autorização de Ivam (conversa, 2026-10-16):** "Ok entrei no app novo, pode liberar a importação em produção".
+- **O que mudou:** `server/railway/startup-import.mjs` continua ignorando importações em produção, exceto com `EXPORTATRUST_IMPORT_IN_PRODUCTION=1`. Usado uma única vez para a carga inicial (fornecedores, clientes, produtos, processos e arquivos do app antigo, exportação de 29/09) na empresa cadastrada por Ivam; a variável e as de importação são removidas logo depois.
+- **Dados/migração:** só inclui dados; nada é apagado nem sobrescrito.
+- **Rollback:** remover a variável (a trava volta a valer).
+- **Status:** concluído — carga feita (10 fornecedores, 10 clientes, 4 produtos, 19 processos, 451 arquivos; 1 arquivo ausente no pacote) e liberação desligada (`EXPORTATRUST_IMPORT_IN_PRODUCTION=0`)
+
+## 2026-10-16 — Claude — Documentos de pedido na fase certa (pelo nome do arquivo)
+
+- **ID:** CHG-20261016-003
+- **Branch:** `claude/fase-por-nome-arquivo`
+- **PR:** #113
+- **Destino:** homologation → main
+- **Tipo:** lógica (sem mudança de layout)
+- **Pedido de Ivam (conversa, 2026-10-16):** "subir todos os cadastros [...] e tbm todo os processos e arquivos já organizados em cada fase".
+- **O que mudou:** `documentPhaseIndex(category, fileName)` — na categoria genérica do app antigo "STAGE 08 · Documentos comerciais", arquivos de Sales Order / pedido de compra / contrato / proforma passam a aparecer na fase Pedido (antes caíam em Documentos). Conferido no backup de 29/09: os 400 documentos têm fase; 6 Sales Orders mudam para Pedido.
+- **Dados/migração:** nenhuma (só a exibição por fase).
+- **Testes:** eslint, tsc (sem erros novos), 84 testes unitários.
+- **Status:** em andamento
+
+## 2026-10-16 — Claude — Remoção das imagens de e-mail importadas do app antigo
+
+- **ID:** CHG-20261016-004
+- **Branch:** `claude/remover-imagens-email`
+- **PR:** #115
+- **Destino:** homologation → main
+- **Tipo:** limpeza de dados (autorizada)
+- **Autorização de Ivam (conversa, 2026-10-16):** "As imagens de e-mail você pode cancelar, pode eliminar, inclusive, tá? Não precisa trazer."
+- **O que mudou:** `runStartupEmailImageCleanup` (server/railway/startup-import.mjs), ligada só com `EXPORTATRUST_REMOVE_EMAIL_IMAGES=1`: remove os documentos da categoria "STAGE 08 · Documentos comerciais" cujo nome é imagem colada em e-mail (`image001.png`, `image.jpg`, `Outlook-xxx.png`, `noname` do tipo imagem), usando a rota `DELETE /api/documents` (apaga arquivo do storage + registro, grava auditoria `DOCUMENT_DELETED`). Teste local na cópia dos dados: 143 removidas, 257 documentos mantidos.
+- **Dados:** remove 143 imagens de e-mail em produção; nenhum outro documento é tocado.
+- **Rollback:** as imagens continuam no pacote original do app antigo, se precisar reimportar.
+- **Status:** em andamento
+
+## 2026-10-16 — Claude — Excluir documento na lista de arquivos de cada fase
+
+- **ID:** CHG-20261016-005
+- **Branch:** `claude/excluir-documento`
+- **PR:** #117
+- **Destino:** homologation
+- **Tipo:** feature / frontend
+- **Pedido de Ivam (conversa, 2026-10-16):** "O aplicativo tem que ter também uma opção dentro de cada fase para que possa ser eliminado também documentos".
+- **O que mudou:** botão "Excluir" ao lado de Visualizar/Baixar em "Arquivos desta fase" (e em "Outros arquivos do pedido"), com confirmação; usa a rota existente `DELETE /api/documents` (apaga o arquivo do storage e o registro, grava auditoria `DOCUMENT_DELETED`) e mostra aviso. Única mudança visual: o botão na coluna Ações.
+- **Testes:** eslint, tsc (sem erros novos), build Railway, Playwright local (13 → 12 arquivos, aviso exibido).
 ## 2026-10-15 — Claude — Protocolo de layout aprovado (regra de Ivam)
 
 - **ID:** CHG-20261015-022
@@ -468,3 +591,4 @@
 - **Rollback:** somente com autorização de Ivam.
 - **Conflitos/coordenação com outros agentes:** regra vale para todos os agentes a partir deste registro.
 - **Status:** em andamento
+- **Atualização (2026-10-16):** Ivam escolheu a trava automática e definiu que toda alteração é enviada a ele na conversa e só vale com "alteração aprovada" (produção com "pode produzir"). Protocolo, `CLAUDE.md` e `AGENTS.md` atualizados.

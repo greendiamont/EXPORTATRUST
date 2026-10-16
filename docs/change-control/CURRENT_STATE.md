@@ -20,7 +20,11 @@ Layouts aprovados por Ivam estão travados: ver `docs/change-control/LAYOUT_PROT
 - Serviço DB: PostgreSQL
 - Serviço app: `web-api`
 - APP_ENV: `production`
-- O app ainda não deve ser tratado como cutover final até concluir migração D1 → PostgreSQL e homologação.
+- Branch: `main` (autodeploy). Primeiro deploy em 2026-10-16 (deploy `9f22f759`, commit `aea61b6`, PR #108), autorizado por Ivam ("Pode produzir").
+- URL: https://web-api-production-e342.up.railway.app
+- Bucket: `documents-production` (sjc), referenciado nas variáveis `STORAGE_S3_*`.
+- Login: cadastro por CNPJ + senha individual (segredos próprios de produção, diferentes da homologação). Login Google não configurado em produção.
+- Carga inicial concluída em 2026-10-16 (autorizada por Ivam) na empresa #2 Hub Das Americas: 10 fornecedores, 10 clientes, 4 produtos, 19 processos, 451 arquivos (155.513.309 bytes), 400 documentos e 2 documentos de floresta ligados; 1 arquivo ausente no pacote (048-2026 CERTIFICADO FITOSSANITARIO.pdf). Variáveis de importação esvaziadas e `EXPORTATRUST_IMPORT_IN_PRODUCTION=0` (trava ativa).
 
 ### Homologação
 - Projeto: `ExportaTrust Homologation`
@@ -87,6 +91,7 @@ Layouts aprovados por Ivam estão travados: ver `docs/change-control/LAYOUT_PROT
 - Importação de arquivos (CHG-20261015-018): 451 arquivos do pacote de 2026-09-29 no storage de homologação e 400 documentos ligados aos processos importados.
 
 - Página do pedido `/pedidos/<id>` (CHG-019/020): 6 fases, etapas editáveis, emissão de documentos, arquivos por fase, tarefas estilo Asana, comentários com @menções, presença e proteção contra edição simultânea (migration 0030).
+- Prévia dos custos logísticos por processo (`operations.logistics_costs_json`, migration 0032, `lib/logistics-costs.ts`): lançada na seção 5 do Novo processo, editável no pedido, usada na margem do card Financeiro.
 - Layout da página do pedido = protótipo aprovado `docs/redesign/prototipo/Processo.dc.html` (CHG-021): emissão de documentos editável na fase Pedido, etapas/tarefas em tabela com gaveta de comentários, seguidores e conflito campo a campo (migration 0031). Tarefas do checklist são distribuídas nas fases pelo texto (`taskPhaseIndex`).
 
 ## Correção do primeiro acesso

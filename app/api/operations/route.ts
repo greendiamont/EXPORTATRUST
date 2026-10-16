@@ -3,6 +3,7 @@ import { ensureBaseTables, getDb } from "../../../db";
 import { exportControlSettings, exportMilestones, importerClients, industrialPlans, masterProducts, operationDocuments, operations, operationStageSettings, ruralProperties, suppliers } from "../../../db/schema";
 import { addDays, EXPORT_ORDER_MILESTONES } from "../../../lib/export-control";
 import { normalizeMasterName } from "../../../lib/master-data";
+import { sanitizeLogisticsCosts } from "../../../lib/logistics-costs";
 import { calculateReadiness, hasPolygonGeometry } from "../../../lib/readiness";
 import { audit, requireSecurityContext } from "../../../lib/security";
 
@@ -236,6 +237,14 @@ async function ensureExportControlForOperation(db: Awaited<ReturnType<typeof get
   }
 }
 
+const EDITABLE_TEXT = new Set(["euImporter", "contractNumber", "product", "hsCode", "destinationCountry", "incoterm", "currency", "quantityUnit", "rawMaterial", "species", "forestOriginType", "exporterName", "exporterTaxId", "productionUnit", "productionLocation", "lotCodes", "transportMode", "portOfLoading", "portOfDischarge", "shipmentDate", "carrier", "bookingNumber", "billOfLadingNumber", "containerNumbers", "vesselVoyage", "euOperatorEori", "eudrReference", "internalResponsible", "responsibleEmail"]);
+const EDITABLE_NUMBER = new Set(["commercialValue", "quantity", "volumeM3", "netWeightKg", "grossWeightKg"]);
+
+/** Prévia dos custos logísticos: só grava quando enviada (o PUT do app anterior não a apaga). */
+function logisticsCostsField(body: Record<string, unknown>) {
+  return body.logisticsCosts && typeof body.logisticsCosts === "object" ? { logisticsCostsJson: JSON.stringify(sanitizeLogisticsCosts(body.logisticsCosts)) } : {};
+}
+
 function values(body: Record<string, unknown>, supplier: { id: number; legalName: string; taxId: string; city: string; state: string; country: string }, master: { importerClientId: number | null; masterProductId: number | null }) {
   const exporterName = String(body.exporterName ?? "").trim() || supplier.legalName;
   const supplierIsExporter = exporterName.toLocaleLowerCase("pt-BR") === supplier.legalName.toLocaleLowerCase("pt-BR");
@@ -383,7 +392,7 @@ export async function POST(request: Request) {
     const supplier = await supplierFor(db, supplierId, context.organizationId);
     if (!supplier) return Response.json({ error: "Fornecedor não encontrado." }, { status: 404 });
     const master = await safeMasterLinks(db, body, context.organizationId);
-    const [operation] = await db.insert(operations).values({ ...values(body, supplier, master), organizationId: context.organizationId }).returning();
+    const [operation] = await db.insert(operations).values({ ...values(body, supplier, master), ...logisticsCostsField(body), organizationId: context.organizationId }).returning();
     await ensureExportControlForOperation(db, operation, context.organizationId);
     try { await audit(context, "OPERATION_CREATED", "operation", String(operation.id), { reference: operation.reference }); } catch (auditError) { console.error("OPERATION_AUDIT_FAILED", auditError); }
     return Response.json({ operation }, { status: 201 });
@@ -409,7 +418,7 @@ export async function PUT(request: Request) {
     const supplier = await supplierFor(db, supplierId, context.organizationId);
     if (!supplier) return Response.json({ error: "Fornecedor não encontrado." }, { status: 404 });
     const master = await safeMasterLinks(db, body, context.organizationId);
-    const [operation] = await db.update(operations).set(values(body, supplier, master)).where(and(eq(operations.id, id), eq(operations.organizationId, context.organizationId))).returning();
+    const [operation] = await db.update(operations).set({ ...values(body, supplier, master), ...logisticsCostsField(body) }).where(and(eq(operations.id, id), eq(operations.organizationId, context.organizationId))).returning();
     if (!operation) return Response.json({ error: "Operação não encontrada." }, { status: 404 });
     await ensureExportControlForOperation(db, operation, context.organizationId);
     try { await audit(context, "OPERATION_UPDATED", "operation", String(id), { reference: operation.reference }); } catch (auditError) { console.error("OPERATION_AUDIT_FAILED", auditError); }
@@ -438,6 +447,55 @@ export async function PATCH(request: Request) {
       const [operation] = await db.update(operations).set({ propertyIds: JSON.stringify(requested) }).where(and(eq(operations.id, id), eq(operations.organizationId, context.organizationId))).returning();
       if (!operation) return Response.json({ error: "Processo não encontrado." }, { status: 404 });
       await audit(context, "OPERATION_FORESTS_UPDATED", "operation", String(id), { propertyIds: requested });
+      return Response.json({ operation });
+    }
+    // Edição dos dados do pedido pela tela nova: grava só os campos alterados. `original` traz
+    // o valor lido pela tela; se outra pessoa mudou o mesmo campo antes, devolve 409 com a versão atual.
+    if (body.fields && typeof body.fields === "object") {
+      const fields = body.fields as Record<string, unknown>;
+      const original = (body.original && typeof body.original === "object" ? body.original : {}) as Record<string, unknown>;
+      const [current] = await db.select().from(operations).where(and(eq(operations.id, id), eq(operations.organizationId, context.organizationId))).limit(1);
+      if (!current) return Response.json({ error: "Processo não encontrado." }, { status: 404 });
+      const changes: Record<string, string | number | null> = {};
+      for (const [key, raw] of Object.entries(fields)) {
+        if (!EDITABLE_TEXT.has(key) && !EDITABLE_NUMBER.has(key) && key !== "supplierId" && key !== "importerClientId") continue;
+        if (key in original && String(original[key] ?? "") !== String((current as Record<string, unknown>)[key] ?? "")) {
+          return Response.json({ error: "Outra pessoa alterou os dados do pedido enquanto você editava.", conflict: true, current }, { status: 409 });
+        }
+        if (EDITABLE_NUMBER.has(key)) changes[key] = numeric(raw);
+        else if (EDITABLE_TEXT.has(key)) changes[key] = key === "responsibleEmail" ? String(raw ?? "").trim().toLowerCase() : String(raw ?? "").trim();
+      }
+      if ("logisticsCosts" in fields) {
+        if ("logisticsCostsJson" in original && String(original.logisticsCostsJson ?? "") !== String(current.logisticsCostsJson ?? "")) {
+          return Response.json({ error: "Outra pessoa alterou os dados do pedido enquanto você editava.", conflict: true, current }, { status: 409 });
+        }
+        changes.logisticsCostsJson = JSON.stringify(sanitizeLogisticsCosts(fields.logisticsCosts));
+      }
+      if ("supplierId" in fields) {
+        const supplier = await supplierFor(db, Number(fields.supplierId), context.organizationId);
+        if (!supplier) return Response.json({ error: "Fornecedor não encontrado." }, { status: 404 });
+        changes.supplierId = supplier.id;
+        changes.supplierName = supplier.legalName;
+      }
+      if ("importerClientId" in fields) {
+        const clientId = Number(fields.importerClientId) || null;
+        if (clientId) {
+          const [client] = await db.select().from(importerClients).where(and(eq(importerClients.organizationId, context.organizationId), eq(importerClients.id, clientId))).limit(1);
+          if (!client) return Response.json({ error: "Cliente não encontrado no cadastro." }, { status: 404 });
+          changes.importerClientId = client.id;
+          if (!("euImporter" in fields)) changes.euImporter = client.legalName;
+        } else changes.importerClientId = null;
+      }
+      if ("euImporter" in changes && !String(changes.euImporter)) return Response.json({ error: "Informe o cliente / importador." }, { status: 400 });
+      if (!Object.keys(changes).length) return Response.json({ operation: current });
+      const [operation] = await db.update(operations).set(changes as Partial<typeof operations.$inferInsert>).where(and(eq(operations.id, id), eq(operations.organizationId, context.organizationId))).returning();
+      // O comprador dos documentos acompanha o importador quando ainda era o mesmo nome.
+      if (changes.euImporter && changes.euImporter !== current.euImporter) {
+        await db.update(exportControlSettings).set({ customerName: String(changes.euImporter) })
+          .where(and(eq(exportControlSettings.operationId, id), eq(exportControlSettings.organizationId, context.organizationId), eq(exportControlSettings.customerName, current.euImporter)));
+      }
+      const previous = Object.fromEntries(Object.keys(changes).map((key) => [key, (current as Record<string, unknown>)[key]]));
+      await audit(context, "OPERATION_UPDATED", "operation", String(id), { reference: current.reference, fields: Object.keys(changes), previous, description: Object.keys(changes).join(", ") });
       return Response.json({ operation });
     }
     const readiness = Math.max(0, Math.min(100, Math.round(Number(body.readiness))));

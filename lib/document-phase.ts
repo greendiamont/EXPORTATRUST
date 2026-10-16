@@ -12,7 +12,12 @@ const STAGE_PHASE: Array<[RegExp, number]> = [
   [/entrega final|entregue/i, 5],
 ];
 
-export function documentPhaseIndex(category: string): number | null {
+// Na categoria genérica do app antigo ("STAGE 08 · Documentos comerciais") caem também
+// pedidos de venda/compra e contratos: pelo nome do arquivo eles vão para a fase Pedido.
+const ORDER_FILE = /\bs\.?o\b|sales.?order|\bp\.?o\b|purchase.?order|pedido de (venda|compra)|contrato|contract|proforma/i;
+
+export function documentPhaseIndex(category: string, fileName = ""): number | null {
+  if (/documentos comerciais|stage 0?8/i.test(category) && ORDER_FILE.test(fileName)) return 0;
   for (const [pattern, phase] of STAGE_PHASE) if (pattern.test(category)) return phase;
   return null;
 }

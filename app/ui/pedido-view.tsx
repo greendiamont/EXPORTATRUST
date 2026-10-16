@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObjec
 import { api, formatDate, money, relativeDue } from "./format";
 import { ORDER_PHASES, currentPhaseIndex, isClosedStatus, phaseIndexOfCode } from "../../lib/order-phases";
 import { PHASE_UPLOAD_CATEGORY, documentPhaseIndex, taskPhaseIndex } from "../../lib/document-phase";
+import { LOGISTICS_COST_FIELDS, logisticsTotal, parseLogisticsCosts } from "../../lib/logistics-costs";
 
 // Página do pedido — reprodução do protótipo aprovado (docs/redesign/prototipo/Processo.dc.html):
 // cabeçalho com os 6 dados-chave, fases em linha do tempo, emissão de documentos na fase
@@ -79,7 +80,8 @@ function when(value: string) {
 /** Número digitado no padrão brasileiro (1.234,56) ou internacional (1234.56). */
 const num = (value: unknown) => {
   const raw = String(value ?? "").replace(/\s/g, "");
-  const normalized = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw;
+  // "4.500" sem vírgula = milhar no padrão brasileiro; "4.5" continua decimal.
+  const normalized = raw.includes(",") || /^\d{1,3}(\.\d{3})+$/.test(raw) ? raw.replace(/\./g, "").replace(",", ".") : raw;
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
 };
@@ -247,20 +249,24 @@ export default function PedidoView({ operationId }: { operationId: number }) {
     const tasks = data.tasks.filter((task) => phaseOfTask(task) === index);
     const total = steps.length + tasks.length;
     const done = steps.filter((milestone) => isClosedStatus(milestone.status)).length + tasks.filter((task) => task.status === "Concluído").length;
-    const files = docs.filter((doc) => documentPhaseIndex(doc.category) === index).length;
+    const files = docs.filter((doc) => documentPhaseIndex(doc.category, doc.fileName) === index).length;
     return { ...item, total, done, files };
   });
   const phaseMilestones = milestones.filter((milestone) => phaseIndexOfCode(milestone.code) === selected);
   const phaseTasks = data.tasks.filter((task) => phaseOfTask(task) === selected).sort((a, b) => a.sequence - b.sequence);
-  const phaseDocs = docs.filter((doc) => documentPhaseIndex(doc.category) === selected);
-  const otherDocs = docs.filter((doc) => documentPhaseIndex(doc.category) === null);
+  const phaseDocs = docs.filter((doc) => documentPhaseIndex(doc.category, doc.fileName) === selected);
+  const otherDocs = docs.filter((doc) => documentPhaseIndex(doc.category, doc.fileName) === null);
   const openStep = milestones.find((milestone) => phaseIndexOfCode(milestone.code) === current && !isClosedStatus(milestone.status));
   const meFollowing = Boolean(activity?.followers?.some((follower) => follower.email === activity.me));
 
   const so = itemsTotal(form.soItems);
   const po = itemsTotal(form.poItems);
   const saleValue = so.value || Number(operation.commercialValue) || 0;
-  const margin = po.value && saleValue && form.poCurrency === form.currency ? ((saleValue - po.value) / saleValue) * 100 : null;
+  const logistics = parseLogisticsCosts(operation.logisticsCostsJson);
+  const logisticsValue = logisticsTotal(logistics);
+  // Margem = venda − compra − prévia logística, quando tudo está na mesma moeda.
+  const sameCurrency = form.poCurrency === form.currency && (!logisticsValue || logistics.currency === form.currency);
+  const margin = po.value && saleValue && sameCurrency ? ((saleValue - po.value - logisticsValue) / saleValue) * 100 : null;
 
   function run(work: () => Promise<unknown>) {
     setBusy(true);
@@ -276,6 +282,16 @@ export default function PedidoView({ operationId }: { operationId: number }) {
     run(async () => {
       const result = await saveMilestone(milestone, { status: isClosedStatus(milestone.status) ? "Em andamento" : "Concluído" });
       if (result.conflict) setToast("Outra pessoa alterou esta etapa agora. A versão mais recente foi carregada.");
+    });
+  }
+
+  // Exclui o arquivo do storage e o registro (rota DELETE /api/documents, com auditoria).
+  function deleteDoc(doc: Doc) {
+    if (!window.confirm(`Excluir o arquivo "${doc.fileName}" deste pedido? Ele será apagado do armazenamento e não poderá ser recuperado.`)) return;
+    run(async () => {
+      const response = await fetch(`/api/documents?id=${doc.id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `HTTP ${response.status}`);
+      setToast(`Arquivo "${doc.fileName}" excluído.`);
     });
   }
 
@@ -422,18 +438,18 @@ export default function PedidoView({ operationId }: { operationId: number }) {
               <h2 id="arquivos">Arquivos desta fase <span style={{ fontWeight: 400, color: "var(--et2-muted)" }}>· {phaseDocs.length}</span></h2>
               <UploadButton operationId={operationId} category={PHASE_UPLOAD_CATEGORY[selected]} onDone={refreshAll} onError={setError} />
             </div>
-            <FileTable docs={phaseDocs} onView={setPreview} empty="Nenhum arquivo nesta fase ainda." />
+            <FileTable docs={phaseDocs} onView={setPreview} onDelete={deleteDoc} empty="Nenhum arquivo nesta fase ainda." />
             {otherDocs.length > 0 && (
               <details className="pd-more">
                 <summary>Outros arquivos do pedido <span style={{ fontWeight: 400, color: "var(--et2-muted)" }}>· {otherDocs.length}</span></summary>
-                <FileTable docs={otherDocs} onView={setPreview} empty="" />
+                <FileTable docs={otherDocs} onView={setPreview} onDelete={deleteDoc} empty="" />
               </details>
             )}
           </section>
 
           <details className="pd-card">
             <summary style={{ padding: "14px 20px", cursor: "pointer", fontWeight: 600, fontSize: 16 }}>Todos os dados do pedido</summary>
-            <AllFields operation={operation} />
+            <AllFields operation={operation} onSaved={refreshAll} onError={setError} />
           </details>
         </div>
 
@@ -450,7 +466,8 @@ export default function PedidoView({ operationId }: { operationId: number }) {
             <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
               <div><dt className="pd-sub">Venda</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{saleValue ? money(saleValue, form.currency || currency) : "—"}</dd></div>
               <div><dt className="pd-sub">Compra</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{po.value ? money(po.value, form.poCurrency || currency) : "—"}</dd></div>
-              <div><dt className="pd-sub">Margem</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{margin === null ? (po.value && form.poCurrency !== form.currency ? "moedas diferentes" : "—") : `${margin.toFixed(1).replace(".", ",")}%`}</dd></div>
+              <div><dt className="pd-sub">Logística (prévia)</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{logisticsValue ? money(logisticsValue, logistics.currency) : "—"}</dd></div>
+              <div><dt className="pd-sub">Margem{logisticsValue ? " (com logística)" : ""}</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{margin === null ? (po.value && !sameCurrency ? "moedas diferentes" : "—") : `${margin.toFixed(1).replace(".", ",")}%`}</dd></div>
               <div><dt className="pd-sub">Pagamento</dt><dd style={{ margin: "3px 0 0" }}>{form.paymentTerms || "Não registrado"}</dd></div>
             </dl>
           </section>
@@ -810,7 +827,7 @@ function extOf(doc: Doc) {
   return { ext: ext || "ARQ", kind };
 }
 
-function FileTable({ docs, onView, empty }: { docs: Doc[]; onView: (preview: Preview) => void; empty: string }) {
+function FileTable({ docs, onView, onDelete, empty }: { docs: Doc[]; onView: (preview: Preview) => void; onDelete: (doc: Doc) => void; empty: string }) {
   if (!docs.length) return empty ? <p style={{ margin: 0, padding: "18px 20px", color: "var(--et2-muted)" }}>{empty}</p> : null;
   return (
     <table className="pd-table">
@@ -831,6 +848,7 @@ function FileTable({ docs, onView, empty }: { docs: Doc[]; onView: (preview: Pre
               <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                 <button className="pd-btn pd-btn--sm" onClick={() => onView({ title: doc.fileName, src: `/api/documents?documentId=${doc.id}&inline=1`, download: `/api/documents?documentId=${doc.id}` })}>Visualizar</button>
                 <a className="pd-btn pd-btn--sm" style={{ marginLeft: 6 }} href={`/api/documents?documentId=${doc.id}`}>Baixar</a>
+                <button className="pd-btn pd-btn--sm" style={{ marginLeft: 6, color: "var(--et2-bad)" }} aria-label={`Excluir ${doc.fileName}`} onClick={() => onDelete(doc)}>Excluir</button>
               </td>
             </tr>
           );
@@ -877,7 +895,7 @@ function OrderDocuments({ docs, form, data, onPhase }: { docs: Doc[]; form: Form
   const list: Array<{ key: string; name: string; phase: number | null; status: string; tone: string }> = [
     ...DOC_TABS.map((item, index) => ({ key: item.key, name: item.list, phase: 0, status: status[index].label, tone: status[index].tone })),
     ...docs.map((doc) => ({
-      key: `d${doc.id}`, name: doc.documentType && doc.documentType !== "Outro documento" ? doc.documentType : doc.fileName, phase: documentPhaseIndex(doc.category),
+      key: `d${doc.id}`, name: doc.documentType && doc.documentType !== "Outro documento" ? doc.documentType : doc.fileName, phase: documentPhaseIndex(doc.category, doc.fileName),
       status: doc.status || "Recebido", tone: /aprovad|vigente|recebid|validad/i.test(doc.status) ? "ok" : /pendente|revis/i.test(doc.status) ? "warn" : "todo",
     })),
   ];
@@ -1096,9 +1114,25 @@ const FIELD_GROUPS: Array<{ title: string; fields: Array<[string, string]> }> = 
   { title: "Logística", fields: [["transportMode", "Modal"], ["portOfLoading", "Porto de embarque"], ["portOfDischarge", "Porto de destino"], ["destinationCountry", "País de destino"], ["shipmentDate", "ETD"], ["carrier", "Armador"], ["bookingNumber", "Booking"], ["billOfLadingNumber", "BL"], ["containerNumbers", "Contêineres"], ["vesselVoyage", "Navio / viagem"]] },
   { title: "EUDR e responsáveis", fields: [["euOperatorEori", "EORI"], ["eudrReference", "Referência DDS"], ["internalResponsible", "Responsável interno"], ["responsibleEmail", "E-mail do responsável"], ["status", "Situação"]] },
 ];
+const NUMBER_FIELDS = new Set(["commercialValue", "quantity", "volumeM3", "netWeightKg", "grossWeightKg"]);
+const COST_GROUP: Array<[string, string]> = [["lc.currency", "Moeda dos custos"], ...LOGISTICS_COST_FIELDS.map(([key, label]): [string, string] => [`lc.${key}`, label]), ["lc.notes", "Observações dos custos"]];
+const READONLY_FIELDS = new Set(["status"]);
+type Option = { id: number; name: string };
 
-function AllFields({ operation }: { operation: Operation }) {
+/** Dados do pedido: leitura e edição (grava só os campos alterados, com aviso se outra pessoa mudou antes). */
+function AllFields({ operation, onSaved, onError }: { operation: Operation; onSaved: () => void; onError: (message: string) => void }) {
+  const [draft, setDraft] = useState<Record<string, string> | null>(null);
+  const [clients, setClients] = useState<Option[]>([]);
+  const [suppliers, setSuppliers] = useState<Option[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [conflict, setConflict] = useState("");
+  const original = (key: string) => key === "shipmentDate" ? text(operation[key]).slice(0, 10) : NUMBER_FIELDS.has(key) ? fmt(Number(operation[key]) || 0, 3) : text(operation[key]);
   const valueOf = (key: string) => {
+    if (key.startsWith("lc.")) {
+      const costs = parseLogisticsCosts(operation.logisticsCostsJson);
+      const value = costs[key.slice(3) as keyof typeof costs];
+      return typeof value === "number" ? (value ? money(value, costs.currency) : "") : key === "lc.currency" && !logisticsTotal(costs) ? "" : String(value ?? "");
+    }
     const value = operation[key];
     if (value === null || value === undefined || value === "") return "";
     if (key === "shipmentDate") return formatDate(String(value));
@@ -1106,14 +1140,105 @@ function AllFields({ operation }: { operation: Operation }) {
     if (typeof value === "number") return value ? value.toLocaleString("pt-BR") : "";
     return String(value);
   };
+
+  function startEdit() {
+    const next: Record<string, string> = {};
+    for (const group of FIELD_GROUPS) for (const [key] of group.fields) next[key] = original(key);
+    const costs = parseLogisticsCosts(operation.logisticsCostsJson);
+    for (const [key] of COST_GROUP) { const field = key.slice(3) as keyof typeof costs; next[key] = typeof costs[field] === "number" ? fmt(costs[field] as number) : String(costs[field] ?? ""); }
+    next.supplierId = text(operation.supplierId);
+    next.importerClientId = text(operation.importerClientId);
+    setDraft(next);
+    setConflict("");
+    api<{ clients: Array<{ id: number; legalName: string }> }>("/api/importer-clients").then((data) => setClients(data.clients.map((client) => ({ id: client.id, name: client.legalName })))).catch(() => {});
+    api<{ suppliers: Array<{ id: number; legalName: string }> }>("/api/suppliers").then((data) => setSuppliers(data.suppliers.map((supplier) => ({ id: supplier.id, name: supplier.legalName })))).catch(() => {});
+  }
+
+  async function save(force = false) {
+    if (!draft) return;
+    const fields: Record<string, unknown> = {};
+    const before: Record<string, unknown> = {};
+    const costs = parseLogisticsCosts(operation.logisticsCostsJson);
+    const costsChanged = COST_GROUP.some(([key]) => { const field = key.slice(3) as keyof typeof costs; return draft[key] !== (typeof costs[field] === "number" ? fmt(costs[field] as number) : String(costs[field] ?? "")); });
+    if (costsChanged) {
+      fields.logisticsCosts = Object.fromEntries(COST_GROUP.map(([key]) => [key.slice(3), key === "lc.currency" || key === "lc.notes" ? draft[key] : num(draft[key])]));
+      before.logisticsCostsJson = operation.logisticsCostsJson;
+    }
+    for (const [key, value] of Object.entries(draft)) {
+      if (READONLY_FIELDS.has(key) || key === "supplierName" || key.startsWith("lc.")) continue;
+      const was = key === "supplierId" || key === "importerClientId" ? text(operation[key]) : original(key);
+      if (value === was) continue;
+      fields[key] = NUMBER_FIELDS.has(key) ? num(value) : value;
+      if (key !== "supplierId" && key !== "importerClientId") before[key] = operation[key];
+    }
+    if (!Object.keys(fields).length) { setDraft(null); return; }
+    setBusy(true);
+    try {
+      const response = await fetch("/api/operations", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: operation.id, fields, ...(force ? {} : { original: before }) }) });
+      const result = await response.json().catch(() => ({})) as { error?: string; conflict?: boolean };
+      if (response.status === 409 && result.conflict) { setConflict(result.error ?? "Outra pessoa alterou os dados."); return; }
+      if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+      setDraft(null);
+      onSaved();
+    } catch (reason) {
+      onError(reason instanceof Error ? reason.message : "Falha ao salvar os dados do pedido.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const input = (key: string, label: string) => {
+    if (!draft) return null;
+    if (READONLY_FIELDS.has(key)) return <label key={key}>{label}<input className="pd-input" readOnly value={text(operation[key]) || "—"} title="Muda conforme as etapas" /></label>;
+    if (key === "supplierName") return (
+      <label key={key}>{label}
+        <select className="pd-input" value={draft.supplierId} onChange={(event) => setDraft({ ...draft, supplierId: event.target.value })}>
+          {!suppliers.some((item) => String(item.id) === draft.supplierId) && <option value={draft.supplierId}>{text(operation.supplierName) || "—"}</option>}
+          {suppliers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+      </label>
+    );
+    if (key === "lc.currency") return (
+      <label key={key}>{label}
+        <select className="pd-input" value={draft[key]} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })}>{["BRL", "USD", "EUR"].map((value) => <option key={value}>{value}</option>)}</select>
+      </label>
+    );
+    if (key === "euImporter") return (
+      <label key={key}>{label}
+        <select className="pd-input" value={clients.some((item) => String(item.id) === draft.importerClientId) ? draft.importerClientId : ""}
+          onChange={(event) => { const client = clients.find((item) => String(item.id) === event.target.value); setDraft({ ...draft, importerClientId: event.target.value, euImporter: client?.name ?? draft.euImporter }); }}>
+          <option value="">{draft.euImporter || "Selecione o cliente"}</option>
+          {clients.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+      </label>
+    );
+    return <label key={key}>{label}<input className="pd-input" type={key === "shipmentDate" ? "date" : "text"} inputMode={NUMBER_FIELDS.has(key) ? "decimal" : undefined} value={draft[key] ?? ""} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })} /></label>;
+  };
+
   return (
     <div style={{ padding: "0 20px 16px", display: "grid", gap: 16 }}>
-      {FIELD_GROUPS.map((group) => (
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        {draft
+          ? <><button className="pd-btn pd-btn--sm" disabled={busy} onClick={() => setDraft(null)}>Cancelar</button><button className="pd-btn pd-btn--sm pd-btn--dark" disabled={busy} onClick={() => save()}>{busy ? "Salvando…" : "Salvar dados"}</button></>
+          : <button className="pd-btn pd-btn--sm" onClick={startEdit}>Editar dados</button>}
+      </div>
+      {conflict && (
+        <div className="et2-alert et2-alert--warn" role="alert">
+          <strong>{conflict}</strong>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button className="pd-btn pd-btn--sm" onClick={() => { setDraft(null); setConflict(""); onSaved(); }}>Usar a versão salva</button>
+            <button className="pd-btn pd-btn--sm pd-btn--dark" disabled={busy} onClick={() => { setConflict(""); save(true); }}>Manter a minha</button>
+          </div>
+        </div>
+      )}
+      {[...FIELD_GROUPS, { title: "Custos logísticos (prévia)", fields: COST_GROUP }].map((group) => (
         <div key={group.title}>
           <h3 style={{ margin: "8px 0", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--et2-muted)" }}>{group.title}</h3>
-          <dl className="et2-dl" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
-            {group.fields.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{valueOf(key) || <span className="muted">—</span>}</dd></div>)}
-          </dl>
+          {draft
+            ? <div className="pd-fields">{group.fields.map(([key, label]) => input(key, label))}</div>
+            : <dl className="et2-dl" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
+                {group.fields.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{valueOf(key) || <span className="muted">—</span>}</dd></div>)}
+              </dl>}
         </div>
       ))}
     </div>

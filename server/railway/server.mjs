@@ -344,6 +344,11 @@ server.listen(port, "0.0.0.0", () => {
       .then(({ runStartupSupplierImport }) => runStartupSupplierImport({ pool: bindings.DB.pool, worker, env, ctx, appEnv }))
       .catch((error) => console.error("[importação] falhou:", error));
   }
+  if (bindings.DB && process.env.EXPORTATRUST_REMOVE_EMAIL_IMAGES === "1") {
+    import("./startup-import.mjs")
+      .then(({ runStartupEmailImageCleanup }) => runStartupEmailImageCleanup({ pool: bindings.DB.pool, worker, env, ctx }))
+      .catch((error) => console.error("[limpeza] falhou:", error));
+  }
   if (bindings.DB && process.env.EXPORTATRUST_FILES_IMPORT_URL) {
     import("./startup-import.mjs")
       .then(({ runStartupFileImport }) => runStartupFileImport({ pool: bindings.DB.pool, worker, env, ctx, appEnv, bucket: bindings.BUCKET }))

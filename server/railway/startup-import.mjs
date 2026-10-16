@@ -14,6 +14,13 @@ import { gunzipSync } from "node:zlib";
 // Os dados ficam só na variável do serviço — nunca no repositório — e a variável deve
 // ser removida depois da importação.
 
+// Em produção a importação só roda com liberação explícita para a carga inicial, autorizada por
+// Ivam em 2026-10-16 ("pode liberar a importação em produção"). A variável é removida junto
+// com as de importação logo depois da carga.
+function productionImportAllowed() {
+  return process.env.EXPORTATRUST_IMPORT_IN_PRODUCTION === "1";
+}
+
 const STEPS = {
   fornecedores: { path: "/api/suppliers/import" },
   clientes: { path: "/api/registry-import", kind: "clientes" },
@@ -78,8 +85,8 @@ export async function runStartupSupplierImport({ pool, worker, env, ctx, appEnv 
   const full = readEncoded("EXPORTATRUST_REGISTRY_IMPORT_B64");
   const encoded = processes || full || process.env.EXPORTATRUST_SUPPLIER_IMPORT_B64;
   if (!encoded) return;
-  if (appEnv === "production") {
-    console.warn("[importação] variável de importação ignorada em produção.");
+  if (appEnv === "production" && !productionImportAllowed()) {
+    console.warn("[importação] variável de importação ignorada em produção (carga inicial exige EXPORTATRUST_IMPORT_IN_PRODUCTION=1, autorizada por Ivam).");
     return;
   }
   const steps = processes ? ["fornecedores", "clientes", "produtos", "processos"] : full ? ["fornecedores", "clientes", "produtos"] : ["fornecedores"];
@@ -153,8 +160,8 @@ function readTar(buffer) {
 export async function runStartupFileImport({ pool, worker, env, ctx, appEnv, bucket }) {
   const url = process.env.EXPORTATRUST_FILES_IMPORT_URL;
   if (!url) return;
-  if (appEnv === "production") {
-    console.warn("[arquivos] EXPORTATRUST_FILES_IMPORT_URL ignorada em produção.");
+  if (appEnv === "production" && !productionImportAllowed()) {
+    console.warn("[arquivos] EXPORTATRUST_FILES_IMPORT_URL ignorada em produção (carga inicial exige EXPORTATRUST_IMPORT_IN_PRODUCTION=1, autorizada por Ivam).");
     return;
   }
   if (!bucket) {
@@ -227,5 +234,45 @@ export async function runStartupFileImport({ pool, worker, env, ctx, appEnv, buc
     }
   } catch (error) {
     console.error("[arquivos] falhou:", error instanceof Error ? error.message : error);
+  }
+}
+
+// Limpeza única autorizada por Ivam (2026-10-16): "As imagens de e-mail você pode cancelar,
+// pode eliminar". Remove só as imagens coladas nos e-mails do app antigo (image001.png,
+// image.jpg, Outlook-xxx.png e "noname" do tipo imagem) da categoria genérica
+// "STAGE 08 · Documentos comerciais". Cada remoção passa pela rota DELETE /api/documents
+// (apaga o arquivo do storage, o registro e grava auditoria). Ligada por
+// EXPORTATRUST_REMOVE_EMAIL_IMAGES=1; a variável é desligada depois da limpeza.
+export async function runStartupEmailImageCleanup({ pool, worker, env, ctx }) {
+  if (process.env.EXPORTATRUST_REMOVE_EMAIL_IMAGES !== "1") return;
+  try {
+    const { rows: organizations } = await targetOrganizations(pool);
+    for (const organization of organizations) {
+      if (!organization.admin_email) continue;
+      const { rows } = await pool.query(`
+        SELECT id, file_name FROM operation_documents
+        WHERE organization_id = $1 AND category ILIKE 'STAGE 08%'
+          AND (lower(file_name) ~ '^(image[0-9]*|outlook-[a-z0-9]+)\\.(png|jpe?g|gif|bmp)$'
+            OR (lower(file_name) = 'noname' AND content_type ILIKE 'image/%'))
+        ORDER BY id`, [organization.id]);
+      let removed = 0, failed = 0;
+      for (const row of rows) {
+        const request = new Request(`http://railway.invalid/api/documents?id=${row.id}`, {
+          method: "DELETE",
+          headers: {
+            "x-exportatrust-authenticated-user-email": organization.admin_email,
+            "x-exportatrust-authenticated-user-name": organization.admin_email,
+            "x-exportatrust-auth-provider": "railway-startup-cleanup",
+            cookie: `exportatrust_org=${organization.id}`,
+          },
+        });
+        const response = await worker.fetch(request, env, ctx);
+        if (response.ok) removed += 1;
+        else { failed += 1; console.error(`[limpeza] falha ao remover ${row.file_name} (#${row.id}): HTTP ${response.status}`); }
+      }
+      console.log(`[limpeza] imagens de e-mail → empresa #${organization.id} ${organization.name}: ${rows.length} encontradas, ${removed} removidas, ${failed} falha(s).`);
+    }
+  } catch (error) {
+    console.error("[limpeza] falhou:", error instanceof Error ? error.message : error);
   }
 }
