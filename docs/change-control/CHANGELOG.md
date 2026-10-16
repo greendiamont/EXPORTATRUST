@@ -559,3 +559,15 @@
 - **Dados:** remove 143 imagens de e-mail em produção; nenhum outro documento é tocado.
 - **Rollback:** as imagens continuam no pacote original do app antigo, se precisar reimportar.
 - **Status:** em andamento
+
+## 2026-10-16 — Claude — Excluir documento na lista de arquivos de cada fase
+
+- **ID:** CHG-20261016-005
+- **Branch:** `claude/excluir-documento`
+- **PR:** #117
+- **Destino:** homologation
+- **Tipo:** feature / frontend
+- **Pedido de Ivam (conversa, 2026-10-16):** "O aplicativo tem que ter também uma opção dentro de cada fase para que possa ser eliminado também documentos".
+- **O que mudou:** botão "Excluir" ao lado de Visualizar/Baixar em "Arquivos desta fase" (e em "Outros arquivos do pedido"), com confirmação; usa a rota existente `DELETE /api/documents` (apaga o arquivo do storage e o registro, grava auditoria `DOCUMENT_DELETED`) e mostra aviso. Única mudança visual: o botão na coluna Ações.
+- **Testes:** eslint, tsc (sem erros novos), build Railway, Playwright local (13 → 12 arquivos, aviso exibido).
+- **Status:** em andamento
