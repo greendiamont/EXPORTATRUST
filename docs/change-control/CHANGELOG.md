@@ -704,3 +704,15 @@
 - **Dados/migration:** nenhuma.
 - **Testes:** tsc (sem erros novos), 96 testes unitários (1 novo), build Railway, Playwright local (processo com 3 itens: medida do item 1 e preço do item 2 alterados + pagamento → salvo; valor comercial US$ 27.927,24; Financeiro atualizado).
 - **Status:** em andamento
+
+## 2026-10-16 — Claude — Itens do pedido como tabela com "+ Adicionar item"
+
+- **ID:** CHG-20261016-018
+- **Branch:** `claude/itens-dinamicos`
+- **PR:** ver PR da branch
+- **Destino:** homologation; produção após "pode produzir"
+- **Pedido de Ivam (conversa, 2026-10-16):** "colocar uma linha só de item e com linhas que a gente possa adicionar item. Não faz fixo. Faz ele sempre como um botão de adicionar item."
+- **O que mudou:** a seção 4 do Novo processo / Editar sempre mostra "Itens do pedido": começa com uma linha (espécie, produto/qualidade, medidas, volume m³, preço, total, ×) e tem "+ Adicionar item". Substitui os campos fixos "Medidas" e "Preço indicativo de venda" (o bloco de margem mostra o total dos itens). Ao salvar, os itens viram os itens do pedido de venda (emissão de documentos) e o valor comercial passa a ser a soma volume × preço; na criação também. Base por m³ da margem (formulário e Financeiro) = volume dos itens. Margem negativa em vermelho.
+- **Dados/migration:** nenhuma; itens existentes preservam campos extras.
+- **Testes:** tsc (sem erros novos), 96 testes unitários, build Railway, Playwright local (processo com 2 itens + 1 adicionado → salvo, valor US$ 61.700; processo novo começa com 1 linha; criação via API com 2 itens → valor 2.750).
+- **Status:** em andamento

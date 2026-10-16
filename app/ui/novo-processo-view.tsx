@@ -14,8 +14,9 @@ type Client = { id: number; legalName: string; aliases: string; country: string;
 type Product = { id: number; name: string; hsCode: string; rawMaterial: string; species: string; originType: string; salesUnit?: string };
 type Property = { carCode: string; name: string; city: string; supplier: string; areaHa: number };
 
-/** Item do pedido de venda quando há vários (medida e preço editáveis por item). */
-type OrderItemDraft = { label: string; volume: number; size: string; unitPrice: string };
+/** Linha da tabela "Itens do pedido" (vira os itens do pedido de venda ao salvar). */
+type OrderItemDraft = { species: string; quality: string; size: string; volume: string; unitPrice: string };
+const emptyItem = (species = "", quality = ""): OrderItemDraft => ({ species, quality, size: "", volume: "", unitPrice: "" });
 
 const EMPTY = {
   reference: "", product: "", hsCode: "", contractNumber: "", internalResponsible: "", responsibleEmail: "",
@@ -24,7 +25,7 @@ const EMPTY = {
   quantity: "", quantityUnit: "MT", volumeM3: "", netWeightKg: "", grossWeightKg: "", incoterm: "FOB", currency: "USD", commercialValue: "",
   transportMode: "Marítimo", shipmentDate: "", destinationCountry: "", portOfLoading: "", portOfDischarge: "", carrier: "", bookingNumber: "", billOfLadingNumber: "", containerNumbers: "", vesselVoyage: "",
   supplyChainNotes: "", paymentTerms: "", itemSize: "", unitPrice: "", purchaseUnitPrice: "", purchaseCurrency: "BRL", purchaseNote: "",
-  orderItems: [] as OrderItemDraft[],
+  orderItems: [emptyItem()] as OrderItemDraft[],
   logistics: logisticsDraft(parseLogisticsCosts("{}")) as LogisticsDraft,
 };
 type Form = typeof EMPTY;
@@ -53,7 +54,7 @@ function formFromOperation(operation: OperationRow): Form {
     propertyIds: Array.isArray(propertyIds) ? propertyIds.map(String) : [],
     supplyChainNotes: terms.notes, paymentTerms: terms.paymentTerms, itemSize: terms.sizes, unitPrice: terms.unitPrice ? String(terms.unitPrice) : "",
     purchaseUnitPrice: terms.purchaseUnitPrice ? String(terms.purchaseUnitPrice) : "", purchaseCurrency: terms.purchaseCurrency,
-    orderItems: terms.itemCount > 1 ? terms.items.map((item) => ({ label: [item.species, item.quality].filter(Boolean).join(" · "), volume: item.volume, size: item.size, unitPrice: item.unitPrice ? String(item.unitPrice) : "" })) : [],
+    orderItems: terms.items.map((item) => ({ species: item.species, quality: item.quality, size: item.size, volume: item.volume ? String(Math.round(item.volume * 1000) / 1000) : "", unitPrice: item.unitPrice ? String(Math.round(item.unitPrice * 10000) / 10000) : "" })),
     purchaseNote: terms.supplierItemCount > 1 ? "Pedido de compra já emitido com vários itens: o Financeiro do pedido usa os valores dele." : "",
     logistics: logisticsDraft(costs),
   } as Form;
@@ -211,7 +212,7 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
     setSaving(true);
     try {
       if (editing) { await saveEdit(); return; }
-      const result = await api<{ operation: { id: number; reference: string }; duplicate?: boolean }>("/api/operations", { method: "POST", body: JSON.stringify({ ...form, logisticsCosts: logisticsCosts(), terms: { paymentTerms: form.paymentTerms, size: form.itemSize, unitPrice: amount(form.unitPrice), purchaseUnitPrice: amount(form.purchaseUnitPrice), purchaseCurrency: form.purchaseCurrency } }) });
+      const result = await api<{ operation: { id: number; reference: string }; duplicate?: boolean }>("/api/operations", { method: "POST", body: JSON.stringify({ ...form, logisticsCosts: logisticsCosts(), terms: { paymentTerms: form.paymentTerms, items: itemsPayload(form.orderItems), purchaseUnitPrice: amount(form.purchaseUnitPrice), purchaseCurrency: form.purchaseCurrency } }) });
       if (result.duplicate) {
         setError(`Já existe um processo com a referência ${result.operation.reference}. Use outra referência ou deixe em branco.`);
         setStep(0);
@@ -238,9 +239,7 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
     if (JSON.stringify(logisticsCosts()) !== JSON.stringify(costsFromDraft(original.logistics))) { fields.logisticsCosts = logisticsCosts(); before.logisticsCostsJson = operation.logisticsCostsJson; }
     const terms: Record<string, unknown> = {};
     if (form.paymentTerms !== original.paymentTerms) terms.paymentTerms = form.paymentTerms;
-    if (form.itemSize !== original.itemSize) terms.size = form.itemSize;
-    if (form.unitPrice !== original.unitPrice) terms.unitPrice = amount(form.unitPrice);
-    if (JSON.stringify(form.orderItems) !== JSON.stringify(original.orderItems)) terms.items = form.orderItems.map((item) => ({ size: item.size, unitPrice: amount(item.unitPrice) }));
+    if (JSON.stringify(form.orderItems) !== JSON.stringify(original.orderItems)) terms.items = itemsPayload(form.orderItems);
     if (form.purchaseUnitPrice !== original.purchaseUnitPrice || form.purchaseCurrency !== original.purchaseCurrency) { terms.purchaseUnitPrice = amount(form.purchaseUnitPrice); terms.purchaseCurrency = form.purchaseCurrency; }
     if (form.supplyChainNotes !== original.supplyChainNotes) terms.notes = form.supplyChainNotes;
     if (Object.keys(terms).length) { fields.terms = terms; before.supplyChainNotes = operation.supplyChainNotes; }
@@ -381,11 +380,10 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
               {input("grossWeightKg", "Peso bruto (kg)", { type: "number" })}
               {select("incoterm", "Incoterm", ["FOB", "EXW", "FCA", "CFR", "CIF", "DAP", "DDP"])}
               {select("currency", "Moeda da venda", ["USD", "EUR", "GBP", "BRL"])}
-              {input("commercialValue", "Valor comercial", { type: "number", help: "Quantidade × preço de venda" })}
-              {form.orderItems.length < 2 && input("itemSize", "Medidas / especificação", { placeholder: "Ex.: 22 × 98 × 2440 mm" })}
+              {input("commercialValue", "Valor comercial", { type: "number", help: "Soma dos itens (volume × preço) ao salvar" })}
               {input("paymentTerms", "Condição de pagamento", { placeholder: "Ex.: 30% adiantado · 70% contra BL" })}
             </div>}
-            {step === 3 && form.orderItems.length > 1 && <OrderItemsEditor form={form} setForm={setForm} />}
+            {step === 3 && <OrderItemsEditor form={form} setForm={setForm} />}
             {step === 3 && <PricesAndMargin form={form} setForm={setForm} />}
 
             {step === 4 && <div className="et2-grid">
@@ -434,14 +432,14 @@ const two = (value: number) => value.toLocaleString("pt-BR", { minimumFractionDi
 const show = (value: number | null, currency: string) => value === null ? "—" : `${SYMBOL[currency] ?? currency} ${two(value)}`;
 
 function PricesAndMargin({ form, setForm }: { form: Form; setForm: (update: (current: Form) => Form) => void }) {
-  // Mesma base do pedido (lib/order-terms): volume em m³ quando informado; senão, a quantidade.
-  const quantity = numberInput(form.volumeM3) || numberInput(form.quantity);
-  const unit = numberInput(form.volumeM3) ? "m³" : form.quantityUnit || "unidade";
-  const salePrice = amount(form.unitPrice);
+  // Base por unidade: volume dos itens; senão o volume em m³; senão a quantidade (igual ao Financeiro do pedido).
+  const itemsVolume = form.orderItems.reduce((sum, item) => sum + amount(item.volume), 0);
+  const quantity = itemsVolume || numberInput(form.volumeM3) || numberInput(form.quantity);
+  const unit = itemsVolume || numberInput(form.volumeM3) ? "m³" : form.quantityUnit || "unidade";
   const purchasePrice = amount(form.purchaseUnitPrice);
   const rate = amount(form.logistics.exchangeRate);
-  const itemsTotal = form.orderItems.reduce((sum, item) => sum + item.volume * amount(item.unitPrice), 0);
-  const sale = { value: form.orderItems.length > 1 ? itemsTotal : salePrice && quantity ? salePrice * quantity : numberInput(form.commercialValue), currency: form.currency };
+  const itemsTotal = form.orderItems.reduce((sum, item) => sum + amount(item.volume) * amount(item.unitPrice), 0);
+  const sale = { value: itemsTotal || numberInput(form.commercialValue), currency: form.currency };
   const purchase = { value: purchasePrice * quantity, currency: form.purchaseCurrency };
   const margin = estimateMargin({ sale, purchase, logistics: amountsOf(logisticsByCurrency(costsFromDraft(form.logistics))), rate });
   const qty = quantity ? `${quantity.toLocaleString("pt-BR")} ${unit}` : "";
@@ -464,9 +462,7 @@ function PricesAndMargin({ form, setForm }: { form: Form; setForm: (update: (cur
       <div className="pm-prices">
         <div className="pm-prices-title">Preços para a margem</div>
         <div className="et2-grid">
-          {form.orderItems.length > 1
-            ? <div className="et2-field"><span>Preço de venda</span><div className="pm-multi">Vários itens · total {show(itemsTotal, form.currency)}</div><small>Preço de cada item na tabela “Itens do pedido” acima</small></div>
-            : field("unitPrice", "currency", "Preço indicativo de venda", salePrice * quantity)}
+          <div className="et2-field"><span>Preço indicativo de venda</span><div className="pm-multi">{itemsTotal ? `Itens · total ${show(itemsTotal, form.currency)}` : "Preencha os preços na tabela de itens"}</div><small>Preço de cada item na tabela “Itens do pedido” acima ({form.currency})</small></div>
           {field("purchaseUnitPrice", "purchaseCurrency", "Preço de compra (fornecedor)", purchasePrice * quantity)}
           <label className="et2-field">
             <span>Câmbio (R$ por US$ 1)</span>
@@ -482,19 +478,19 @@ function PricesAndMargin({ form, setForm }: { form: Form; setForm: (update: (cur
           <tbody>
             {margin.rows.map((row, index) => (
               <tr key={row.label}>
-                <td>{index === 0 ? `Venda${salePrice && qty ? ` (${qty} × ${show(salePrice, form.currency)})` : ""}` : index === 1 ? `Compra${purchasePrice && qty ? ` (${qty} × ${show(purchasePrice, form.purchaseCurrency)})` : ""}` : "Logística (prévia da seção 5)"}</td>
+                <td>{index === 0 ? `Venda${itemsTotal && form.orderItems.length ? ` (${form.orderItems.length} ${form.orderItems.length > 1 ? "itens" : "item"})` : ""}` : index === 1 ? `Compra${purchasePrice && qty ? ` (${qty} × ${show(purchasePrice, form.purchaseCurrency)})` : ""}` : "Logística (prévia da seção 5)"}</td>
                 <td className="num">{given(row.given)}</td>
                 <td className="num">{row.given.length ? show(row.usd, "USD") : "—"}</td>
                 <td className="num">{row.given.length ? show(row.brl, "BRL") : "—"}</td>
               </tr>
             ))}
-            <tr className="pm-total">
+            <tr className={`pm-total${(margin.usd ?? margin.brl ?? 0) < 0 ? " pm-negative" : ""}`}>
               <td>Margem (venda − compra − logística)</td>
               <td className="num">{margin.percent === null ? "—" : `${margin.percent.toFixed(1).replace(".", ",")}%`}</td>
               <td className="num">{show(margin.usd, "USD")}</td>
               <td className="num">{show(margin.brl, "BRL")}</td>
             </tr>
-            <tr className="pm-total">
+            <tr className={`pm-total${(margin.usd ?? margin.brl ?? 0) < 0 ? " pm-negative" : ""}`}>
               <td>Margem por {unit}{qty ? ` (÷ ${qty})` : ""}</td>
               <td className="num">{margin.percent === null ? "—" : `${margin.percent.toFixed(1).replace(".", ",")}%`}</td>
               <td className="num">{margin.usd === null || !quantity ? "—" : `${show(margin.usd / quantity, "USD")} / ${unit}`}</td>
@@ -508,29 +504,43 @@ function PricesAndMargin({ form, setForm }: { form: Form; setForm: (update: (cur
   );
 }
 
-// Pedido com vários itens: medida e preço de venda de cada item. Ao salvar, os itens do pedido
-// (emissão de documentos, valor comercial e Financeiro) passam a usar estes valores.
+// Itens do pedido: uma linha por item, com "+ Adicionar item". Ao salvar, viram os itens do pedido
+// de venda (emissão de documentos), o valor comercial (soma volume × preço) e a base do Financeiro.
+function itemsPayload(items: OrderItemDraft[]) {
+  return items.map((item) => ({ species: item.species, quality: item.quality, size: item.size, volume: amount(item.volume), unitPrice: amount(item.unitPrice) }));
+}
+
 function OrderItemsEditor({ form, setForm }: { form: Form; setForm: (update: (current: Form) => Form) => void }) {
   const setItem = (index: number, patch: Partial<OrderItemDraft>) => setForm((current) => ({ ...current, orderItems: current.orderItems.map((item, at) => at === index ? { ...item, ...patch } : item) }));
-  const total = form.orderItems.reduce((sum, item) => sum + item.volume * amount(item.unitPrice), 0);
+  const add = () => setForm((current) => ({ ...current, orderItems: [...current.orderItems, emptyItem(current.orderItems.at(-1)?.species || current.species, current.orderItems.at(-1)?.quality || current.product)] }));
+  const remove = (index: number) => setForm((current) => ({ ...current, orderItems: current.orderItems.length > 1 ? current.orderItems.filter((_, at) => at !== index) : [emptyItem()] }));
+  const total = form.orderItems.reduce((sum, item) => sum + amount(item.volume) * amount(item.unitPrice), 0);
+  const volume = form.orderItems.reduce((sum, item) => sum + amount(item.volume), 0);
+  const cell = (index: number, key: keyof OrderItemDraft, label: string, placeholder: string, numeric = false) => (
+    <input className="pd-input" style={numeric ? { textAlign: "right" } : undefined} inputMode={numeric ? "decimal" : undefined} aria-label={`${label} do item ${index + 1}`} placeholder={placeholder}
+      value={form.orderItems[index][key]} onChange={(event) => setItem(index, { [key]: event.target.value })} />
+  );
   return (
     <div className="pm-margin">
       <div className="pm-margin-head">Itens do pedido · {form.orderItems.length}</div>
-      <table className="pm-table">
-        <thead><tr><th>Item</th><th>Medidas / especificação</th><th className="num">Volume</th><th className="num">Preço de venda ({SYMBOL[form.currency] ?? form.currency})</th><th className="num">Total</th></tr></thead>
+      <table className="pm-table pm-items">
+        <thead><tr><th>Espécie</th><th>Produto / qualidade</th><th>Medidas</th><th className="num">Volume (m³)</th><th className="num">Preço ({SYMBOL[form.currency] ?? form.currency}/m³)</th><th className="num">Total</th><th><span className="sr-only">Remover</span></th></tr></thead>
         <tbody>
           {form.orderItems.map((item, index) => (
             <tr key={index}>
-              <td>{item.label || `Item ${index + 1}`}</td>
-              <td><input className="pd-input" aria-label={`Medidas do item ${index + 1}`} value={item.size} onChange={(event) => setItem(index, { size: event.target.value })} /></td>
-              <td className="num">{item.volume.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</td>
-              <td className="num"><input className="pd-input" style={{ textAlign: "right", maxWidth: 140 }} inputMode="decimal" aria-label={`Preço do item ${index + 1}`} value={item.unitPrice} onChange={(event) => setItem(index, { unitPrice: event.target.value })} /></td>
-              <td className="num">{show(item.volume * amount(item.unitPrice), form.currency)}</td>
+              <td>{cell(index, "species", "Espécie", "Ex.: Pinus taeda")}</td>
+              <td>{cell(index, "quality", "Produto", "Ex.: S4S A grade")}</td>
+              <td>{cell(index, "size", "Medidas", "Ex.: 18 × 89 × 2440")}</td>
+              <td className="num">{cell(index, "volume", "Volume", "0,000", true)}</td>
+              <td className="num">{cell(index, "unitPrice", "Preço", "0,00", true)}</td>
+              <td className="num">{show(amount(item.volume) * amount(item.unitPrice), form.currency)}</td>
+              <td style={{ textAlign: "center" }}><button type="button" className="lc-remove" aria-label={`Remover item ${index + 1}`} onClick={() => remove(index)}>×</button></td>
             </tr>
           ))}
-          <tr className="pm-total"><td colSpan={4}>Total dos itens (vira o valor comercial ao salvar)</td><td className="num">{show(total, form.currency)}</td></tr>
+          <tr className="pm-total"><td colSpan={3}>Total dos itens (vira o valor comercial ao salvar)</td><td className="num">{volume.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</td><td /><td className="num">{show(total, form.currency)}</td><td /></tr>
         </tbody>
       </table>
+      <div className="lc-add-row"><button type="button" className="lc-add" onClick={add}>+ Adicionar item</button></div>
     </div>
   );
 }

@@ -27,6 +27,17 @@ function message(error: unknown) {
   return "Erro inesperado no servidor ao salvar a operação.";
 }
 
+/** Itens do pedido enviados pela tabela do processo (espécie, qualidade, medidas, volume, preço). */
+function orderItemChanges(items: unknown[]) {
+  return items.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object").slice(0, 200).map((item) => ({
+    ...(item.species !== undefined ? { species: String(item.species) } : {}),
+    ...(item.quality !== undefined ? { quality: String(item.quality) } : {}),
+    ...(item.size !== undefined ? { size: String(item.size) } : {}),
+    ...(item.volume !== undefined ? { volume: numeric(item.volume) } : {}),
+    ...(item.unitPrice !== undefined ? { unitPrice: numeric(item.unitPrice) } : {}),
+  }));
+}
+
 function numeric(value: unknown) {
   const number = Number(value ?? 0);
   return Number.isFinite(number) ? number : 0;
@@ -395,15 +406,17 @@ export async function POST(request: Request) {
     const master = await safeMasterLinks(db, body, context.organizationId);
     const [operation] = await db.insert(operations).values({ ...values(body, supplier, master), ...logisticsCostsField(body), organizationId: context.organizationId }).returning();
     const terms = body.terms && typeof body.terms === "object" ? body.terms as Record<string, unknown> : null;
-    if (terms && (String(terms.paymentTerms ?? "").trim() || String(terms.size ?? "").trim() || numeric(terms.unitPrice) || numeric(terms.purchaseUnitPrice))) {
+    const createItems = terms && Array.isArray(terms.items) ? orderItemChanges(terms.items) : [];
+    if (terms && (String(terms.paymentTerms ?? "").trim() || String(terms.size ?? "").trim() || numeric(terms.unitPrice) || numeric(terms.purchaseUnitPrice) || createItems.length)) {
       const applied = applyOrderTerms(operation, {
         paymentTerms: String(terms.paymentTerms ?? ""),
         ...(String(terms.size ?? "").trim() ? { size: String(terms.size) } : {}),
         ...(numeric(terms.unitPrice) ? { unitPrice: numeric(terms.unitPrice) } : {}),
         ...(numeric(terms.purchaseUnitPrice) ? { purchaseUnitPrice: numeric(terms.purchaseUnitPrice), purchaseCurrency: String(terms.purchaseCurrency ?? "BRL") } : {}),
+        ...(createItems.length ? { items: createItems } : {}),
       });
       if (!applied.error) {
-        await db.update(operations).set({ supplyChainNotes: applied.supplyChainNotes, ...(applied.commercialValue !== undefined && !numeric(body.commercialValue) ? { commercialValue: applied.commercialValue } : {}) })
+        await db.update(operations).set({ supplyChainNotes: applied.supplyChainNotes, ...(applied.commercialValue !== undefined && (createItems.length || !numeric(body.commercialValue)) ? { commercialValue: applied.commercialValue } : {}) })
           .where(and(eq(operations.id, operation.id), eq(operations.organizationId, context.organizationId)));
       }
     }
@@ -497,7 +510,7 @@ export async function PATCH(request: Request) {
         if (terms.unitPrice !== undefined) termChanges.unitPrice = numeric(terms.unitPrice);
         if (terms.purchaseUnitPrice !== undefined) termChanges.purchaseUnitPrice = numeric(terms.purchaseUnitPrice);
         if (terms.purchaseCurrency !== undefined) termChanges.purchaseCurrency = String(terms.purchaseCurrency);
-        if (Array.isArray(terms.items)) termChanges.items = (terms.items as Array<Record<string, unknown>>).map((item) => ({ ...(item.size !== undefined ? { size: String(item.size) } : {}), ...(item.unitPrice !== undefined ? { unitPrice: numeric(item.unitPrice) } : {}) }));
+        if (Array.isArray(terms.items)) termChanges.items = orderItemChanges(terms.items);
         const applied = applyOrderTerms({ ...current, quantity: Number(changes.quantity ?? current.quantity), volumeM3: Number(changes.volumeM3 ?? current.volumeM3) }, termChanges);
         if (applied.error) return Response.json({ error: applied.error }, { status: 400 });
         changes.supplyChainNotes = applied.supplyChainNotes;
