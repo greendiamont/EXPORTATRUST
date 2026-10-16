@@ -576,7 +576,7 @@ export type InitialAppData = {
   properties: Array<Record<string, unknown>>;
   actions: ExceptionActionRecord[];
   documents: DocumentRecord[];
-  security: { organizationId: number; organizationName: string; organizationSlug: string; userId: number; email: string; fullName: string; role: "administrador" | "analista" | "fornecedor" | "auditor" | "cliente"; preview: boolean };
+  security: { organizationId: number; organizationName: string; organizationSlug: string; userId: number; email: string; fullName: string; role: "administrador" | "analista" | "fornecedor" | "auditor" | "cliente" | "convidado"; preview: boolean };
   loadFailed?: boolean;
 };
 

@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { ensureBaseTables, getDb } from "../db";
 import { appUsers, auditLogs, organizationMemberships, organizations } from "../db/schema";
 
-export const APP_ROLES = ["administrador", "analista", "fornecedor", "auditor", "cliente"] as const;
+export const APP_ROLES = ["administrador", "analista", "fornecedor", "auditor", "cliente", "convidado"] as const;
 export type AppRole = typeof APP_ROLES[number];
 
 export type SecurityContext = {
@@ -27,6 +27,9 @@ const rolePermissions: Record<AppRole, string[]> = {
   fornecedor: ["read", "write_supplier"],
   auditor: ["read", "audit", "export"],
   cliente: ["read", "write", "write_supplier", "export"],
+  // Colaborador convidado para processos específicos (servidor Railway restringe as rotas;
+  // as rotas liberadas conferem o processo com assertOperationAccess).
+  convidado: ["read", "write"],
 };
 
 function decodeName(value: string | null, encoding: string | null) {
@@ -168,4 +171,19 @@ export function tenantWhere<T>(column: T, organizationId: number) {
 
 export function tenantAnd<T>(column: T, organizationId: number, condition: ReturnType<typeof eq>) {
   return and(eq(column as never, organizationId), condition);
+}
+
+/** Processos liberados para o convidado (cabeçalho confiável injetado pelo servidor Railway). */
+export async function guestOperationIds(context: SecurityContext): Promise<number[] | null> {
+  if (context.role !== "convidado") return null;
+  const value = (await headers()).get("x-exportatrust-authenticated-guest-operations") ?? "";
+  return value.split(",").map(Number).filter((id) => Number.isSafeInteger(id) && id > 0);
+}
+
+/** Convidado só acessa os processos para os quais foi convidado; equipe passa direto. */
+export async function assertOperationAccess(context: SecurityContext, operationId: number) {
+  const allowed = await guestOperationIds(context);
+  if (allowed && !allowed.includes(Number(operationId))) {
+    throw new Response(JSON.stringify({ error: "Acesso de convidado: somente os processos para os quais você foi convidado." }), { status: 403, headers: { "content-type": "application/json" } });
+  }
 }

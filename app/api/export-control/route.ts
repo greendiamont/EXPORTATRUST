@@ -3,7 +3,7 @@ import { ensureBaseTables, getDb } from "../../../db";
 import { clientNotifications, countryComplianceChecks, exportControlSettings, exportMilestones, importerClients, operationDocuments, operationTasks, operations, shipmentTrackingEvents, suppliers } from "../../../db/schema";
 import { addDays, canApproveShipment, countryRequirements, EXPORT_ORDER_MILESTONES, isEudrRequired, milestoneEmail, requirementMatches } from "../../../lib/export-control";
 import { gmailDeliveryConfiguration, sendGmailEmail } from "../../../lib/gmail-integration";
-import { audit, requireSecurityContext } from "../../../lib/security";
+import { assertOperationAccess, audit, guestOperationIds, requireSecurityContext } from "../../../lib/security";
 import { encodeTrackingLocation, freeTrackingGuide, shipsGoConfiguration, trackOceanShipment } from "../../../lib/shipsgo";
 import { buildDocx, docxParagraph, docxTable, docxTwoColumnBlock, safeDocxFileName } from "../../../lib/simple-docx";
 
@@ -571,7 +571,10 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const operationId = Number(url.searchParams.get("operationId"));
     if (!operationId) return Response.json({ error: "Processo inválido." }, { status: 400 });
+    await assertOperationAccess(context, operationId);
+    const guest = Boolean(await guestOperationIds(context));
     const document = String(url.searchParams.get("document") ?? "");
+    if (document && guest) return Response.json({ error: "Acesso de convidado: documentos comerciais não disponíveis." }, { status: 403 });
     if (document) {
       if (!["sales-order", "purchase-invoice", "supplier-po", "packing-list"].includes(document)) return Response.json({ error: "Documento inválido." }, { status: 400 });
       const db = await getDb();
@@ -597,11 +600,19 @@ export async function GET(request: Request) {
         headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
       });
     }
-    return Response.json(await snapshot(context, operationId, context.organizationId));
+    const data = await snapshot(context, operationId, context.organizationId);
+    return Response.json(guest ? guestSnapshot(data) : data);
   } catch (error) {
     if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
+}
+
+/** Convidado: o mesmo acompanhamento, sem valores comerciais (preços, compra, logística, notificações ao cliente). */
+function guestSnapshot<T extends { operation: Record<string, unknown>; orderDetails: unknown; notifications: unknown }>(data: T) {
+  const { commercialValue: _value, supplyChainNotes: _notes, logisticsCostsJson: _costs, ...operation } = data.operation;
+  void _value; void _notes; void _costs;
+  return { ...data, operation: { ...operation, commercialValue: 0, supplyChainNotes: "", logisticsCostsJson: "{}" }, orderDetails: { items: [], supplierOrder: { items: [] }, packingList: { items: [] }, paymentTerms: "", notes: "" }, notifications: [], viewer: { guest: true } };
 }
 
 export async function POST(request: Request) {

@@ -738,3 +738,18 @@
 - **O que mudou:** lista de Pedidos ganha botão pequeno "Cancelar" (ou "Reabrir") depois da coluna EUDR, com confirmação. Pedido cancelado fica no fim da lista, em vermelho, com o selo "Cancelado"; sai das contagens por fase, das pendências e dos próximos embarques; filtro "Cancelados (n)". No Painel, cancelados vão para o fim da tabela de processos, em vermelho. A marca fica em `supply_chain_notes.cancelled = {at, by, previousStatus}` (a situação do processo é reescrita a cada etapa); `operations.status` vira "Cancelado" e volta ao anterior ao reabrir. `PATCH /api/operations` com `action: "cancel" | "reopen"`, auditado.
 - **Testes:** tsc (sem erros novos), build Railway, Playwright local (cancelar → fim da lista em vermelho, filtro Cancelados (1), contagem da fase Pedido 9→8; reabrir → volta).
 - **Status:** em andamento
+
+## 2026-10-16 — Claude — Convidar colaborador para o processo (acesso só aos processos convidados)
+
+- **ID:** CHG-20261016-022
+- **Branch:** `claude/convidar-colaborador`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16):** convite por e-mail para um colaborador trabalhar junto no processo, no painel de acompanhamento; acesso escolhido: "Só os processos convidados"; "o convidado não pode ver nada de margem [...] ele só pode ver o que é operacional". Protótipo `docs/redesign/prototipo/ConvidarColaborador.dc.html`.
+- **O que mudou:**
+  - Pedido → "Atividade da equipe": "Participantes" (equipe que segue + convidados, com situação) e "+ Convidar" (e-mail, nome, função, mensagem; acesso fixo "Só este processo"). Remover participante (×). Componente `app/ui/collaborators-panel.tsx`.
+  - Servidor (`server/railway/collaborators.mjs`, rotas `/__auth/collaborators`): só administrador/analista convidam; cria usuário + perfil `convidado` (quem já é da equipe mantém o perfil), registra em `operation_collaborators` e gera link para criar a senha (72 h). Envia e-mail pelo Resend quando `RESEND_API_KEY`/`EMAIL_FROM` existirem; senão a tela mostra o link para copiar. Remover o último processo de um convidado desativa o acesso dele.
+  - Trava do convidado no servidor (`guestGate`): só `/pedidos/<id>` dos processos liberados e as APIs operacionais deles (acompanhamento, documentos, atividade); todo o resto 403/redireciona. No app (`lib/security.ts` → `assertOperationAccess`), as rotas liberadas conferem o processo de novo; o acompanhamento sai sem valor comercial, itens, preços, logística e notificações; documentos comerciais da fase Pedido (pedido de venda/compra, contrato, proforma) ficam ocultos; atividade só operacional. Tela do convidado sem Editar, Concluir etapa, envio ao cliente, emissão, Shipment Advice, Financeiro, documentos do pedido e "Todos os dados"; tarefas só leitura.
+- **Dados/migration:** tabela nova `operation_collaborators` (criada pelo servidor na inicialização, Postgres). Perfil `convidado` adicionado a `APP_ROLES`.
+- **Testes:** tsc (sem erros novos), 98 testes unitários (2 novos da trava), build Railway, Playwright local (convite → link → senha → convidado cai no processo; sem Financeiro/valores/Editar; APIs de outros processos, overview, cadastros e documentos comerciais = 403; snapshot sem valores; remoção corta o acesso).
+- **Status:** em andamento
