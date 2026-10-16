@@ -615,7 +615,32 @@ function guestSnapshot<T extends { operation: Record<string, unknown>; orderDeta
   return { ...data, operation: { ...operation, commercialValue: 0, supplyChainNotes: "", logisticsCostsJson: "{}" }, orderDetails: { items: [], supplierOrder: { items: [] }, packingList: { items: [] }, paymentTerms: "", notes: "" }, notifications: [], viewer: { guest: true } };
 }
 
+// Convidado: acesso total às fases (etapas e tarefas), nunca à parte comercial (pedido, preços, envio ao cliente).
+const GUEST_CONTROL_ACTIONS = new Set(["milestone", "operation-task-create", "operation-task-update", "operation-task-delete", "operation-task-complete", "operation-task-toggle-scheduled", "operation-task-delay-note"]);
+
 export async function POST(request: Request) {
+  let guest = false;
+  try {
+    const context = await requireSecurityContext("write");
+    if (await guestOperationIds(context)) {
+      const body = await request.clone().json().catch(() => ({})) as Record<string, unknown>;
+      if (!GUEST_CONTROL_ACTIONS.has(String(body.action ?? ""))) return Response.json({ error: "Acesso de convidado: ação não disponível." }, { status: 403 });
+      await assertOperationAccess(context, Number(body.operationId));
+      guest = true;
+    }
+  } catch (error) {
+    if (error instanceof Response) return error;
+    return Response.json({ error: errorMessage(error) }, { status: 500 });
+  }
+  const response = await handleControlPost(request);
+  if (!guest) return response;
+  // Resposta ao convidado sem dados comerciais (mesmo filtro do GET).
+  const data = await response.json().catch(() => null) as Record<string, unknown> | null;
+  const safe = data && typeof data === "object" && "operation" in data && "orderDetails" in data ? guestSnapshot(data as never) : data;
+  return Response.json(safe, { status: response.status });
+}
+
+async function handleControlPost(request: Request) {
   try {
     const context = await requireSecurityContext("write");
     await ensureBaseTables();
@@ -842,6 +867,15 @@ export async function POST(request: Request) {
         updatedAt: now.toISOString(),
       }).where(and(eq(operationTasks.id, task.id), eq(operationTasks.organizationId, context.organizationId)));
       await audit(context, "OPERATION_TASK_UPDATED", "operation", String(operationId), { taskId, status });
+      return Response.json(await snapshot(context, operationId, context.organizationId, true));
+    }
+
+    if (action === "operation-task-delete") {
+      const taskId = Number(body.taskId);
+      const [task] = await db.select().from(operationTasks).where(and(eq(operationTasks.id, taskId), eq(operationTasks.operationId, operationId), eq(operationTasks.organizationId, context.organizationId))).limit(1);
+      if (!task) return Response.json({ error: "Tarefa não encontrada." }, { status: 404 });
+      await db.delete(operationTasks).where(and(eq(operationTasks.id, task.id), eq(operationTasks.organizationId, context.organizationId)));
+      await audit(context, "OPERATION_TASK_DELETED", "operation", String(operationId), { taskId, description: task.description });
       return Response.json(await snapshot(context, operationId, context.organizationId, true));
     }
 

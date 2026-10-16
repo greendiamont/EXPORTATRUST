@@ -177,8 +177,10 @@ export function guestGate(method, url, operations) {
   const deny = { status: 403, body: JSON.stringify({ error: "Acesso de convidado: somente os processos para os quais você foi convidado." }), headers: json };
   if (path.startsWith("/api/")) {
     if (path === "/api/export-control" && method === "GET" && ids.has(id) && !url.searchParams.has("document")) return null;
+    if (path === "/api/export-control" && method === "POST") return null; // a rota aceita só etapas e tarefas do processo liberado
     if (path === "/api/documents" && method === "GET" && (ids.has(id) || url.searchParams.has("documentId"))) return null;
     if (path === "/api/documents" && method === "POST") return null; // a rota confere o processo do formulário
+    if (path === "/api/documents" && method === "DELETE") return null; // a rota confere o processo do arquivo
     if (path === "/api/operation-activity" && method === "GET" && ids.has(id)) return null;
     if (path === "/api/operation-activity" && method === "POST") return null; // a rota confere o processo do corpo
     return deny;

@@ -360,8 +360,8 @@ export default function PedidoView({ operationId }: { operationId: number }) {
             {!guest && <Link className="pd-btn" href={`/novo-processo?processo=${operationId}`} title="Editar o processo: referência, empresas, produto, preços e logística">Editar</Link>}
             <button className={`pd-btn${meFollowing ? " pd-btn--on" : ""}`} aria-pressed={meFollowing} disabled={busy} onClick={() => run(() => postActivity({ operationId, action: "follow", follow: !meFollowing }))}>{meFollowing ? "✓ Seguindo" : "Seguir pedido"}</button>
             {!guest && <button className="pd-btn" onClick={mailUpdate}>Enviar atualização ao cliente</button>}
-            {!guest && <button className="pd-btn pd-btn--dark" disabled={busy || !openStep} title={openStep ? `Concluir “${openStep.title}”` : "Nenhuma etapa aberta"}
-              onClick={() => { if (openStep && window.confirm(`Concluir a etapa “${openStep.title}”? O cliente é avisado conforme as configurações do pedido.`)) toggleMilestone(openStep); }}>Concluir etapa</button>}
+            <button className="pd-btn pd-btn--dark" disabled={busy || !openStep} title={openStep ? `Concluir “${openStep.title}”` : "Nenhuma etapa aberta"}
+              onClick={() => { if (openStep && window.confirm(`Concluir a etapa “${openStep.title}”? O cliente é avisado conforme as configurações do pedido.`)) toggleMilestone(openStep); }}>Concluir etapa</button>
           </div>
         </div>
         <dl className="pd-facts">
@@ -427,7 +427,7 @@ export default function PedidoView({ operationId }: { operationId: number }) {
               <span className="hint">{phaseInfo[selected].done} de {phaseInfo[selected].total} etapas concluídas</span>
             </div>
             <table className="pd-table">
-              <thead><tr><th>Tarefa</th><th>Responsável</th><th>Prazo</th><th>Situação</th><th><span className="sr-only">Comentários</span></th></tr></thead>
+              <thead><tr><th>Tarefa</th><th>Responsável</th><th>Prazo</th><th>Situação</th><th><span className="sr-only">Comentários</span></th><th><span className="sr-only">Excluir</span></th></tr></thead>
               <tbody>
                 {phaseMilestones.map((milestone) => {
                   const done = isClosedStatus(milestone.status);
@@ -437,7 +437,7 @@ export default function PedidoView({ operationId }: { operationId: number }) {
                     <tr key={milestone.code}>
                       <td>
                         <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                          <button className="pd-check" aria-pressed={done} aria-label={`Marcar como concluída: ${milestone.title}`} disabled={busy || guest} onClick={() => toggleMilestone(milestone)}>{done ? "✓" : ""}</button>
+                          <button className="pd-check" aria-pressed={done} aria-label={`Marcar como concluída: ${milestone.title}`} disabled={busy} onClick={() => toggleMilestone(milestone)}>{done ? "✓" : ""}</button>
                           <button className="pd-link" onClick={() => setTarget({ kind: "m", code: milestone.code })}>
                             <span className="t" style={{ color: done ? "var(--et2-muted)" : undefined }}>{milestone.title}</span>
                             <span className="d">{milestone.nextAction || "Etapa do pedido"}</span>
@@ -446,8 +446,11 @@ export default function PedidoView({ operationId }: { operationId: number }) {
                       </td>
                       <td style={{ whiteSpace: "nowrap" }}>{milestone.responsibleName ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Avatar name={milestone.responsibleName} email={milestone.responsibleEmail} />{milestone.responsibleName}</span> : <span className="pd-sub">Sem responsável</span>}</td>
                       <td style={{ whiteSpace: "nowrap", color: milestone.status === "Bloqueado" || late ? "var(--et2-bad)" : "var(--et2-ink-2)", fontWeight: milestone.status === "Bloqueado" ? 600 : undefined }}>{formatDate(milestone.dueDate) || "—"}</td>
-                      <td style={{ whiteSpace: "nowrap" }}><span className={`pd-badge pd-badge--${TONE[milestone.status] ?? "todo"}`}>{milestone.status}</span></td>
+                      <td style={{ whiteSpace: "nowrap" }}><span className={`pd-badge pd-badge--${TONE[milestone.status] ?? "todo"}`}>{milestone.status === "Suspenso" ? "Não se aplica" : milestone.status}</span></td>
                       <td style={{ whiteSpace: "nowrap" }}><button className="pd-btn pd-btn--xs" onClick={() => setTarget({ kind: "m", code: milestone.code })}>{count ? `${count} coment.` : "Comentar"}</button></td>
+                      <td>{milestone.status === "Suspenso"
+                        ? <button className="pd-row-del" title="Restaurar esta etapa" aria-label={`Restaurar: ${milestone.title}`} disabled={busy} onClick={() => run(() => saveMilestone(milestone, { status: "Pendente" }))}>↺</button>
+                        : <button className="pd-row-del" title="Esta etapa não se aplica a este pedido" aria-label={`Excluir: ${milestone.title}`} disabled={busy} onClick={() => { if (window.confirm(`Excluir a etapa “${milestone.title}” deste pedido? Ela fica marcada como “Não se aplica” (não trava a fase) e pode ser restaurada depois.`)) run(() => saveMilestone(milestone, { status: "Suspenso" })); }}>×</button>}</td>
                     </tr>
                   );
                 })}
@@ -459,7 +462,7 @@ export default function PedidoView({ operationId }: { operationId: number }) {
                     <tr key={`t${task.id}`}>
                       <td>
                         <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                          <button className="pd-check" aria-pressed={done} aria-label={`Concluir: ${task.description}`} disabled={busy || guest} onClick={() => toggleTask(task)}>{done ? "✓" : ""}</button>
+                          <button className="pd-check" aria-pressed={done} aria-label={`Concluir: ${task.description}`} disabled={busy} onClick={() => toggleTask(task)}>{done ? "✓" : ""}</button>
                           <button className="pd-link" onClick={() => setTarget({ kind: "t", id: task.id })}>
                             <span className="t" style={{ color: done ? "var(--et2-muted)" : undefined, textDecoration: done ? "line-through" : undefined }}>{task.description}</span>
                             <span className="d">{task.note || "Tarefa"}</span>
@@ -470,10 +473,11 @@ export default function PedidoView({ operationId }: { operationId: number }) {
                       <td style={{ whiteSpace: "nowrap", color: late ? "var(--et2-bad)" : "var(--et2-ink-2)" }}>{formatDate(task.dueDate) || "—"}</td>
                       <td style={{ whiteSpace: "nowrap" }}><span className={`pd-badge pd-badge--${TONE[task.status] ?? "todo"}`}>{task.status === "Pendente" ? "A fazer" : task.status}</span></td>
                       <td style={{ whiteSpace: "nowrap" }}><button className="pd-btn pd-btn--xs" onClick={() => setTarget({ kind: "t", id: task.id })}>{count ? `${count} coment.` : "Comentar"}</button></td>
+                      <td><button className="pd-row-del" title="Excluir tarefa" aria-label={`Excluir tarefa: ${task.description}`} disabled={busy} onClick={() => { if (window.confirm(`Excluir a tarefa “${task.description}”?`)) run(() => postControl({ action: "operation-task-delete", operationId, taskId: task.id })); }}>×</button></td>
                     </tr>
                   );
                 })}
-                {!guest && <AddTask disabled={busy} onAdd={(description) => run(() => postControl({ action: "operation-task-create", operationId, description }))} />}
+                <AddTask disabled={busy} onAdd={(description) => run(() => postControl({ action: "operation-task-create", operationId, description }))} />
               </tbody>
             </table>
           </section>
@@ -483,11 +487,11 @@ export default function PedidoView({ operationId }: { operationId: number }) {
               <h2 id="arquivos">Arquivos desta fase <span style={{ fontWeight: 400, color: "var(--et2-muted)" }}>· {phaseDocs.length}</span></h2>
               <UploadButton operationId={operationId} category={PHASE_UPLOAD_CATEGORY[selected]} onDone={refreshAll} onError={setError} />
             </div>
-            <FileTable docs={phaseDocs} onView={setPreview} onDelete={guest ? undefined : deleteDoc} empty="Nenhum arquivo nesta fase ainda." />
+            <FileTable docs={phaseDocs} onView={setPreview} onDelete={deleteDoc} empty="Nenhum arquivo nesta fase ainda." />
             {otherDocs.length > 0 && (
               <details className="pd-more">
                 <summary>Outros arquivos do pedido <span style={{ fontWeight: 400, color: "var(--et2-muted)" }}>· {otherDocs.length}</span></summary>
-                <FileTable docs={otherDocs} onView={setPreview} onDelete={guest ? undefined : deleteDoc} empty="" />
+                <FileTable docs={otherDocs} onView={setPreview} onDelete={deleteDoc} empty="" />
               </details>
             )}
           </section>
@@ -866,7 +870,7 @@ function AddTask({ disabled, onAdd }: { disabled: boolean; onAdd: (description: 
   const [value, setValue] = useState("");
   return (
     <tr>
-      <td colSpan={5}>
+      <td colSpan={6}>
         <form style={{ display: "flex", gap: 8 }} onSubmit={(event) => { event.preventDefault(); if (value.trim()) { onAdd(value.trim()); setValue(""); } }}>
           <input className="pd-input" placeholder="+ Adicionar tarefa nesta fase" aria-label="Nova tarefa" value={value} onChange={(event) => setValue(event.target.value)} />
           <button className="pd-btn pd-btn--sm" disabled={disabled || !value.trim()}>Adicionar</button>
