@@ -4,7 +4,7 @@ import { exportControlSettings, exportMilestones, importerClients, industrialPla
 import { addDays, EXPORT_ORDER_MILESTONES } from "../../../lib/export-control";
 import { normalizeMasterName } from "../../../lib/master-data";
 import { sanitizeLogisticsCosts } from "../../../lib/logistics-costs";
-import { applyOrderTerms, type OrderTermsChanges } from "../../../lib/order-terms";
+import { applyOrderTerms, setOrderCancelled, type OrderTermsChanges } from "../../../lib/order-terms";
 import { calculateReadiness, hasPolygonGeometry } from "../../../lib/readiness";
 import { audit, requireSecurityContext } from "../../../lib/security";
 
@@ -472,6 +472,15 @@ export async function PATCH(request: Request) {
     const id = Number(body.id);
     if (!id) return Response.json({ error: "Processo inválido." }, { status: 400 });
     const db = await getDb();
+    // Cancelar / reabrir pedido (lista de Pedidos): a marca fica no JSON do pedido.
+    if (body.action === "cancel" || body.action === "reopen") {
+      const [current] = await db.select().from(operations).where(and(eq(operations.id, id), eq(operations.organizationId, context.organizationId))).limit(1);
+      if (!current) return Response.json({ error: "Processo não encontrado." }, { status: 404 });
+      const change = setOrderCancelled(current, body.action === "cancel", context.email);
+      const [operation] = await db.update(operations).set(change).where(and(eq(operations.id, id), eq(operations.organizationId, context.organizationId))).returning();
+      await audit(context, body.action === "cancel" ? "OPERATION_CANCELLED" : "OPERATION_REOPENED", "operation", String(id), { reference: current.reference });
+      return Response.json({ operation });
+    }
     if (Array.isArray(body.propertyIds)) {
       const requested = [...new Set(body.propertyIds.map(String).map((value) => value.trim()).filter(Boolean))];
       const existingProperties = await db.select({ carCode: ruralProperties.carCode }).from(ruralProperties).where(eq(ruralProperties.organizationId, context.organizationId)).limit(5000);

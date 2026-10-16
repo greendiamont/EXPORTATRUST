@@ -727,3 +727,14 @@
 - **O que mudou:** seção 4 do Novo processo / Editar: "Como ganhamos neste processo: Margem (compra e venda) | Comissão". Em comissão, campo "Comissão (%)" no lugar do preço de compra e quadro "Comissão estimada do processo" (valor do pedido, comissão e comissão por m³, em US$ e R$ pelo câmbio). Card Financeiro do pedido mostra "Comissão %" e "Ganho (comissão)" com valor por m³. Gravado em `supply_chain_notes.remuneration = {mode, percent}` via `lib/order-terms.ts`; cálculo em `lib/margin.ts` (`estimateCommission`).
 - **Testes:** tsc (sem erros novos), 96 testes unitários, build Railway, Playwright local (3,5% sobre US$ 61.700 → US$ 2.159,50 / R$ 11.661,30; US$ 16,30/m³; Financeiro igual).
 - **Status:** em andamento
+
+## 2026-10-16 — Claude — Cancelar pedido
+
+- **ID:** CHG-20261016-021
+- **Branch:** `claude/cancelar-pedido`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16):** "um botão [...] do lado de cada pedido, lá na lista de processos, do lado do EUDR, [...] cancelar pedido [...] pode colocar no final [...] como cancelado e colocar ele em vermelho" e "um nome mais curto também para o botão não ficar muito grande".
+- **O que mudou:** lista de Pedidos ganha botão pequeno "Cancelar" (ou "Reabrir") depois da coluna EUDR, com confirmação. Pedido cancelado fica no fim da lista, em vermelho, com o selo "Cancelado"; sai das contagens por fase, das pendências e dos próximos embarques; filtro "Cancelados (n)". No Painel, cancelados vão para o fim da tabela de processos, em vermelho. A marca fica em `supply_chain_notes.cancelled = {at, by, previousStatus}` (a situação do processo é reescrita a cada etapa); `operations.status` vira "Cancelado" e volta ao anterior ao reabrir. `PATCH /api/operations` com `action: "cancel" | "reopen"`, auditado.
+- **Testes:** tsc (sem erros novos), build Railway, Playwright local (cancelar → fim da lista em vermelho, filtro Cancelados (1), contagem da fase Pedido 9→8; reabrir → volta).
+- **Status:** em andamento

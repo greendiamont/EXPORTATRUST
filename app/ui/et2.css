@@ -377,3 +377,9 @@ a.et2-btn--primary, a.et2-btn--ok { color: #fff; }
 .pm-table .pm-negative .num { color: #b91c1c; }
 .pm-mode { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin-bottom: 12px; font-size: 13px; color: #374151; }
 .pm-mode label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+
+/* Pedidos cancelados: fim da lista, em vermelho */
+.et2-table tr.pd-cancelled td { color: #b91c1c; background: #fef2f2; }
+.et2-table tr.pd-cancelled td a { color: #b91c1c; text-decoration: line-through; }
+.et2-table tr.pd-cancelled .et2-sub { color: #dc2626; }
+.pd-cancel-btn { min-height: 26px !important; padding: 0 8px !important; font-size: 12px !important; color: #b91c1c; }
