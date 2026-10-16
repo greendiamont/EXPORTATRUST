@@ -25,6 +25,12 @@ export type OverviewOperation = {
   eudrRequired: boolean;
   readiness: number;
   createdAt: string;
+  contractNumber: string;
+  exporterName: string;
+  incoterm: string;
+  portOfLoading: string;
+  portOfDischarge: string;
+  terms: { paymentTerms: string; notes: string; sizes: string; unitPrice: number | null; itemCount: number };
 };
 
 export type OverviewPending = {

@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { api, formatDate, normalize, processHref, relativeDue } from "./format";
+import { api, formatDate, money, normalize, processHref, relativeDue } from "./format";
 import type { Overview } from "./overview-types";
 
 export default function PainelView({ userName, userEmail }: { userName: string; userEmail: string }) {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState("");
   const [mine, setMine] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     api<Overview>("/api/overview").then(setData).catch((reason: Error) => setError(reason.message));
@@ -18,6 +19,12 @@ export default function PainelView({ userName, userEmail }: { userName: string; 
     const me = [normalize(userName), normalize(userEmail.split("@")[0])].filter(Boolean);
     return data.pending.filter((item) => !mine || me.some((name) => normalize(item.who).includes(name) || name.includes(normalize(item.who || "-"))));
   }, [data, mine, userName, userEmail]);
+
+  // Processos · negociação: o que foi negociado em cada pedido (protótipo aprovado em 2026-10-16).
+  const processes = useMemo(() => {
+    const query = normalize(search.trim());
+    return (data?.operations ?? []).filter((operation) => !query || normalize([operation.reference, operation.contractNumber, operation.client, operation.exporterName, operation.supplierName, operation.product, operation.terms?.sizes].join(" ")).includes(query));
+  }, [data, search]);
 
   const departures = useMemo(() => (data?.operations ?? [])
     .filter((operation) => operation.etd && operation.phaseIndex < 4)
@@ -44,6 +51,44 @@ export default function PainelView({ userName, userEmail }: { userName: string; 
             <span className={phase.blocked ? "note note--bad" : "note"}>{phase.blocked ? `${phase.blocked} bloqueado(s)` : " "}</span>
           </a>
         ))}
+      </section>
+
+      <section className="et2-card" aria-labelledby="processos">
+        <div className="et2-card-head" style={{ flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <h2 id="processos">Processos · negociação</h2>
+            <span className="et2-sub" style={{ margin: 0 }}>O que foi negociado em cada pedido. Clique no processo para abrir o acompanhamento do pedido.</span>
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--et2-ink-2)" }}>Buscar
+            <input className="et2-input" style={{ width: 240 }} placeholder="Processo, cliente, produto…" value={search} onChange={(event) => setSearch(event.target.value)} />
+          </label>
+        </div>
+        <div className="et2-scroll">
+          <table className="et2-table" style={{ minWidth: 1180, fontSize: 13 }}>
+            <thead><tr><th>Processo</th><th>Cliente / importador</th><th>Exportador</th><th>Fornecedor</th><th>Produto · medidas</th><th>Incoterm</th><th className="num">Quantidade</th><th className="num">Preço · total</th><th>Pagamento</th><th>Fase</th><th><span className="sr-only">Ações</span></th></tr></thead>
+            <tbody>
+              {processes.map((operation) => (
+                <tr key={operation.id}>
+                  <td style={{ whiteSpace: "nowrap" }}><a className="mono" style={{ fontWeight: 500 }} href={processHref(operation.id)}>{operation.reference}</a>{operation.contractNumber && <span className="et2-sub">PO {operation.contractNumber}</span>}</td>
+                  <td>{operation.client || "—"}</td>
+                  <td>{operation.exporterName || "—"}</td>
+                  <td>{operation.supplierName || "—"}</td>
+                  <td>{operation.product || "—"}{operation.terms?.sizes && <span className="et2-sub">{operation.terms.sizes}</span>}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>{[operation.incoterm, operation.incoterm?.startsWith("F") || operation.incoterm === "EXW" ? operation.portOfLoading : operation.portOfDischarge].filter(Boolean).join(" ") || "—"}</td>
+                  <td className="num mono" style={{ whiteSpace: "nowrap" }}>{operation.quantity ? `${operation.quantity.toLocaleString("pt-BR")} ${operation.quantityUnit}` : "—"}</td>
+                  <td className="num mono" style={{ whiteSpace: "nowrap" }}>
+                    {operation.terms?.unitPrice ? `${operation.currency} ${operation.terms.unitPrice.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}/${operation.quantityUnit}` : operation.terms?.itemCount > 1 ? "vários itens" : "—"}
+                    <span className="et2-sub">{operation.value ? money(operation.value, operation.currency || "USD") : ""}</span>
+                  </td>
+                  <td style={{ minWidth: 180, maxWidth: 240 }}><span title={operation.terms?.paymentTerms || undefined} style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{operation.terms?.paymentTerms || "—"}</span></td>
+                  <td style={{ whiteSpace: "nowrap" }}><span className={`et2-badge et2-badge--${operation.phaseIndex === 5 ? "ok" : operation.phaseIndex === 0 ? "todo" : "warn"}`}>{operation.phaseName}</span></td>
+                  <td style={{ whiteSpace: "nowrap" }}><a className="et2-btn et2-btn--sm" href={`/novo-processo?processo=${operation.id}`}>Editar negociação</a></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {data && !processes.length && <p className="et2-empty">{search ? "Nenhum processo encontrado." : "Nenhum processo cadastrado ainda."}</p>}
+        </div>
       </section>
 
       <div className="et2-row">

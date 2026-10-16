@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api, money, normalize, processHref } from "./format";
-import { LOGISTICS_COST_FIELDS } from "../../lib/logistics-costs";
+import { LOGISTICS_COST_FIELDS, parseLogisticsCosts } from "../../lib/logistics-costs";
+import { readOrderTerms } from "../../lib/order-terms";
 
 type Supplier = { id: number; legalName: string; tradeName: string; taxId: string; city: string; state: string; country: string; products: string; productionUnits: string };
 type Client = { id: number; legalName: string; aliases: string; country: string; eori: string; preferredPort: string; preferredIncoterm?: string; preferredCurrency?: string };
@@ -16,13 +17,38 @@ const EMPTY = {
   rawMaterial: "", species: "", forestOriginType: "Reflorestamento", productionUnit: "", lotCodes: "", propertyIds: [] as string[],
   quantity: "", quantityUnit: "MT", volumeM3: "", netWeightKg: "", grossWeightKg: "", incoterm: "FOB", currency: "USD", commercialValue: "",
   transportMode: "Marítimo", shipmentDate: "", destinationCountry: "", portOfLoading: "", portOfDischarge: "", carrier: "", bookingNumber: "", billOfLadingNumber: "", containerNumbers: "", vesselVoyage: "",
-  supplyChainNotes: "",
+  supplyChainNotes: "", paymentTerms: "", itemSize: "", unitPrice: "",
   lcCurrency: "BRL", lcInlandFreight: "", lcPortCharges: "", lcCustomsBroker: "", lcOceanFreight: "", lcInsurance: "", lcOther: "", lcNotes: "",
 };
 type Form = typeof EMPTY;
 type Key = Exclude<keyof Form, "propertyIds">;
 
 const DRAFT_KEY = "et2-novo-processo-rascunho";
+
+// Edição da negociação (Painel → "Editar negociação"): o mesmo formulário, preenchido com o
+// processo; ao salvar, só os campos alterados vão para PATCH /api/operations.
+const TEXT_FIELDS = ["contractNumber", "product", "hsCode", "destinationCountry", "incoterm", "currency", "quantityUnit", "rawMaterial", "species", "forestOriginType", "exporterName", "exporterTaxId", "productionUnit", "lotCodes", "transportMode", "portOfLoading", "portOfDischarge", "shipmentDate", "carrier", "bookingNumber", "billOfLadingNumber", "containerNumbers", "vesselVoyage", "euOperatorEori", "eudrReference", "internalResponsible", "responsibleEmail", "euImporter"] as const;
+const NUMBER_FIELDS = ["quantity", "volumeM3", "netWeightKg", "grossWeightKg", "commercialValue"] as const;
+type OperationRow = Record<string, string | number | null> & { id: number; reference: string; supplyChainNotes: string | null };
+
+function formFromOperation(operation: OperationRow): Form {
+  const text = (value: unknown) => (value === null || value === undefined ? "" : String(value));
+  const number = (value: unknown) => (Number(value) ? String(value) : "");
+  const terms = readOrderTerms({ supplyChainNotes: operation.supplyChainNotes, product: text(operation.product), species: text(operation.species), rawMaterial: text(operation.rawMaterial), lotCodes: text(operation.lotCodes), quantity: Number(operation.quantity) || 0, volumeM3: Number(operation.volumeM3) || 0, commercialValue: Number(operation.commercialValue) || 0 });
+  const costs = parseLogisticsCosts(operation.logisticsCostsJson);
+  let propertyIds: string[] = [];
+  try { propertyIds = JSON.parse(text(operation.propertyIds) || "[]"); } catch { /* sem imóveis */ }
+  return {
+    ...EMPTY,
+    ...Object.fromEntries(TEXT_FIELDS.map((key) => [key, key === "shipmentDate" ? text(operation[key]).slice(0, 10) : text(operation[key])])),
+    ...Object.fromEntries(NUMBER_FIELDS.map((key) => [key, number(operation[key])])),
+    reference: operation.reference, supplierId: text(operation.supplierId), importerClientId: text(operation.importerClientId),
+    propertyIds: Array.isArray(propertyIds) ? propertyIds.map(String) : [],
+    supplyChainNotes: terms.notes, paymentTerms: terms.paymentTerms, itemSize: terms.sizes, unitPrice: terms.unitPrice ? String(terms.unitPrice) : "",
+    lcCurrency: costs.currency, lcNotes: costs.notes,
+    ...Object.fromEntries(LOGISTICS_COST_FIELDS.map(([key]) => [costKey(key), costs[key] ? String(costs[key]) : ""])),
+  } as Form;
+}
 
 /** Campo do formulário de cada custo logístico (ex.: inlandFreight → lcInlandFreight). */
 const costKey = (key: string) => `lc${key[0].toUpperCase()}${key.slice(1)}` as Key;
@@ -61,17 +87,30 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
   const [properties, setProperties] = useState<Property[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [editing, setEditing] = useState<{ operation: OperationRow; original: Form } | null>(null);
 
   useEffect(() => {
-    const draft = loadDraft();
-    if (draft) { setForm(draft); setRestored(true); }
-    api<{ suppliers: Supplier[] }>("/api/suppliers").then((d) => setSuppliers(d.suppliers)).catch(() => {});
+    const editId = Number(new URLSearchParams(window.location.search).get("processo"));
+    const suppliersLoaded = api<{ suppliers: Supplier[] }>("/api/suppliers").then((d) => { setSuppliers(d.suppliers); return d.suppliers; }).catch(() => [] as Supplier[]);
+    if (editId) {
+      Promise.all([api<{ operation: OperationRow }>(`/api/export-control?operationId=${editId}`), suppliersLoaded]).then(([snapshot, list]) => {
+        const loaded = formFromOperation(snapshot.operation);
+        const exporter = list.find((item) => normalize(item.legalName) === normalize(loaded.exporterName));
+        const next = { ...loaded, exporterId: exporter && String(exporter.id) !== loaded.supplierId ? String(exporter.id) : "" };
+        setForm(next);
+        setEditing({ operation: snapshot.operation, original: next });
+      }).catch((reason: Error) => setError(`Não foi possível abrir o processo: ${reason.message}`));
+    } else {
+      const draft = loadDraft();
+      if (draft) { setForm(draft); setRestored(true); }
+    }
     api<{ clients: Client[] }>("/api/importer-clients").then((d) => setClients(d.clients)).catch(() => {});
     api<{ products: Product[] }>("/api/master-products").then((d) => setProducts(d.products)).catch(() => {});
     api<{ properties: Property[] }>("/api/properties").then((d) => setProperties(d.properties)).catch(() => {});
   }, []);
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("processo")) return;
     try { window.localStorage.setItem(DRAFT_KEY, JSON.stringify(form)); } catch { /* rascunho é só conveniência */ }
   }, [form]);
 
@@ -152,7 +191,8 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
     }
     setSaving(true);
     try {
-      const result = await api<{ operation: { id: number; reference: string }; duplicate?: boolean }>("/api/operations", { method: "POST", body: JSON.stringify({ ...form, logisticsCosts: logisticsCosts() }) });
+      if (editing) { await saveEdit(); return; }
+      const result = await api<{ operation: { id: number; reference: string }; duplicate?: boolean }>("/api/operations", { method: "POST", body: JSON.stringify({ ...form, logisticsCosts: logisticsCosts(), terms: { paymentTerms: form.paymentTerms, size: form.itemSize, unitPrice: amount(form.unitPrice) } }) });
       if (result.duplicate) {
         setError(`Já existe um processo com a referência ${result.operation.reference}. Use outra referência ou deixe em branco.`);
         setStep(0);
@@ -165,6 +205,30 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
     } finally {
       setSaving(false);
     }
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    const { operation, original } = editing;
+    const fields: Record<string, unknown> = {};
+    const before: Record<string, unknown> = {};
+    for (const key of TEXT_FIELDS) if (form[key] !== original[key]) { fields[key] = form[key]; before[key] = operation[key]; }
+    for (const key of NUMBER_FIELDS) if (form[key] !== original[key]) { fields[key] = amount(form[key]); before[key] = operation[key]; }
+    if (form.supplierId !== original.supplierId) fields.supplierId = Number(form.supplierId);
+    if (form.importerClientId !== original.importerClientId) fields.importerClientId = Number(form.importerClientId) || null;
+    const costKeys: Key[] = ["lcCurrency", "lcNotes", ...LOGISTICS_COST_FIELDS.map(([key]) => costKey(key))];
+    if (costKeys.some((key) => form[key] !== original[key])) { fields.logisticsCosts = logisticsCosts(); before.logisticsCostsJson = operation.logisticsCostsJson; }
+    const terms: Record<string, unknown> = {};
+    if (form.paymentTerms !== original.paymentTerms) terms.paymentTerms = form.paymentTerms;
+    if (form.itemSize !== original.itemSize) terms.size = form.itemSize;
+    if (form.unitPrice !== original.unitPrice) terms.unitPrice = amount(form.unitPrice);
+    if (form.supplyChainNotes !== original.supplyChainNotes) terms.notes = form.supplyChainNotes;
+    if (Object.keys(terms).length) { fields.terms = terms; before.supplyChainNotes = operation.supplyChainNotes; }
+    const propertiesChanged = JSON.stringify(form.propertyIds) !== JSON.stringify(original.propertyIds);
+    if (!Object.keys(fields).length && !propertiesChanged) { window.location.href = "/"; return; }
+    if (Object.keys(fields).length) await api("/api/operations", { method: "PATCH", body: JSON.stringify({ id: operation.id, fields, original: before }) });
+    if (propertiesChanged) await api("/api/operations", { method: "PATCH", body: JSON.stringify({ id: operation.id, propertyIds: form.propertyIds }) });
+    window.location.href = "/";
   }
 
   const input = (key: Key, label: string, options: { placeholder?: string; required?: boolean; help?: string; type?: string; list?: string; onChange?: (value: string) => void } = {}) => (
@@ -186,11 +250,13 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
 
   return (
     <main className="et2-main">
-      <nav className="et2-crumbs" aria-label="Caminho"><Link href="/pedidos">Pedidos</Link> / Novo processo</nav>
+      {editing
+        ? <nav className="et2-crumbs" aria-label="Caminho"><Link href="/">Painel</Link> / <a href={processHref(editing.operation.id)}>{editing.operation.reference}</a> / Editar negociação</nav>
+        : <nav className="et2-crumbs" aria-label="Caminho"><Link href="/pedidos">Pedidos</Link> / Novo processo</nav>}
       <div className="et2-head">
         <div>
-          <h1>Novo processo de exportação</h1>
-          <p>Registre pedido, participantes, produto, origem, volumes e logística. Estes dados alimentam o acompanhamento, os documentos e o dossiê EUDR.</p>
+          <h1>{editing ? <>Processo <span className="mono">{editing.operation.reference}</span> · editar negociação</> : "Novo processo de exportação"}</h1>
+          <p>{editing ? "Altere o que foi negociado. Ao salvar, só os campos alterados são gravados; o acompanhamento do pedido continua igual." : "Registre pedido, participantes, produto, origem, volumes e logística. Estes dados alimentam o acompanhamento, os documentos e o dossiê EUDR."}</p>
         </div>
       </div>
 
@@ -234,7 +300,9 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
             <datalist id="et2-clients">{clients.map((item) => <option key={item.id} value={item.legalName} />)}</datalist>
 
             {step === 0 && <div className="et2-grid">
-              {input("reference", "Referência da operação", { placeholder: "Ex.: GBU003/26 · vazio gera automático" })}
+              {editing
+                ? <label className="et2-field"><span>Referência da operação</span><input value={form.reference} readOnly /><small>A referência não muda depois de criada</small></label>
+                : input("reference", "Referência da operação", { placeholder: "Ex.: GBU003/26 · vazio gera automático" })}
               {input("product", "Produto", { list: "et2-products", placeholder: "Selecione ou digite", help: "Do cadastro: preenche NCM, espécie e unidade", onChange: pickProduct })}
               {input("hsCode", "NCM / HS Code", { placeholder: "Pode preencher depois" })}
               {input("contractNumber", "Contrato / PO do cliente")}
@@ -294,6 +362,9 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
               {select("incoterm", "Incoterm", ["FOB", "EXW", "FCA", "CFR", "CIF", "DAP", "DDP"])}
               {select("currency", "Moeda", ["USD", "EUR", "GBP", "BRL"])}
               {input("commercialValue", "Valor comercial", { type: "number" })}
+              {input("itemSize", "Medidas / especificação", { placeholder: "Ex.: 22 × 98 × 2440 mm" })}
+              {input("unitPrice", "Preço unitário", { placeholder: "Ex.: 155,00", help: `Por ${form.quantityUnit || "unidade"}, em ${form.currency}` })}
+              {input("paymentTerms", "Condição de pagamento", { placeholder: "Ex.: 30% adiantado · 70% contra BL" })}
             </div>}
 
             {step === 4 && <div className="et2-grid">
@@ -327,10 +398,11 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
           <div className="et2-foot">
             <button className="et2-btn" disabled={step === 0} onClick={() => setStep(step - 1)}>← Voltar</button>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span className="muted" style={{ fontSize: 12 }}>Rascunho salvo automaticamente neste navegador</span>
+              <span className="muted" style={{ fontSize: 12 }}>{editing ? "As alterações só são gravadas ao salvar" : "Rascunho salvo automaticamente neste navegador"}</span>
               {step < SECTIONS.length - 1
                 ? <button className="et2-btn et2-btn--primary" onClick={() => setStep(step + 1)}>Próximo →</button>
-                : <button className="et2-btn et2-btn--ok" disabled={saving} onClick={submit}>{saving ? "Criando…" : "Criar processo ✓"}</button>}
+                : <button className="et2-btn et2-btn--ok" disabled={saving} onClick={submit}>{saving ? (editing ? "Salvando…" : "Criando…") : editing ? "Salvar alterações ✓" : "Criar processo ✓"}</button>}
+              {editing && step < SECTIONS.length - 1 && <button className="et2-btn et2-btn--ok" disabled={saving} onClick={submit}>{saving ? "Salvando…" : "Salvar alterações ✓"}</button>}
             </div>
           </div>
         </section>
