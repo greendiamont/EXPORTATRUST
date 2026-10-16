@@ -14,7 +14,7 @@ export async function GET() {
     const integrations = (await getIntegrationStatuses()).filter((item) => item.category === "payments");
     const transactions = await db.select().from(paymentTransactions).where(eq(paymentTransactions.organizationId, context.organizationId)).orderBy(desc(paymentTransactions.id)).limit(100);
     return Response.json({ integrations, transactions }, { headers: { "cache-control": "no-store" } });
-  } catch (error) { return Response.json({ error: error instanceof Error ? error.message : "Payment status unavailable." }, { status: 500 }); }
+  } catch (error) {if (error instanceof Response) return error; return Response.json({ error: error instanceof Error ? error.message : "Payment status unavailable." }, { status: 500 }); }
 }
 
 export async function POST(request: Request) {
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const [transaction] = await db.insert(paymentTransactions).values({ organizationId: context.organizationId, paymentId, operationId: body.operationId || null, provider: "Stripe", method: "Checkout · Card/Pix", direction: "REVENUE", catalogKey, amount: Number(session.amount_total ?? 0) / 100, currency: String(session.currency ?? "brl").toUpperCase(), status: session.payment_status || "unpaid", externalReference: session.id, checkoutUrl: session.url, simulated: false, metadataJson: JSON.stringify({ priceId }) }).returning();
     await audit(context, "PAYMENT_CHECKOUT_CREATED", "payment", paymentId, { catalogKey, amount: transaction.amount, currency: transaction.currency });
     return Response.json({ transaction, checkoutUrl: session.url }, { status: 201 });
-  } catch (error) { return Response.json({ error: error instanceof Error ? error.message : "Checkout creation failed." }, { status: 500 }); }
+  } catch (error) {if (error instanceof Response) return error; return Response.json({ error: error instanceof Error ? error.message : "Checkout creation failed." }, { status: 500 }); }
 }
 
 export async function PATCH(request: Request) {
@@ -56,5 +56,5 @@ export async function PATCH(request: Request) {
     const [updated] = await db.update(paymentTransactions).set({ status: body.status }).where(and(eq(paymentTransactions.paymentId, body.paymentId), eq(paymentTransactions.organizationId, context.organizationId))).returning();
     if (updated) await audit(context, "PAYMENT_STATUS_UPDATED", "payment", updated.paymentId, { status: updated.status });
     return Response.json({ transaction: updated ?? null });
-  } catch (error) { return Response.json({ error: error instanceof Error ? error.message : "Payment update failed." }, { status: 500 }); }
+  } catch (error) {if (error instanceof Response) return error; return Response.json({ error: error instanceof Error ? error.message : "Payment update failed." }, { status: 500 }); }
 }

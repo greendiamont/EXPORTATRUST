@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Pedido GBU002/26 · ExportaTrust</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F4F6}
+a{color:#1D4ED8}a:hover{color:#1E3A8A}
+</style>
+</helmet>
+<div style="min-height: 100vh; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #111827; background: #F3F4F6; font-size: 14px">
+
+  <header style="background: #0F1B2D; color: #FFFFFF">
+    <div style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 0 24px; min-height: 56px; display: flex; flex-wrap: wrap; align-items: center; gap: 28px">
+      <div style="display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; letter-spacing: 0.2px">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5FD3A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l6 6L21 6"></path></svg>
+        ExportaTrust
+      </div>
+      <nav aria-label="Navegação principal" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1">
+        <a href="Main.dc.html" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8; text-decoration: none">Painel</a>
+        <a href="Processos.dc.html" aria-current="page" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #FFFFFF; text-decoration: none; font-weight: 500; box-shadow: inset 0 -3px 0 #5FD3A6">Pedidos</a>
+        <a href="Cadastros.dc.html" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8; text-decoration: none">Cadastros</a>
+        <a href="EUDR.dc.html" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8; text-decoration: none">EUDR</a>
+        <a href="#" style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8; text-decoration: none">Relatórios</a>
+      </nav>
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #C3CBD8">
+        <span style="padding: 3px 8px; border: 1px solid #3A4A63; border-radius: 4px; font-size: 11px; letter-spacing: 0.6px">HOMOLOGAÇÃO</span>
+        <span style="width: 30px; height: 30px; border-radius: 15px; background: #2B3A52; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 600">IV</span>
+      </div>
+    </div>
+  </header>
+
+  <main style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 20px 24px 48px; display: flex; flex-direction: column; gap: 18px">
+    <nav aria-label="Caminho" style="font-size: 13px; color: #6B7280"><a href="Processos.dc.html" style="text-decoration: none">Pedidos</a> / GBU002/26</nav>
+
+    <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+      <div style="padding: 20px 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; justify-content: space-between; border-bottom: 1px solid #E5E7EB">
+        <div>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+            <h1 style="margin: 0; font-size: 22px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">GBU002/26</h1>
+            <span style="padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; background: #FFFBEB; color: #92400E">Embarque · 3/6</span>
+          </div>
+          <div style="margin-top: 4px; color: #4B5563">Wood pellets ENplus A1 · [CLIENTE] · Itajaí → Ravenna</div>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+          <div aria-label="Vendo este pedido agora" style="display: flex; align-items: center; gap: 8px; margin-right: 6px">
+            <span style="font-size: 12px; color: #6B7280">Vendo agora</span>
+            <span style="display: flex">
+              <sc-for list="{{viewers}}" as="v" hint-placeholder-count="3"><span title="{{v.name}}" style="{{v.style}}">{{v.initials}}</span></sc-for>
+            </span>
+          </div>
+          <button style="min-height: 38px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; cursor: pointer">Seguir pedido</button>
+          <button style="min-height: 38px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; cursor: pointer">Enviar atualização ao cliente</button>
+          <button style="min-height: 38px; padding: 0 14px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; font-weight: 500; cursor: pointer">Concluir etapa</button>
+        </div>
+      </div>
+      <dl style="margin: 0; padding: 16px 24px; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px">
+        <div><dt style="font-size: 12px; color: #6B7280">Valor de venda</dt><dd style="margin: 4px 0 0; font-weight: 500; font-family: 'IBM Plex Mono', monospace">USD [VALOR]</dd></div>
+        <div><dt style="font-size: 12px; color: #6B7280">Quantidade</dt><dd style="margin: 4px 0 0; font-weight: 500; font-family: 'IBM Plex Mono', monospace">[N] MT</dd></div>
+        <div><dt style="font-size: 12px; color: #6B7280">Incoterm</dt><dd style="margin: 4px 0 0; font-weight: 500">FOB Itajaí</dd></div>
+        <div><dt style="font-size: 12px; color: #6B7280">ETD / ETA</dt><dd style="margin: 4px 0 0; font-weight: 500">[DATA] / [DATA]</dd></div>
+        <div><dt style="font-size: 12px; color: #6B7280">Fornecedor</dt><dd style="margin: 4px 0 0; font-weight: 500">[FORNECEDOR]</dd></div>
+        <div><dt style="font-size: 12px; color: #6B7280">Responsável</dt><dd style="margin: 4px 0 0; font-weight: 500">Ivam</dd></div>
+      </dl>
+    </section>
+
+    <section aria-label="Fases do pedido" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px 24px">
+      <ol style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr))">
+        <sc-for list="{{phases}}" as="p" hint-placeholder-count="6">
+          <li style="position: relative">
+            <div style="{{p.lineStyle}}" aria-hidden="true"></div>
+            <button onClick="{{p.pick}}" aria-pressed="{{p.pressed}}" style="{{p.btnStyle}}">
+              <span style="{{p.dotStyle}}">{{p.mark}}</span>
+              <span style="{{p.nameStyle}}">{{p.name}}</span>
+              <span style="font-size: 12px; color: #6B7280">{{p.summary}}</span>
+            </button>
+          </li>
+        </sc-for>
+      </ol>
+    </section>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start">
+      <div style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+
+        <sc-if value="{{isPedido}}" hint-placeholder-val="{{ true }}">
+          <section aria-labelledby="emissao" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+            <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB; display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: baseline">
+              <h2 id="emissao" style="margin: 0; font-size: 16px; font-weight: 600">Emissão de documentos</h2>
+              <span style="font-size: 13px; color: #6B7280">Os dados do pedido alimentam todos os documentos</span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap">
+              <div role="tablist" aria-label="Documentos" style="flex: 1 1 220px; min-width: 0; border-right: 1px solid #E5E7EB; display: flex; flex-direction: column">
+                <sc-for list="{{docTypes}}" as="d" hint-placeholder-count="4">
+                  <button role="tab" aria-selected="{{d.selected}}" onClick="{{d.pick}}" style="{{d.style}}">
+                    <span style="font-weight: 500; color: #111827">{{d.name}}</span>
+                    <span style="font-size: 12px; color: #6B7280; font-family: 'IBM Plex Mono', monospace">{{d.number}}</span>
+                    <span style="{{d.badgeStyle}}">{{d.status}}</span>
+                  </button>
+                </sc-for>
+              </div>
+
+              <div style="flex: 999 1 420px; min-width: 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px">
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center">
+                  <div>
+                    <div style="font-size: 16px; font-weight: 600">{{doc.name}}</div>
+                    <div style="font-size: 12px; color: #6B7280">{{doc.hint}}</div>
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                    <button onClick="{{openDocPreview}}" style="min-height: 34px; padding: 0 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">Visualizar</button>
+                    <a href="#" style="min-height: 34px; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid #D1D5DB; border-radius: 6px; color: #111827; font-size: 13px; text-decoration: none">Baixar PDF</a>
+                    <a href="#" style="min-height: 34px; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid #D1D5DB; border-radius: 6px; color: #111827; font-size: 13px; text-decoration: none">Baixar Word</a>
+                    <button style="min-height: 34px; padding: 0 12px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer">{{doc.issueLabel}}</button>
+                  </div>
+                </div>
+
+                <sc-if value="{{doc.locked}}" hint-placeholder-val="{{ false }}">
+                  <div role="status" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; font-size: 13px">
+                    <span style="width: 26px; height: 26px; border-radius: 13px; background: #7C3AED; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex: none">JO</span>
+                    <span><b>João</b> está editando este documento agora. Você pode visualizar; a edição libera quando ele salvar ou após 10 min sem atividade.</span>
+                  </div>
+                </sc-if>
+                <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+                  <sc-for list="{{doc.fields}}" as="f" hint-placeholder-count="6">
+                    <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #4B5563">{{f.label}}
+                      <input value="{{f.value}}" style="min-height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; font-size: 14px; color: #111827; background: #FFFFFF">
+                    </label>
+                  </sc-for>
+                </div>
+
+                <div style="border: 1px solid #E5E7EB; border-radius: 6px; overflow-x: auto">
+                  <table style="width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13px">
+                    <thead>
+                      <tr style="background: #F9FAFB; text-align: left; color: #6B7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px">
+                        <sc-for list="{{doc.columns}}" as="c" hint-placeholder-count="6"><th style="{{c.style}}">{{c.label}}</th></sc-for>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <sc-for list="{{doc.rows}}" as="r" hint-placeholder-count="2">
+                        <tr style="border-top: 1px solid #F0F1F3">
+                          <sc-for list="{{r.cells}}" as="cell" hint-placeholder-count="6"><td style="{{cell.style}}">{{cell.text}}</td></sc-for>
+                        </tr>
+                      </sc-for>
+                      <tr style="border-top: 1px solid #E5E7EB; background: #F9FAFB; font-weight: 600">
+                        <sc-for list="{{doc.totals}}" as="cell" hint-placeholder-count="6"><td style="{{cell.style}}">{{cell.text}}</td></sc-for>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div style="padding: 8px 10px; border-top: 1px solid #F0F1F3"><button style="min-height: 30px; padding: 0 10px; border: 1px dashed #9CA3AF; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">+ Adicionar item</button></div>
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; font-size: 13px; color: #4B5563">
+                  <span>{{doc.check}}</span>
+                  <span style="display: flex; gap: 8px; align-items: center"><span style="font-size: 12px; color: #6B7280">Salvo automaticamente · 14:30</span><button onClick="{{openConflict}}" style="min-height: 34px; padding: 0 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">Salvar</button></span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </sc-if>
+
+        <section aria-labelledby="etapas" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; overflow-x: auto">
+          <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: baseline">
+            <h2 id="etapas" style="margin: 0; font-size: 16px; font-weight: 600">{{selectedName}}</h2>
+            <span style="font-size: 13px; color: #6B7280">{{selectedProgress}}</span>
+          </div>
+          <table style="width: 100%; min-width: 600px; border-collapse: collapse">
+            <thead>
+              <tr style="background: #F9FAFB; text-align: left; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.4px">
+                <th style="padding: 10px 20px; font-weight: 500">Tarefa</th>
+                <th style="padding: 10px 12px; font-weight: 500">Responsável</th>
+                <th style="padding: 10px 12px; font-weight: 500">Prazo</th>
+                <th style="padding: 10px 12px; font-weight: 500">Situação</th>
+                <th style="padding: 10px 20px; font-weight: 500"><span style="position: absolute; left: -9999px">Comentários</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{steps}}" as="s" hint-placeholder-count="5">
+                <tr style="border-top: 1px solid #F0F1F3">
+                  <td style="padding: 11px 20px">
+                    <div style="display: flex; align-items: flex-start; gap: 10px">
+                      <button onClick="{{s.toggle}}" aria-pressed="{{s.pressed}}" aria-label="Marcar como concluída" style="{{s.checkStyle}}">{{s.checkMark}}</button>
+                      <button onClick="{{s.open}}" style="padding: 0; border: 0; background: transparent; font: inherit; color: #111827; text-align: left; cursor: pointer"><span style="{{s.titleStyle}}">{{s.title}}</span><span style="display: block; font-size: 12px; color: #6B7280; margin-top: 2px">{{s.detail}}</span></button>
+                    </div>
+                  </td>
+                  <td style="padding: 11px 12px; white-space: nowrap"><span style="display: inline-flex; align-items: center; gap: 6px"><span style="{{s.avatarStyle}}">{{s.initials}}</span>{{s.who}}</span></td>
+                  <td style="padding: 11px 12px; white-space: nowrap; {{s.dueStyle}}">{{s.due}}</td>
+                  <td style="padding: 11px 12px; white-space: nowrap"><span style="{{s.statusStyle}}">{{s.status}}</span></td>
+                  <td style="padding: 11px 20px; white-space: nowrap"><button onClick="{{s.open}}" style="min-height: 30px; padding: 0 8px; border: 1px solid #E5E7EB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 12px; color: #4B5563; cursor: pointer">{{s.comments}}</button></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </section>
+
+        <section aria-labelledby="arquivos" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; overflow-x: auto">
+          <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB; display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center">
+            <h2 id="arquivos" style="margin: 0; font-size: 16px; font-weight: 600">Arquivos desta fase <span style="font-weight: 400; color: #6B7280">· {{fileCount}}</span></h2>
+            <button style="min-height: 34px; padding: 0 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">+ Anexar arquivo</button>
+          </div>
+          <table style="width: 100%; min-width: 600px; border-collapse: collapse">
+            <thead>
+              <tr style="background: #F9FAFB; text-align: left; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.4px">
+                <th style="padding: 10px 20px; font-weight: 500">Arquivo</th>
+                <th style="padding: 10px 12px; font-weight: 500">Etapa</th>
+                <th style="padding: 10px 12px; font-weight: 500">Enviado</th>
+                <th style="padding: 10px 20px; font-weight: 500; text-align: right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{files}}" as="f" hint-placeholder-count="3">
+                <tr style="border-top: 1px solid #F0F1F3">
+                  <td style="padding: 12px 20px">
+                    <div style="display: flex; align-items: center; gap: 10px">
+                      <span style="{{f.extStyle}}">{{f.ext}}</span>
+                      <div style="min-width: 0">{{f.name}}<div style="font-size: 12px; color: #6B7280">{{f.size}}</div></div>
+                    </div>
+                  </td>
+                  <td style="padding: 12px 12px; color: #374151">{{f.step}}</td>
+                  <td style="padding: 12px 12px; color: #374151; white-space: nowrap">{{f.by}}<div style="font-size: 12px; color: #6B7280">{{f.when}}</div></td>
+                  <td style="padding: 12px 20px; text-align: right; white-space: nowrap">
+                    <button onClick="{{f.view}}" style="min-height: 32px; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">Visualizar</button>
+                    <a href="#" style="min-height: 32px; display: inline-flex; align-items: center; margin-left: 6px; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; color: #111827; font-size: 13px; text-decoration: none">Baixar</a>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <sc-if value="{{noFiles}}" hint-placeholder-val="{{ false }}">
+            <p style="margin: 0; padding: 18px 20px; color: #6B7280">Nenhum arquivo nesta fase ainda.</p>
+          </sc-if>
+        </section>
+      </div>
+
+      <div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+        <section aria-labelledby="docs" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+          <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB">
+            <h2 id="docs" style="margin: 0; font-size: 16px; font-weight: 600">Documentos do pedido</h2>
+          </div>
+          <sc-for list="{{allDocs}}" as="d" hint-placeholder-count="8">
+            <div style="padding: 10px 20px; border-top: 1px solid #F0F1F3; display: flex; align-items: center; gap: 10px">
+              <div style="flex: 1; min-width: 0">{{d.name}}<div style="font-size: 12px; color: #6B7280">{{d.phase}}</div></div>
+              <span style="{{d.style}}">{{d.status}}</span>
+            </div>
+          </sc-for>
+        </section>
+
+        <section aria-labelledby="ativ" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+          <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB"><h2 id="ativ" style="margin: 0; font-size: 16px; font-weight: 600">Atividade da equipe</h2></div>
+          <sc-for list="{{activity}}" as="a" hint-placeholder-count="5">
+            <div style="padding: 10px 20px; border-top: 1px solid #F0F1F3; display: flex; gap: 10px; font-size: 13px">
+              <span style="{{a.avatarStyle}}">{{a.initials}}</span>
+              <div style="min-width: 0"><b>{{a.who}}</b> {{a.text}}<div style="font-size: 12px; color: #6B7280; margin-top: 2px">{{a.when}}</div></div>
+            </div>
+          </sc-for>
+          <div style="padding: 12px 20px; border-top: 1px solid #E5E7EB">
+            <label style="display: block"><span style="position: absolute; left: -9999px">Comentar no pedido</span>
+              <input placeholder="Comentar no pedido… use @ para mencionar" style="width: 100%; min-height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; font-size: 13px">
+            </label>
+          </div>
+        </section>
+
+        <section aria-labelledby="fin" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 14px 20px">
+          <h2 id="fin" style="margin: 0 0 12px; font-size: 16px; font-weight: 600">Financeiro</h2>
+          <dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+            <div><dt style="font-size: 12px; color: #6B7280">Venda</dt><dd style="margin: 3px 0 0; font-family: 'IBM Plex Mono', monospace">[VALOR]</dd></div>
+            <div><dt style="font-size: 12px; color: #6B7280">Compra</dt><dd style="margin: 3px 0 0; font-family: 'IBM Plex Mono', monospace">[VALOR]</dd></div>
+            <div><dt style="font-size: 12px; color: #6B7280">Margem</dt><dd style="margin: 3px 0 0; font-family: 'IBM Plex Mono', monospace">[X]%</dd></div>
+            <div><dt style="font-size: 12px; color: #6B7280">Recebido</dt><dd style="margin: 3px 0 0">Adiantamento 30%</dd></div>
+          </dl>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <sc-if value="{{hasTask}}" hint-placeholder-val="{{ false }}">
+    <aside role="dialog" aria-label="Tarefa" style="position: fixed; top: 0; right: 0; bottom: 0; width: 440px; max-width: 100%; background: #FFFFFF; border-left: 1px solid #D1D5DB; box-shadow: -8px 0 24px rgba(15, 27, 45, 0.12); display: flex; flex-direction: column; z-index: 9">
+      <div style="padding: 14px 18px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; gap: 10px; align-items: flex-start">
+        <div><div style="font-size: 12px; color: #6B7280">GBU002/26 · {{task.phase}}</div><h2 style="margin: 2px 0 0; font-size: 17px; font-weight: 600">{{task.title}}</h2></div>
+        <button onClick="{{closeTask}}" aria-label="Fechar" style="min-width: 36px; min-height: 36px; border: 1px solid #E5E7EB; border-radius: 6px; background: #FFFFFF; font: inherit; cursor: pointer">×</button>
+      </div>
+      <dl style="margin: 0; padding: 14px 18px; display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; font-size: 13px; border-bottom: 1px solid #E5E7EB">
+        <dt style="color: #6B7280">Responsável</dt><dd style="margin: 0">{{task.who}}</dd>
+        <dt style="color: #6B7280">Prazo</dt><dd style="margin: 0">{{task.due}}</dd>
+        <dt style="color: #6B7280">Situação</dt><dd style="margin: 0">{{task.status}}</dd>
+        <dt style="color: #6B7280">Seguidores</dt><dd style="margin: 0">Ivam, Maria, João</dd>
+      </dl>
+      <div style="flex: 1; overflow: auto; padding: 14px 18px; display: flex; flex-direction: column; gap: 12px">
+        <div style="font-size: 12px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.4px">Comentários e anexos</div>
+        <div style="display: flex; gap: 10px; font-size: 13px"><span style="width: 28px; height: 28px; border-radius: 14px; background: #0F766E; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex: none">MS</span><div><b>Maria</b> <span style="color: #6B7280">· ontem 16:10</span><div style="margin-top: 3px">@Ivam o fornecedor confirmou a produção para sexta. Laudo anexado.</div><div style="margin-top: 6px; display: inline-block; padding: 4px 8px; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 12px">PDF · Laudo lote 07.pdf</div></div></div>
+        <div style="display: flex; gap: 10px; font-size: 13px"><span style="width: 28px; height: 28px; border-radius: 14px; background: #0F1B2D; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex: none">IV</span><div><b>Ivam</b> <span style="color: #6B7280">· hoje 09:02</span><div style="margin-top: 3px">Ok, @João segue com o booking.</div></div></div>
+      </div>
+      <div style="padding: 12px 18px; border-top: 1px solid #E5E7EB; display: flex; gap: 8px">
+        <label style="flex: 1"><span style="position: absolute; left: -9999px">Escrever comentário</span><input placeholder="Escreva… @ menciona, arraste arquivos" style="width: 100%; min-height: 38px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; font-size: 13px"></label>
+        <button style="min-height: 38px; padding: 0 14px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">Enviar</button>
+      </div>
+    </aside>
+  </sc-if>
+
+  <sc-if value="{{hasConflict}}" hint-placeholder-val="{{ false }}">
+    <div role="dialog" aria-modal="true" aria-label="Alterações simultâneas" style="position: fixed; inset: 0; background: rgba(15, 27, 45, 0.55); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 11">
+      <div style="width: 100%; max-width: 620px; background: #FFFFFF; border-radius: 8px; overflow: hidden">
+        <div style="padding: 16px 20px; border-bottom: 1px solid #E5E7EB">
+          <h2 style="margin: 0; font-size: 17px; font-weight: 600">João salvou este documento às 14:32</h2>
+          <p style="margin: 4px 0 0; font-size: 13px; color: #4B5563">Nada foi perdido. Escolha como combinar as alterações:</p>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px">
+          <thead><tr style="background: #F9FAFB; text-align: left; color: #6B7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px"><th style="padding: 8px 20px; font-weight: 500">Campo</th><th style="padding: 8px 12px; font-weight: 500">Versão do João</th><th style="padding: 8px 20px; font-weight: 500">Sua versão</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid #F0F1F3"><td style="padding: 10px 20px">Peso bruto total (kg)</td><td style="padding: 10px 12px; background: #EFF6FF">[N] (novo)</td><td style="padding: 10px 20px">[N]</td></tr>
+            <tr style="border-top: 1px solid #F0F1F3"><td style="padding: 10px 20px">Contêiner(es)</td><td style="padding: 10px 12px">[CONTÊINER]</td><td style="padding: 10px 20px; background: #ECFDF5">[CONTÊINER] (seu)</td></tr>
+          </tbody>
+        </table>
+        <div style="padding: 12px 20px; font-size: 12px; color: #4B5563; border-top: 1px solid #F0F1F3">Campos diferentes são combinados automaticamente. Só o que os dois mudaram precisa de escolha.</div>
+        <div style="padding: 14px 20px; border-top: 1px solid #E5E7EB; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end">
+          <button onClick="{{closeConflict}}" style="min-height: 38px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; cursor: pointer">Descartar as minhas</button>
+          <button onClick="{{closeConflict}}" style="min-height: 38px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; cursor: pointer">Manter as minhas</button>
+          <button onClick="{{closeConflict}}" style="min-height: 38px; padding: 0 14px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; font-weight: 500; cursor: pointer">Combinar as duas ✓</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+    <div role="status" style="position: fixed; left: 24px; bottom: 24px; max-width: 360px; background: #0F1B2D; color: #FFFFFF; border-radius: 8px; padding: 12px 14px; display: flex; gap: 12px; align-items: center; font-size: 13px; z-index: 8">
+      <span>Maria concluiu “Controle de qualidade” · agora</span>
+      <button onClick="{{closeToast}}" style="min-height: 30px; padding: 0 10px; border: 1px solid #3A4A63; border-radius: 6px; background: transparent; color: #FFFFFF; font: inherit; font-size: 12px; cursor: pointer">Ok</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{hasPreview}}" hint-placeholder-val="{{ false }}">
+    <div role="dialog" aria-modal="true" aria-label="Visualizar arquivo" style="position: fixed; inset: 0; background: rgba(15, 27, 45, 0.55); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 10">
+      <div style="width: 100%; max-width: 760px; max-height: 100%; background: #FFFFFF; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden">
+        <div style="padding: 12px 16px; border-bottom: 1px solid #E5E7EB; display: flex; gap: 10px; align-items: center; justify-content: space-between">
+          <div style="font-weight: 600; min-width: 0">{{previewName}}</div>
+          <div style="display: flex; gap: 6px">
+            <a href="#" style="min-height: 34px; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid #D1D5DB; border-radius: 6px; color: #111827; font-size: 13px; text-decoration: none">Baixar</a>
+            <button onClick="{{closePreview}}" style="min-height: 34px; padding: 0 12px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">Fechar</button>
+          </div>
+        </div>
+        <div style="background: #E5E7EB; padding: 20px; overflow: auto">
+          <div style="background: #FFFFFF; margin: 0 auto; max-width: 560px; min-height: 620px; box-sizing: border-box; padding: 36px 40px; box-shadow: 0 1px 4px rgba(0,0,0,0.12); display: flex; flex-direction: column; gap: 14px">
+            <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #0F1B2D; padding-bottom: 10px">
+              <b style="letter-spacing: 1px">EXPORTATRUST</b>
+              <div style="text-align: right"><b>{{previewTitle}}</b><div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px">GBU002/26</div></div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; font-size: 12px">
+              <div style="border: 1px solid #E5E7EB; padding: 8px"><b>SELLER / EXPORTER</b><div>[EXPORTADOR]</div></div>
+              <div style="border: 1px solid #E5E7EB; padding: 8px"><b>BUYER / CONSIGNEE</b><div>[CLIENTE]</div></div>
+            </div>
+            <div style="height: 10px; background: #F3F4F6"></div>
+            <div style="height: 10px; width: 80%; background: #F3F4F6"></div>
+            <div style="height: 120px; border: 1px solid #E5E7EB"></div>
+            <div style="height: 10px; width: 60%; background: #F3F4F6"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2000}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { phase: 0, doc: 0, preview: null, task: null, conflict: false, toast: true, flips: {} }; }
+  renderVals() {
+    const badge = (bg, fg) => 'display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; background: ' + bg + '; color: ' + fg;
+    const TONE = { ok: ['#ECFDF5', '#047857'], warn: ['#FFFBEB', '#92400E'], bad: ['#FEF2F2', '#B91C1C'], todo: ['#F3F4F6', '#4B5563'] };
+    const PHASES = [
+      { name: 'Pedido', steps: [
+        ['Pedido do cliente recebido', 'PO e especificações', 'Ivam', '[DATA]', 'done'],
+        ['Pedido de venda emitido e enviado', 'SO-2026-0007 rev. 1', 'Ivam', '[DATA]', 'done'],
+        ['Pedido assinado pelo cliente', 'Sales Order assinada', 'Cliente', '[DATA]', 'done'],
+        ['Adiantamento recebido', '30% · comprovante SWIFT', 'Financeiro', '[DATA]', 'done'],
+        ['Pedido de compra ao fornecedor', 'PC-2026-0007 assinado', 'Ivam', '[DATA]', 'done'] ],
+        files: [
+          ['PDF', 'PO cliente - GBU002-26.pdf', '182 KB', 'Pedido do cliente recebido', 'Cliente', '[DATA]'],
+          ['PDF', 'SO-2026-0007 rev1 assinada.pdf', '240 KB', 'Pedido assinado pelo cliente', 'Ivam', '[DATA]'],
+          ['PDF', 'Comprovante SWIFT adiantamento.pdf', '96 KB', 'Adiantamento recebido', 'Financeiro', '[DATA]'],
+          ['PDF', 'PC-2026-0007 assinado.pdf', '210 KB', 'Pedido de compra ao fornecedor', 'Fornecedor', '[DATA]'] ] },
+      { name: 'Produção', steps: [
+        ['Origem e EUDR', 'CAR vinculado · DDS em preparação', 'Compliance', '[DATA]', 'doing'],
+        ['Programação da produção', 'Lotes e datas', 'Fornecedor', '[DATA]', 'done'],
+        ['Produção', 'Volume e lotes produzidos', 'Fornecedor', '[DATA]', 'done'],
+        ['Controle de qualidade', 'HT, umidade e dimensões', 'Inspetor', '[DATA]', 'done'] ],
+        files: [
+          ['PDF', 'Laudo de qualidade lote 07.pdf', '1,2 MB', 'Controle de qualidade', 'Inspetor', '[DATA]'],
+          ['JPG', 'Fotos produção 01.jpg', '2,4 MB', 'Produção', 'Fornecedor', '[DATA]'],
+          ['PDF', 'Recibo CAR SC-0000000.pdf', '310 KB', 'Origem e EUDR', 'Compliance', '[DATA]'] ] },
+      { name: 'Embarque', steps: [
+        ['Aprovação para embarque', 'Aguardando DDS EUDR', 'Ivam', '[DATA]', 'blocked'],
+        ['Booking', 'Armador, navio, cut-off', 'Despachante', '[DATA]', 'doing'],
+        ['Estufagem e fotos', 'Contêiner e lacre', 'Fornecedor', '[DATA]', 'todo'],
+        ['Despacho e porto', 'DU-E, VGM, gate-in', 'Despachante', '[DATA]', 'todo'] ],
+        files: [ ['PDF', 'Booking confirmation MSC.pdf', '150 KB', 'Booking', 'Despachante', '[DATA]'] ] },
+      { name: 'Documentos', steps: [
+        ['Draft enviado ao cliente', 'Invoice, packing list, BL', 'Ivam', '[DATA]', 'todo'],
+        ['Draft aprovado', 'Correções do cliente', 'Cliente', '[DATA]', 'todo'],
+        ['Documentos finais emitidos', 'Commercial Invoice, PL, certificados', 'Ivam', '[DATA]', 'todo'],
+        ['Shipment Advice enviado', 'Com cobrança do saldo', 'Ivam', '[DATA]', 'todo'] ], files: [] },
+      { name: 'Trânsito', steps: [
+        ['Embarcado', 'On board · BL', 'Armador', '[DATA]', 'todo'],
+        ['Em trânsito', 'Tracking do contêiner', 'Sistema', '[DATA]', 'todo'],
+        ['Chegada ao destino', 'Atracação e descarga', 'Sistema', '[DATA]', 'todo'] ], files: [] },
+      { name: 'Entregue', steps: [
+        ['Entrega confirmada', 'Aceite do cliente', 'Cliente', '[DATA]', 'todo'],
+        ['Saldo recebido', 'Comprovante', 'Financeiro', '[DATA]', 'todo'],
+        ['Pedido encerrado', 'Dossiê arquivado', 'Ivam', '[DATA]', 'todo'] ], files: [] },
+    ];
+    const CURRENT = 2;
+    const ST = { done: ['Concluído', 'ok'], doing: ['Em andamento', 'warn'], blocked: ['Bloqueado', 'bad'], todo: ['A fazer', 'todo'] };
+
+    const phases = PHASES.map((p, i) => {
+      const done = p.steps.filter((s) => s[4] === 'done').length;
+      const state = i < CURRENT ? 'past' : i === CURRENT ? 'now' : 'next';
+      const sel = this.state.phase === i;
+      const dot = state === 'past' ? ['#047857', '#FFFFFF', '#047857'] : state === 'now' ? ['#F59E0B', '#FFFFFF', '#F59E0B'] : ['#FFFFFF', '#6B7280', '#D1D5DB'];
+      return {
+        name: p.name, summary: done + '/' + p.steps.length + ' · ' + p.files.length + ' arq.',
+        mark: state === 'past' ? '✓' : String(i + 1), pressed: sel ? 'true' : 'false',
+        pick: () => this.setState({ phase: i }),
+        lineStyle: 'position: absolute; top: 25px; left: ' + (i === 0 ? '50%' : '0') + '; right: ' + (i === 5 ? '50%' : '0') + '; height: 2px; background: ' + (i < CURRENT ? '#047857' : '#E5E7EB'),
+        btnStyle: 'position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px; border: 0; border-radius: 6px; font: inherit; cursor: pointer; background: ' + (sel ? '#F3F4F6' : 'transparent'),
+        dotStyle: 'width: 30px; height: 30px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; background: ' + dot[0] + '; color: ' + dot[1] + '; border: 2px solid ' + dot[2],
+        nameStyle: 'font-size: 14px; font-weight: ' + (sel ? '600' : '500') + '; color: #111827',
+      };
+    });
+
+
+    const sel = PHASES[this.state.phase];
+    const PEOPLE = { Ivam: ['IV', '#0F1B2D'], Maria: ['MS', '#0F766E'], 'João': ['JO', '#7C3AED'], Ana: ['AN', '#B45309'] };
+    const OWNER = { Ivam: 'Ivam', Cliente: 'Ana', Financeiro: 'Ana', Compliance: 'Maria', Fornecedor: 'Maria', Inspetor: 'Maria', Despachante: 'João', Armador: 'João', Sistema: 'João' };
+    const avatar = (name, size) => 'width: ' + size + 'px; height: ' + size + 'px; border-radius: ' + (size / 2) + 'px; background: ' + PEOPLE[name][1] + '; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-size: ' + (size > 26 ? 11 : 10) + 'px; font-weight: 600; flex: none';
+    const viewers = ['Ivam', 'Maria', 'João'].map((n, i) => ({ name: n, initials: PEOPLE[n][0], style: avatar(n, 30) + '; border: 2px solid #FFFFFF; margin-left: ' + (i ? '-8px' : '0') }));
+    const steps = sel.steps.map(([title, detail, who, due, st0], i) => {
+      const key = this.state.phase + '-' + i;
+      const st = this.state.flips[key] ? (st0 === 'done' ? 'todo' : 'done') : st0;
+      const isDone = st === 'done';
+      const person = OWNER[who] || 'Ivam';
+      const comments = (i * 3 + this.state.phase) % 4;
+      return { title, detail, due, who: person, initials: PEOPLE[person][0], avatarStyle: avatar(person, 24),
+        status: ST[st][0], statusStyle: badge(TONE[ST[st][1]][0], TONE[ST[st][1]][1]),
+        pressed: isDone ? 'true' : 'false', checkMark: isDone ? '✓' : '',
+        checkStyle: 'flex: none; width: 22px; height: 22px; margin-top: 1px; border-radius: 11px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid ' + (isDone ? '#047857' : '#9CA3AF') + '; background: ' + (isDone ? '#047857' : '#FFFFFF') + '; color: #FFFFFF',
+        titleStyle: 'font-weight: 500; color: ' + (isDone ? '#6B7280' : '#111827'),
+        dueStyle: st === 'blocked' ? 'color: #B91C1C; font-weight: 600' : 'color: #374151',
+        comments: comments ? comments + ' coment.' : 'Comentar',
+        toggle: () => this.setState({ flips: { ...this.state.flips, [key]: !this.state.flips[key] } }),
+        open: () => this.setState({ task: { phase: sel.name, title, who: person, due, status: ST[st][0] } }) };
+    });
+    const activity = [
+      ['Maria', 'concluiu “Controle de qualidade” e anexou o laudo', 'há 5 min'],
+      ['João', 'editou o Packing List (peso bruto)', 'há 12 min'],
+      ['Ana', 'registrou o adiantamento de 30%', 'hoje 10:14'],
+      ['Ivam', 'comentou em “Booking”: @João segue com o booking', 'hoje 09:02'],
+      ['Maria', 'vinculou 2 origens CAR', 'ontem 17:40'],
+    ].map(([who, text, when]) => ({ who, text, when, initials: PEOPLE[who][0], avatarStyle: avatar(who, 28) }));
+    const done = sel.steps.filter((s) => s[4] === 'done').length;
+    const extColor = { PDF: ['#FEF2F2', '#B91C1C'], JPG: ['#EFF6FF', '#1D4ED8'], DOCX: ['#EFF6FF', '#1E3A8A'] };
+    const files = sel.files.map(([ext, name, size, step, by, when]) => ({ ext, name, size, step, by, when,
+      extStyle: 'flex: none; width: 38px; text-align: center; padding: 3px 0; border-radius: 4px; font-size: 11px; font-weight: 600; background: ' + extColor[ext][0] + '; color: ' + extColor[ext][1],
+      view: () => this.setState({ preview: { name, title: name.replace(/\.[a-z]+$/i, '').toUpperCase() } }) }));
+
+    const num = (text, align) => ({ text, style: 'padding: 8px 10px; font-family: "IBM Plex Mono", monospace; text-align: ' + (align || 'right') });
+    const txt = (text) => ({ text, style: 'padding: 8px 10px' });
+    const col = (label, right) => ({ label, style: 'padding: 8px 10px; font-weight: 500' + (right ? '; text-align: right' : '') });
+    const DOCS = [
+      { name: 'Pedido de venda (Sales Order)', number: 'SO-2026-0007 · rev. 1', status: 'Emitido', tone: 'ok', issueLabel: 'Emitir nova revisão',
+        hint: 'Enviado ao cliente para assinatura',
+        fields: [['Comprador / Consignee', '[CLIENTE]'], ['PO do cliente', '[PO]'], ['Incoterm', 'FOB Itajaí'], ['Moeda', 'USD'], ['Porto de embarque', 'Itajaí'], ['Porto de destino', 'Ravenna'], ['Embarque até', '[DATA]'], ['NCM / HS', '4401.31'], ['Pagamento', '30% adiantado · 70% contra BL']],
+        columns: [col('Produto'), col('Qualidade'), col('Unidade'), col('Quantidade', true), col('Preço unit.', true), col('Total', true)],
+        rows: [[txt('Wood pellets'), txt('ENplus A1 6 mm'), txt('MT'), num('[N]'), num('[P]'), num('[T]')]],
+        totals: [txt('Total'), txt(''), txt(''), num('[N] MT'), txt(''), num('USD [T]')],
+        check: '✓ Conferido com o pedido do cliente' },
+      { name: 'Pedido de compra (fornecedor)', number: 'PC-2026-0007', status: 'Assinado', tone: 'ok', issueLabel: 'Emitir nova revisão',
+        hint: 'Preço, incoterm e pagamento do fornecedor podem ser diferentes da venda',
+        fields: [['Fornecedor', '[FORNECEDOR]'], ['Comprador / trading', '[TRADING]'], ['Incoterm compra', 'FCA fábrica'], ['Moeda', 'BRL'], ['Entrega até', '[DATA]'], ['Pagamento', '[CONDIÇÃO]']],
+        columns: [col('Produto'), col('Qualidade'), col('Unidade'), col('Quantidade', true), col('Preço unit.', true), col('Total', true)],
+        rows: [[txt('Wood pellets'), txt('ENplus A1 6 mm'), txt('MT'), num('[N]'), num('[P]'), num('[T]')]],
+        totals: [txt('Total'), txt(''), txt(''), num('[N] MT'), txt(''), num('BRL [T]')],
+        check: 'Margem estimada: [X]%' },
+      { name: 'Invoice (Commercial / Proforma)', number: 'Rascunho', status: 'A emitir', tone: 'todo', issueLabel: 'Emitir invoice',
+        hint: 'Gerada a partir do pedido de venda e do packing list',
+        fields: [['Tipo', 'Commercial Invoice'], ['Data', '[DATA]'], ['Comprador / Consignee', '[CLIENTE]'], ['Notify party', '[NOTIFY]'], ['Navio / viagem', '[NAVIO]'], ['Contêiner(es)', '[CONTÊINER]'], ['Incoterm', 'FOB Itajaí'], ['Banco para pagamento', '[BANCO]'], ['NCM / HS', '4401.31']],
+        columns: [col('Descrição'), col('Lote'), col('Unidade'), col('Quantidade', true), col('Preço unit.', true), col('Total', true)],
+        rows: [[txt('Wood pellets ENplus A1'), txt('LOT-07'), txt('MT'), num('[N]'), num('[P]'), num('[T]')]],
+        totals: [txt('Total'), txt(''), txt(''), num('[N] MT'), txt(''), num('USD [T]')],
+        check: '! Aguardando packing list conferido' },
+      { name: 'Packing List', number: 'PL-2026-0007 · rascunho', status: 'Divergente', tone: 'bad', issueLabel: 'Emitir packing list',
+        hint: 'Volumes, pesos e contêineres da carga',
+        fields: [['Consignee', '[CLIENTE]'], ['Marcação / Marks', 'MADE IN BRAZIL'], ['Contêiner(es)', '[CONTÊINER]'], ['Peso líquido total (kg)', '[N]'], ['Peso bruto total (kg)', '[N]'], ['Total de volumes', '[N]']],
+        columns: [col('Descrição'), col('Volumes', true), col('Peso líq. kg', true), col('Peso bruto kg', true), col('m³', true), col('Contêiner')],
+        rows: [[txt('Wood pellets big bag 1 MT'), num('[N]'), num('[N]'), num('[N]'), num('61,8'), txt('[CONTÊINER]')]],
+        totals: [txt('Total'), num('[N]'), num('[N]'), num('[N]'), num('61,8'), txt('')],
+        check: '! Volume 61,8 m³ diverge do pedido (64,0 m³)' },
+    ];
+    const docTypes = DOCS.map((d, i) => {
+      const on = this.state.doc === i;
+      return { name: d.name, number: d.number, status: d.status, selected: on ? 'true' : 'false',
+        pick: () => this.setState({ doc: i }),
+        badgeStyle: badge(TONE[d.tone][0], TONE[d.tone][1]),
+        style: 'display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px 20px; border: 0; border-bottom: 1px solid #F0F1F3; font: inherit; text-align: left; cursor: pointer; background: ' + (on ? '#F3F4F6' : '#FFFFFF') + '; box-shadow: ' + (on ? 'inset 3px 0 0 #0F1B2D' : 'none') };
+    });
+    const d = DOCS[this.state.doc];
+    const doc = { name: d.name, hint: d.hint, issueLabel: d.issueLabel, check: d.check, locked: this.state.doc === 3,
+      fields: d.fields.map(([label, value]) => ({ label, value })), columns: d.columns,
+      rows: d.rows.map((cells) => ({ cells })), totals: d.totals };
+
+    const allDocs = [
+      ['Pedido de venda', 'Fase 1 · Pedido', 'Emitido', 'ok'], ['Pedido de compra', 'Fase 1 · Pedido', 'Assinado', 'ok'],
+      ['Packing List', 'Fase 1 · Pedido', 'Divergente', 'bad'], ['Invoice', 'Fase 1 · Pedido', 'A emitir', 'todo'],
+      ['Laudo de qualidade', 'Fase 2 · Produção', 'Recebido', 'ok'], ['DDS EUDR', 'Fase 2 · Produção', 'Pendente', 'warn'],
+      ['Bill of Lading', 'Fase 5 · Trânsito', 'Aguardando', 'todo'], ['Certificado de origem', 'Fase 4 · Documentos', 'Aguardando', 'todo'],
+    ].map(([name, phase, status, t]) => ({ name, phase, status, style: badge(TONE[t][0], TONE[t][1]) }));
+
+    const pv = this.state.preview;
+    return {
+      phases, steps, files, fileCount: String(files.length), noFiles: files.length === 0,
+      isPedido: this.state.phase === 0, docTypes, doc, allDocs,
+      openDocPreview: () => this.setState({ preview: { name: d.number + ' — ' + d.name, title: d.name.toUpperCase() } }),
+      hasPreview: Boolean(pv), previewName: pv ? pv.name : '', previewTitle: pv ? pv.title : '',
+      viewers, activity,
+      hasTask: Boolean(this.state.task), task: this.state.task || { phase: '', title: '', who: '', due: '', status: '' }, closeTask: () => this.setState({ task: null }),
+      hasConflict: this.state.conflict, openConflict: () => this.setState({ conflict: true }), closeConflict: () => this.setState({ conflict: false }),
+      hasToast: this.state.toast, closeToast: () => this.setState({ toast: false }),
+      closePreview: () => this.setState({ preview: null }),
+      selectedName: 'Fase ' + (this.state.phase + 1) + ' · ' + sel.name,
+      selectedProgress: done + ' de ' + sel.steps.length + ' etapas concluídas',
+    };
+  }
+}
+</script>
+</body>
+</html>

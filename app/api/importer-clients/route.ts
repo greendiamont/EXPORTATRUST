@@ -3,6 +3,7 @@ import { getDb } from "../../../db";
 import { importerClients } from "../../../db/schema";
 import { normalizeMasterName } from "../../../lib/master-data";
 import { audit, requireSecurityContext } from "../../../lib/security";
+import { ensureRegistrationColumns, presentText } from "../../../lib/registration-columns";
 
 const normalizeTaxId = (value: unknown) => String(value ?? "").normalize("NFKC").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 const normalizeTaxIdType = (value: unknown) => {
@@ -29,11 +30,24 @@ const clean = (body: Record<string, unknown>) => ({
   country: String(body.country ?? "").trim(), contactName: String(body.contactName ?? "").trim(), email: String(body.email ?? "").trim().toLowerCase(), phone: String(body.phone ?? "").trim(),
   preferredPort: String(body.preferredPort ?? "").trim(), paymentTerms: String(body.paymentTerms ?? "").trim(), documentRequirements: String(body.documentRequirements ?? "").trim(),
   dataStatus: String(body.dataStatus ?? "Verificado").trim(), updatedAt: new Date().toISOString(),
+  // Antes os dados bancários do cliente eram descartados ao salvar.
+  ...presentText(body, ["bankDetails", "notifyParty", "preferredIncoterm", "preferredCurrency"]),
 });
 
-export async function GET() { const c = await requireSecurityContext("read"); const db = await getDb(); return Response.json({ clients: await db.select().from(importerClients).where(eq(importerClients.organizationId, c.organizationId)).orderBy(desc(importerClients.id)).limit(500) }); }
+export async function GET() {
+  try {
+    const c = await requireSecurityContext("read");
+    await ensureRegistrationColumns();
+    const db = await getDb();
+    return Response.json({ clients: await db.select().from(importerClients).where(eq(importerClients.organizationId, c.organizationId)).orderBy(desc(importerClients.id)).limit(500) });
+  } catch (error) {
+    if (error instanceof Response) return error;
+    console.error("IMPORTER_CLIENT_LIST_FAILED", error);
+    return Response.json({ error: "Não foi possível carregar os clientes." }, { status: 500 });
+  }
+}
 export async function POST(request: Request) {
-  try { const c = await requireSecurityContext("write_supplier"); const body = await request.json() as Record<string, unknown>; const values = clean(body); if (!values.legalName || !values.country) return Response.json({ error: "Informe razão social e país." }, { status: 400 }); const db = await getDb();
+  try { const c = await requireSecurityContext("write_supplier"); await ensureRegistrationColumns(); const body = await request.json() as Record<string, unknown>; const values = clean(body); if (!values.legalName || !values.country) return Response.json({ error: "Informe razão social e país." }, { status: 400 }); const db = await getDb();
     const [sameName] = await db.select().from(importerClients).where(and(eq(importerClients.organizationId, c.organizationId), eq(importerClients.normalizedName, values.normalizedName))).limit(1);
     if (sameName) {
       const sameTaxId = values.taxId ? await db.select({ id: importerClients.id }).from(importerClients).where(and(eq(importerClients.organizationId, c.organizationId), eq(importerClients.taxId, values.taxId))).limit(20) : [];
@@ -50,7 +64,7 @@ export async function POST(request: Request) {
   } catch (e) { console.error("IMPORTER_CLIENT_CREATE_FAILED", e); if (e instanceof Response) return e; return Response.json({ error: errorMessage(e, "Falha ao salvar cliente no banco de dados.") }, { status: 500 }); }
 }
 export async function PUT(request: Request) {
-  try { const c = await requireSecurityContext("write_supplier"); const body = await request.json() as Record<string, unknown>; const id = Number(body.id); const values = clean(body); if (!id || !values.legalName || !values.country) return Response.json({ error: "Cliente, razão social e país são obrigatórios." }, { status: 400 }); const db = await getDb();
+  try { const c = await requireSecurityContext("write_supplier"); await ensureRegistrationColumns(); const body = await request.json() as Record<string, unknown>; const id = Number(body.id); const values = clean(body); if (!id || !values.legalName || !values.country) return Response.json({ error: "Cliente, razão social e país são obrigatórios." }, { status: 400 }); const db = await getDb();
     const duplicate = await db.select({ id: importerClients.id }).from(importerClients).where(and(eq(importerClients.organizationId, c.organizationId), eq(importerClients.normalizedName, values.normalizedName))).limit(20);
     if (duplicate[0] && duplicate[0].id !== id) return Response.json({ error: "Outro cliente já usa este nome normalizado." }, { status: 409 });
     const sameTaxId = values.taxId ? await db.select({ id: importerClients.id }).from(importerClients).where(and(eq(importerClients.organizationId, c.organizationId), eq(importerClients.taxId, values.taxId))).limit(20) : [];

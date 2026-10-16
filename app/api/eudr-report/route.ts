@@ -520,6 +520,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof Response) return error;
     const message = translateToEnglish(errorMessage(error));
     const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>PDF generation failed</title><style>body{margin:0;padding:28px;background:#f4f7f5;color:#17211d;font-family:system-ui}main{max-width:620px;margin:8vh auto;padding:28px;background:#fff;border:1px solid #dce3df;border-radius:14px}b{display:grid;width:46px;height:46px;place-items:center;border-radius:50%;background:#fdeaea;color:#c83636;font-size:24px}h1{font-size:22px}p{color:#66736d;line-height:1.6}a{display:inline-block;margin-top:12px;padding:11px 16px;color:#fff;background:#08785c;border-radius:8px;text-decoration:none;font-weight:700}</style></head><body><main><b>!</b><h1>This PDF could not be generated</h1><p>${safeText(message)}</p><p>Return to the command centre and try the summary version without attachments.</p><a href="javascript:history.back()">Return to report</a></main></body></html>`;
     return new Response(html, { status: 500, headers: { "content-type": "text/html; charset=utf-8" } });

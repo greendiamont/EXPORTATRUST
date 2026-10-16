@@ -102,6 +102,7 @@ export async function GET(request: Request) {
     if (!operationId) return Response.json({ error: "Processo inválido." }, { status: 400 });
     return Response.json(await snapshot(operationId, context.organizationId));
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
@@ -159,6 +160,7 @@ export async function POST(request: Request) {
     await audit(context, "SHIPMENT_ADVICE_DRAFT_REGENERATED", "operation", String(operationId), { documentCount: current.generated.included.length, complete: current.complete });
     return Response.json(await snapshot(operationId, context.organizationId));
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { suppliers } from "../../../db/schema";
 import { audit, requireSecurityContext } from "../../../lib/security";
+import { ensureRegistrationColumns, presentText } from "../../../lib/registration-columns";
 import { isBrazil, isValidBrazilianCnpj, normalizeTaxId } from "../../../lib/supplier-validation";
 
 function message(error: unknown) {
@@ -18,10 +19,12 @@ async function ensureSupplierStorage() {
 export async function GET() {
   try {
     const context = await requireSecurityContext("read");
+    await ensureRegistrationColumns();
     await ensureSupplierStorage();
     const db = await getDb();
     return Response.json({ suppliers: await db.select().from(suppliers).where(eq(suppliers.organizationId, context.organizationId)).orderBy(desc(suppliers.id)).limit(250) });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: message(error) }, { status: 500 });
   }
 }
@@ -29,6 +32,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const context = await requireSecurityContext("write_supplier");
+    await ensureRegistrationColumns();
     const body = await request.json() as Record<string, unknown>;
     const required: Array<[string, string]> = [["legalName", "Razão social"], ["taxId", "CNPJ / ID fiscal"], ["country", "País"], ["state", "Estado/UF"], ["city", "Município"], ["contactName", "Responsável"], ["email", "E-mail"]];
     const missing = required.filter(([key]) => !String(body[key] ?? "").trim()).map(([, label]) => label);
@@ -65,6 +69,7 @@ export async function POST(request: Request) {
       products: String(body.products ?? "").trim(),
       productionUnits: String(body.productionUnits ?? "").trim(),
       bankDetails: String(body.bankDetails ?? "").trim(),
+      ...presentText(body, ["address"]),
       status: "Homologado",
     }).returning();
     await audit(context, "SUPPLIER_CREATED", "supplier", String(supplier.id), { taxId, legalName: supplier.legalName });
@@ -82,6 +87,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const context = await requireSecurityContext("write_supplier");
+    await ensureRegistrationColumns();
     const body = await request.json() as Record<string, unknown>;
     const id = Number(body.id);
     if (!Number.isInteger(id) || id <= 0) return Response.json({ error: "Fornecedor inválido." }, { status: 400 });
@@ -105,6 +111,7 @@ export async function PUT(request: Request) {
       email, phone: String(body.phone ?? "").trim(), certifications: String(body.certifications ?? "Sem certificação").trim(),
       aliases: String(body.aliases ?? "").trim(), products: String(body.products ?? "").trim(), productionUnits: String(body.productionUnits ?? "").trim(),
       bankDetails: String(body.bankDetails ?? "").trim(),
+      ...presentText(body, ["address"]),
     }).where(and(eq(suppliers.id, id), eq(suppliers.organizationId, context.organizationId))).returning();
     await audit(context, "SUPPLIER_UPDATED", "supplier", String(id), { taxId, legalName: supplier.legalName });
     return Response.json({ supplier });

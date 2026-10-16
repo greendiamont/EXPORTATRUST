@@ -7,6 +7,19 @@ if (!/^http:\/\/(terminal\.local|127\.0\.0\.1|localhost)(:\d+)?$/.test(base)) {
 }
 
 const stamp = Date.now();
+// CNPJ válido e único por execução (a rota de fornecedores valida os dígitos verificadores).
+function testCnpj(seed) {
+  const base = String(seed).slice(-8).padStart(8, "0") + "0001";
+  const digits = base.split("").map(Number);
+  const checkDigit = (numbers, weights) => {
+    const rest = numbers.reduce((sum, value, index) => sum + value * weights[index], 0) % 11;
+    return rest < 2 ? 0 : 11 - rest;
+  };
+  const first = checkDigit(digits, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const second = checkDigit([...digits, first], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return `${base}${first}${second}`;
+}
+
 async function json(path, init) {
   const response = await fetch(`${base}${path}`, init);
   const body = await response.json();
@@ -16,7 +29,7 @@ async function json(path, init) {
 
 const supplierBody = await json("/api/suppliers", {
   method: "POST", headers: { "content-type": "application/json" },
-  body: JSON.stringify({ legalName: `E2E Supplier ${stamp}`, taxId: `TEST${stamp}`, country: "Brasil", state: "SC", city: "Timbó", contactName: "E2E Test", email: `e2e-${stamp}@example.test` }),
+  body: JSON.stringify({ legalName: `E2E Supplier ${stamp}`, taxId: testCnpj(stamp), country: "Brasil", state: "SC", city: "Timbó", contactName: "E2E Test", email: `e2e-${stamp}@example.test` }),
 });
 
 const operationBody = await json("/api/operations", {

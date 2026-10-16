@@ -19,6 +19,7 @@ export async function GET(request: Request) {
     const settings = await db.select().from(operationStageSettings).where(eq(operationStageSettings.operationId, operationId)).limit(100);
     return Response.json({ settings });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
@@ -47,6 +48,7 @@ export async function PUT(request: Request) {
     await audit(context, "STAGE_SETTING_CHANGED", "operation_stage", `${operationId}:${stageCategory}`, { enabled, readiness });
     return Response.json({ setting, readiness });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }

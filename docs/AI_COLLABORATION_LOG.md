@@ -119,3 +119,161 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Risco:** baixo.
 - **Migração:** nenhuma.
 - **CI/deploy:** documental.
+
+### 2026-10-14 — Claude
+- **Branch:** `claude/railway-homologation-runtime`
+- **PR:** #84
+- **Tipo:** infraestrutura / migração / segurança
+- **Alteração:** runtime Node para o `web-api` no Railway (`server/railway/`): API do D1 sobre PostgreSQL com tradução SQLite→PostgreSQL, migrações `drizzle/*.sql` no PostgreSQL, API do R2 sobre bucket S3, login de homologação e remoção de cabeçalhos de identidade falsificáveis. Bucket `documents-homologation` e variáveis configurados no projeto `ExportaTrust Homologation`.
+- **Motivo:** o `web-api` de homologação respondia só a página; todas as APIs falhavam em Node e a autenticação dependia de cabeçalhos que, fora do ChatGPT Sites/Cloudflare Access, podem ser forjados.
+- **Impacto:** homologação funcional de ponta a ponta. Código de `app/`, `lib/`, `db/` e `worker/` inalterado; build do ChatGPT Sites/Cloudflare inalterado.
+- **Risco:** moderado (tradução SQL cobre os padrões atuais; ver `docs/RAILWAY_RUNTIME.md`).
+- **Migração:** schema PostgreSQL de homologação criado vazio; nenhum dado de produção tocado.
+- **CI/deploy:** testes locais em PostgreSQL 16; deploy e validação no Railway de homologação após merge em `homologation`.
+- **Observação para outros agentes:** `docs/change-control/changes.jsonl` não tinha as entradas CHG-20261014-002 e -003; não foram adicionadas por mim para não reescrever registros de outro agente.
+
+### 2026-10-14 — Claude
+- **Branch:** `claude/fixes-eudr-auth-review`
+- **PR:** #85
+- **Tipo:** correção / compliance / documentação
+- **Alteração:** regra de aplicabilidade EUDR (países UE em PT/EN/ISO, commodities do Anexo I por SH), palavras-chave documentais por palavra inteira, 401/403 em vez de 500 nas APIs, e2e com CNPJ válido e parecer funcional em `docs/reviews/FUNCTIONAL_REVIEW_2026-10-14.md`.
+- **Motivo:** varredura funcional do fluxo pedido → packing list → invoice → embarque.
+- **Impacto:** processos para a UE voltam a exigir EUDR; ver lacunas priorizadas no parecer antes de planejar novas features.
+- **Risco:** baixo/moderado (regra mais restritiva, intencional).
+- **Migração:** nenhuma.
+- **CI/deploy:** testes locais; deploy em homologação após merge.
+- **Para outros agentes:** o parecer lista as lacunas por prioridade (emissão numerada de documentos, Commercial/Proforma Invoice, unidade por item, conciliação PL × pedido × invoice, endereço do fornecedor). Recomendo dividir `app/client-app.tsx` antes de features grandes para evitar conflitos.
+
+### 2026-10-14 — Claude
+- **Branch:** `claude/data-migration-homologation`
+- **PR:** #86
+- **Tipo:** migração de dados / segurança
+- **Alteração:** importação integral (banco + arquivos) liberada em homologação, com ajuste registrado de valores incompatíveis com PostgreSQL, operador mantido como administrador e correção do filtro de cabeçalhos do runtime Railway. Roteiro em `docs/MIGRATION_PRODUCTION_TO_HOMOLOGATION.md`.
+- **Motivo:** trazer todos os dados de produção para homologação.
+- **Impacto:** a cópia depende das exportações feitas na produção (ChatGPT Sites) por um usuário com permissão de exportação.
+- **Risco:** baixo; produção somente leitura.
+- **Migração:** ver roteiro.
+- **CI/deploy:** testes locais em PostgreSQL; deploy em homologação após merge.
+- **Para outros agentes:** não cadastrar dados em homologação antes da importação inicial (a importação do banco exige destino vazio).
+
+### 2026-10-15 — Claude
+- **Branch:** `claude/redesign-etapa1`
+- **PR:** #87
+- **Tipo:** feature / frontend / migração aditiva
+- **Alteração:** etapa 1 do redesign — Painel, Pedidos, Novo processo e Cadastros (+ Equipe) com o novo visual; app anterior preservado em `/classico`.
+- **Motivo:** redesign aprovado pelo Ivam.
+- **Impacto:** nova página inicial; funções antigas acessíveis por "Versão anterior".
+- **Risco:** baixo/moderado.
+- **Migração:** `0029` (6 colunas texto, aditiva).
+- **CI/deploy:** testes locais em PostgreSQL; deploy em homologação após merge autorizado.
+- **Para outros agentes (passagem para o ChatGPT):** leia `docs/redesign/PLANO_REDESIGN.md` antes de continuar. Ele traz as decisões aprovadas, as etapas 2–5 e o desenho do login individual (pendente). Telas novas ficam em `app/ui/` com CSS escopado em `.et2`; evite editar `app/client-app.tsx`.
+
+### 2026-10-15 — Codex / Jarvis
+- **Branch:** `codex/individual-login` (base: head do PR #87, `b1ae21f`).
+- **PR:** #88; destino `homologation`; #87 já integrado no commit `0bbaff14`.
+- **Alteração:** continuação da etapa 1 com login individual, link de senha por administrador da mesma empresa, transação de uso único, scrypt, CSRF e revogação imediata das sessões individuais após reset/inativação.
+- **Arquivos:** runtime `server/railway/`, `app/ui/equipe-view.tsx`, testes e docs de redesign/change control.
+- **Motivo:** executar a pendência documentada pelo Claude sem refazer as telas aprovadas.
+- **Dados/riscos:** duas tabelas novas no PostgreSQL (credenciais/tokens); sem escrita em produção, D1/R2 ou documentos. Backups integrais privados precisam incluir credenciais. Teste real de login de usuário permanece pendente até validação na homologação.
+- **Testes:** build Railway, 63 testes com PGlite, smoke HTTP local e ESLint passaram; TypeScript mantém 89 erros (nenhum no componente alterado).
+- **Autorização:** Ivam autorizou deixar as alterações em homologação para testes em 2026-10-15. Não autorizou produção.
+- **Para Claude/outros agentes:** leia `docs/redesign/LOGIN_INDIVIDUAL.md`; não há novo provedor externo nem envio de e-mail automático; não registrar links/tokens. Branch de origem do Claude preservada.
+
+### 2026-10-15 — Codex / Jarvis — Resultado de publicação dos PRs #87 e #88
+- Integrados somente em `homologation` com autorização do Ivam; commit funcional `fd20afb3`.
+- Railway de homologação: deploy `f7ad5232-19ff-4b94-bd69-a24a10025d9d` SUCCESS; healthcheck passou, serviços online sem pendências na conferência.
+- Código do Claude preservado; `main`, banco e serviços de produção não alterados. Não importamos dados/documentos nesta entrega.
+- Publicado para os testes da equipe, **não aprovado funcionalmente nem autorizado para produção**. Teste autenticado real, conferência dos dados e validações do roteiro seguem pendentes.
+
+### 2026-10-15 — Codex/Jarvis — Login padrão com Google
+- **Branch:** `codex/google-login` → `homologation`; PR #90.
+- **Motivo:** Ivam confirmou uso de Gmail e pediu a mesma forma de login para todos.
+- **Alteração:** Google OIDC via biblioteca oficial, PKCE/state/nonce e vínculo por subject; contas sem acesso ativo recusadas. Bootstrap de homologação parametrizado apenas para o e-mail escolhido pelo proprietário; sem reativar membros ou alterar perfis existentes.
+- **Arquivos/dados:** runtime Railway, dependência `google-auth-library`, testes; uma tabela de identidades Google. Sem mudança em produção ou documentos.
+- **Bloqueio real:** cliente OAuth Google ainda precisa ser criado/configurado por administrador; não há ID/secret no serviço. Botão indisponível até configuração, sem quebrar login atual.
+- **Próximo agente:** ler `docs/redesign/GOOGLE_LOGIN.md`; não usar credenciais de Gmail automaticamente nem publicar secrets. Não confundir autenticação Google com acesso público aos dados.
+
+### 2026-10-15 — Codex/Jarvis — Teste inicial das abas de homologação
+- **Branch:** `fix/catalog-auth-homologation` → `homologation`; PR #91.
+- **Escopo:** 15 verificações HTTP reais + observação da tela de login. Sem sessão, conteúdo das abas não foi validado; não declarar teste funcional aprovado.
+- **Falhas reais:** GETs de Clientes/Produtos retornam 500 por Response de autenticação não capturada. Correção localizada preserva 401/403, consultas e permissões; regressão testa os handlers compilados.
+- **Relatório:** `docs/reviews/HOMOLOGATION_TESTS_2026-10-15.md`, com matriz e roteiro dos testes autenticados.
+- **Dados/produção:** sem alterações em banco, documentos, R2 ou produção. Sem acesso ao Google Cloud, conforme preferência do Ivam.
+
+### 2026-10-15 — Codex/Jarvis — Primeiro acesso visível no login
+- **Branch:** `codex/self-registration` → `homologation`; PR #92.
+- **Pedido:** Ivam precisa que o destinatário possa cadastrar o próprio e-mail na entrada.
+- **Entrega:** formulário público de solicitação por empresa, revisão em Equipe e geração do link de senha ao liberar acesso. Google permanece dependente do cliente OAuth.
+- **Dados:** só tabela aditiva de solicitações; sem autoaprovação, mudança de credenciais existentes, escrita em produção ou documentos.
+- **Validação:** build, testes PGlite e lint; validação manual autenticada ainda pendente.
+- **Passagem:** ler `docs/redesign/PRIMEIRO_ACESSO.md`. Cadastro público não equivale a administrador criado nem prova de propriedade do e-mail. Link de senha deve ser entregue ao destinatário confirmado; não há envio automático.
+
+### 2026-10-15 — Codex/Jarvis — Cadastro inicial por CNPJ
+- **Branch:** `codex/cnpj-onboarding` → `homologation`; PR #93.
+- **Pedido explícito:** Ivam quer CNPJ como identificador, criar empresa/estrutura no primeiro cadastro e olho para conferir senha.
+- **Entrega:** empresa nova isolada + administrador com senha/sessão; equipe solicita pelo CNPJ. Duplicidade de CNPJ/e-mail não permite tomada de conta ou reset público. Olho acessível em todas as senhas.
+- **Dados:** reserva aditiva por CNPJ e transação organização/usuário/vínculo/credencial; alinhamento da sequência protege seed organização 1. Sem movimentação de documentos/dados existentes ou mudança de produção.
+- **Validação:** build, 72 testes PGlite e lint; teste manual real pendente.
+- **Passagem:** docs/redesign/PRIMEIRO_ACESSO_CNPJ.md substitui o desenho por slug de #92 conforme instrução do Ivam. Titularidade CNPJ/e-mail não verificada externamente; Google OAuth ainda pendente.
+
+### 2026-10-15 — Codex/Jarvis — Falha real no POST de cadastro
+- **Branch:** `fix/auth-form-origin` → `homologation`; PR #94.
+- **Evidência:** imagem do Ivam: Origem da requisição não autorizada após cadastro.
+- **Correção:** Referrer-Policy strict-origin em vez de no-referrer; origem preservada em basic form POST sem expor query/token. CSRF continua recusando null/ausente/externo.
+- **Teste:** servidor Node real isolado, sem banco nem conta; headers nas telas e diferença 401 mesma origem / 403 origem inválida. Fetch anterior não cobria o comportamento de Origin em form POST no browser.
+- **Limites:** browser remoto bloqueou ação de teste por política, sem contorno. Teste manual do cadastro permanece necessário após deploy.
+- **Dados:** nenhum dado real modificado; checkout próprio preserva edição local alheia em EUDR.dc.html. Produção não alterada.
+
+### 2026-10-15 — Claude — Importar fornecedores do app antigo
+- **Branch:** `claude/importar-fornecedores` → `homologation`; PR #95; CHG-20261015-014.
+- **Conferência antes de alterar:** PRs #88–#94 (Codex/Jarvis) lidos e preservados; deploy `811b11cf` (commit `8f03d34`) SUCCESS; logs mostram cadastro por CNPJ concluído e telas novas respondendo 200.
+- **Alteração:** importação de fornecedores por JSON do app antigo em Cadastros → Fornecedores, com prévia e confirmação; sem schema novo.
+- **Dados:** grava só na empresa ativa; nunca sobrescreve nem apaga. Arquivo real de teste (backup 2026-09-29) fica fora do repositório.
+- **Para outros agentes:** a empresa criada pelo cadastro por CNPJ começa vazia; a cópia integral do PR #86 recusa destino com mais de uma empresa/usuário e precisa de ajuste antes de ser usada. Para importar processos depois, use o mapa id antigo → novo registrado em `SUPPLIERS_IMPORT_FINISHED`.
+
+### 2026-10-15 — Claude — Importação automática dos fornecedores
+- **Branch:** `claude/importacao-automatica-fornecedores` → `homologation`; CHG-20261015-015. Ivam autorizou todos os merges necessários e a importação sem nova confirmação.
+- **Alteração:** `server/railway/startup-import.mjs` executa, na inicialização, a importação do PR #95 quando `EXPORTATRUST_SUPPLIER_IMPORT_B64` existe.
+- **Para outros agentes:** a variável é temporária e deve ser removida após o uso; não versionar dados de fornecedores. Para outra empresa, use `EXPORTATRUST_SUPPLIER_IMPORT_ORG_IDS`.
+
+### 2026-10-15 — Claude — Importar clientes e produtos do app antigo
+- **Branch:** `claude/importar-clientes-produtos` → `homologation`; PR #98; CHG-20261015-016.
+- **Alteração:** `/api/registry-import` (clientes/produtos) e botão de importação em Clientes e Produtos; importação automática por `EXPORTATRUST_REGISTRY_IMPORT_B64`.
+- **Para outros agentes:** o backup de 2026-09-29 não tinha as tabelas de clientes/produtos; os cadastros foram reconstruídos pelos processos e estão "Pendente". Quando houver a exportação integral do app antigo, importe-a pela mesma tela: ela completa os campos vazios pelo id antigo, sem duplicar. Processos ainda não foram importados (próxima etapa).
+
+### 2026-10-15 — Claude — Importar processos do app antigo (parte 1)
+- **Branch:** `claude/importar-processos` → `homologation`; PR #99; CHG-20261015-017.
+- **Alteração:** `/api/process-import` e etapa "processos" na importação automática.
+- **Para outros agentes:** referência de processo e código CAR são únicos no banco inteiro; a cópia integral da produção (PR #86) para a empresa 1 precisa tratar a colisão com os dados já importados na empresa 2 (HUB DAS AMÉRICAS). Parte 2 (arquivos) pendente: mapear `operation_documents`/`forest_documents` para os novos ids e enviar os 451 arquivos ao storage.
+
+### 2026-10-15 — Claude — Importar arquivos e documentos do app antigo (parte 2)
+- **Branch:** `claude/importar-documentos` → `homologation`; PR #100; CHG-20261015-018.
+- **Alteração:** `/api/document-import` e importação do pacote de arquivos na inicialização (`EXPORTATRUST_FILES_IMPORT_URL`).
+- **Para outros agentes:** arquivos de dados e documentos ficam no storage (bucket) e no banco do Railway, nunca no repositório. O anexo `exportatrust-full-r2-2026-09-29.tar` do release público deve ser removido após a importação (autorizado por Ivam).
+
+### 2026-10-15 — Claude — Página do pedido na interface nova
+- **Branch:** `claude/pagina-pedido` → `homologation`; PR #101; CHG-20261015-019.
+- **Alteração:** `/pedidos/<id>` substitui a abertura do app anterior ao clicar num pedido.
+- **Para outros agentes:** próximos passos da etapa 2 ainda pendentes: comentários/@menções, criar/concluir tarefas na tela nova, presença e proteção contra edição simultânea; etapa 4 (aba EUDR) substitui o link para a versão anterior.
+
+### 2026-10-15 — Claude — Pedido colaborativo (estilo Asana)
+- **Branch:** `claude/pedido-colaborativo` → `homologation`; PR #102; CHG-20261015-020.
+- **Alteração:** tarefas interativas, comentários com @menções, presença, aviso de alterações e conflito de edição na página do pedido; migration 0030 (tabelas novas).
+- **Para outros agentes:** ao salvar etapa/tarefa pela tela nova, envie `expectedUpdatedAt`; a API devolve 409 `{conflict, current}` quando outra pessoa salvou antes.
+
+### 2026-10-15 — Claude — Página do pedido no layout aprovado
+- **Branch:** `claude/pedido-layout-aprovado` → `homologation`; CHG-20261015-021.
+- **Alteração:** `app/ui/pedido-view.tsx` refeito seguindo `docs/redesign/prototipo/Processo.dc.html`; migration 0031 aditiva.
+- **Para outros agentes:** o protótipo é a referência visual da página do pedido; não voltar ao layout de cartões dos PRs #101/#102. Ao salvar dados comerciais pela tela nova, envie `expectedUpdatedAt` = `settings.updatedAt`.
+
+### 2026-10-15 — Claude — Editar dados do pedido
+- **Branch:** `claude/editar-dados-pedido` → `homologation`; CHG-20261015-023 (pedido de Ivam na conversa).
+- **Para outros agentes:** para alterar dados do pedido pela tela nova use `PATCH /api/operations` com `{ id, fields, original }` (só campos alterados). Não use o PUT, que regrava todos os campos.
+
+### 2026-10-15 — Claude — Novo processo: exportador selecionável
+- **Branch:** `claude/exportador-selecionar` → `homologation`; CHG-20261015-024 (pedido de Ivam na conversa).
+- **Para outros agentes:** Ivam confirmou o layout da tela Novo processo como está; a única mudança autorizada foi o exportador/trading selecionável com CNPJ do cadastro. O exportador (fornecedor ou trading) é o que aparece nos documentos do pedido.
+
+### 2026-10-15 — Claude — Prévia dos custos logísticos
+- **Branch:** `claude/custos-logisticos` → `homologation`; CHG-20261015-025 (pedido de Ivam na conversa); migration 0032.
+- **Para outros agentes:** custos logísticos ficam em `operations.logistics_costs_json`; use `lib/logistics-costs.ts` (sanitize/parse/total). Enviar `logisticsCosts` no POST/PUT de `/api/operations` ou em `fields.logisticsCosts` no PATCH.

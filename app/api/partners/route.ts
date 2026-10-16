@@ -18,6 +18,7 @@ export async function GET(request: Request) {
       : await db.select().from(operationPartners).where(eq(operationPartners.organizationId, context.organizationId)).orderBy(desc(operationPartners.id)).limit(500);
     return Response.json({ partners });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
     await audit(context, "PARTNER_CREATED", "operation_partner", String(partner.id), { operationId, role, companyName });
     return Response.json({ partner }, { status: 201 });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
@@ -58,6 +60,7 @@ export async function DELETE(request: Request) {
     await audit(context, "PARTNER_DELETED", "operation_partner", String(id), { operationId: record.operationId, companyName: record.companyName });
     return Response.json({ ok: true });
   } catch (error) {
+    if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
   }
 }
