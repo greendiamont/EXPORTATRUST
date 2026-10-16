@@ -646,7 +646,7 @@
 
 - **ID:** CHG-20261016-011
 - **Branch:** `claude/preco-compra-venda`
-- **PR:** a preencher (homologation) e promoção para main
+- **PR:** #126 (homologation) e promoção para main
 - **Destino:** homologation e produção
 - **Pedido de Ivam (conversa, 2026-10-16):** "dentro de quantidades e condição do pedido [...] tem que ter um campo com o preço de compra [...] e preço indicativo de venda, para [...] o nosso financeiro [...] calcular a margem" e "linka e alinha e amarra com o nosso financeiro". Protótipo `docs/redesign/prototipo/PrecosMargem.dc.html` (quadro "5c · Preços e margem") aprovado: "alteração aprovada PODE SUBIR PRA PRODUÇÃO".
 - **O que mudou:** seção 4 do Novo processo / Editar negociação ganha o bloco "Preços para a margem" (preço indicativo de venda e preço de compra, cada um com moeda e total; câmbio compartilhado com a prévia logística) e o quadro "Margem estimada do processo" (venda, compra, logística em US$ e R$; margem = venda − compra − logística, em % e valor). O antigo "Preço unitário" virou "Preço indicativo de venda"; "Moeda" virou "Moeda da venda". O card Financeiro do pedido usa a mesma conta (`lib/margin.ts`): compra = pedido de compra emitido ou, antes dele, o preço indicativo × volume/quantidade; margem convertida pelo câmbio, com o valor da margem.
