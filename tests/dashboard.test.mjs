@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { exportedTotals, exportedSeries, shipmentsByMonth, amounts, addMonths } from "../lib/dashboard.ts";
+import { exportedTotals, exportedSeries, shipmentsByMonth, amounts, addMonths, containerCount } from "../lib/dashboard.ts";
 
-const op = (over) => ({ id: 1, reference: "R", client: "C", phaseIndex: 4, etd: "2026-09-10", value: 10000, currency: "USD", volume: 50, exchangeRate: 5, cancelled: false, completed: false, completedAt: "", ...over });
+const op = (over) => ({ id: 1, reference: "R", client: "C", phaseIndex: 4, etd: "2026-09-10", value: 10000, currency: "USD", volume: 50, containers: 2, exchangeRate: 5, cancelled: false, completed: false, completedAt: "", ...over });
 const today = "2026-10-16";
 
 test("exportado: fase Trânsito ou concluído, nunca cancelado", () => {
@@ -45,6 +45,15 @@ test("embarques por mês: embarcados x a embarcar", () => {
   const months = shipmentsByMonth(list, today);
   assert.equal(months.length, 8);
   const oct = months.find((month) => month.current);
-  assert.deepEqual([oct.shipped, oct.planned], [1, 1]);
+  assert.deepEqual(oct.containers, { shipped: 2, planned: 2 });
+  assert.deepEqual(oct.volume, { shipped: 50, planned: 50 });
   assert.equal(addMonths("2026-01", -1), "2025-12");
+});
+
+test("contêineres: números informados; senão quantidade em contêineres", () => {
+  assert.equal(containerCount("TCNU1, TEMU2", 5, "Contêineres"), 2);
+  assert.equal(containerCount("", 6, "Contêineres"), 6);
+  assert.equal(containerCount("", 4, "contêiner(es)"), 4);
+  assert.equal(containerCount("", 203.212, "Contêineres"), 0);
+  assert.equal(containerCount("", 25, "MT"), 0);
 });

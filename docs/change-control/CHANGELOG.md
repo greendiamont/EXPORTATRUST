@@ -818,4 +818,15 @@
 - **Regras das contas (`lib/dashboard.ts`):** exportado = fase Trânsito ou depois, ou operação concluída; cancelado nunca conta. Mês = data de embarque (ETD). Volume = soma do volume dos itens do pedido. US$: pedido em USD direto, em BRL pelo câmbio do processo; R$ pelo câmbio de cada processo (custos logísticos), média dos câmbios quando o processo não tem.
 - **API:** `/api/overview` passa a devolver `volume`, `exchangeRate`, `containers`, `completedAt` e `blockedStep` por pedido (sem mudança de banco).
 - **Testes:** tsc (92, sem erros novos), `tests/dashboard.test.mjs` (5), build Railway, Playwright local em 1440 px e 390 px (sem rolagem lateral).
+- **Status:** aprovado por Ivam ("pode produzir") — em produção (PR #152)
+
+## 2026-10-16 — Claude — Painel: embarques em contêineres ou m³
+
+- **ID:** CHG-20261016-030
+- **Branch:** `claude/painel-conteineres`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16):** "No dashboard, eu quero, na verdade, o volume por containers, não por pedido, tá? Quero por containers. Ou por metro cúbico."
+- **O que mudou:** "Embarques por mês" deixa de contar pedidos e passa a somar contêineres (padrão) ou m³, com o seletor "Contêineres | m³"; o rodapé do gráfico também. A faixa escura mostra "N contêineres embarcados". Contêineres do pedido = números de contêiner informados no embarque; antes disso, a quantidade quando a unidade é contêiner (`containerCount` em `lib/dashboard.ts`). Pedido sem itens nem volume com quantidade em contêineres/MT não entra mais como m³.
+- **Testes:** tsc (92, sem erros novos), testes (`tests/dashboard.test.mjs` com contêineres), build Railway, Playwright local.
 - **Status:** em andamento

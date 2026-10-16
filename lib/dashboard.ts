@@ -15,6 +15,7 @@ export type DashboardOperation = {
   value: number;
   currency: string;
   volume: number;
+  containers: number;
   exchangeRate: number;
   cancelled: boolean;
   completed: boolean;
@@ -27,6 +28,13 @@ export const MONTH_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ag
 
 export const isActive = (operation: DashboardOperation) => !operation.cancelled && !operation.completed;
 export const isExported = (operation: DashboardOperation) => !operation.cancelled && (operation.completed || operation.phaseIndex >= 4);
+
+/** Contêineres do pedido: os números informados no embarque; antes disso, a quantidade quando a unidade é contêiner. */
+export function containerCount(numbers: string, quantity: number, unit: string) {
+  const listed = (numbers || "").split(/[\s,;]+/).filter(Boolean).length;
+  if (listed) return listed;
+  return /cont/i.test(unit || "") && quantity > 0 && quantity < 100 ? Math.round(quantity) : 0;
+}
 
 export const monthKey = (date: string) => /^\d{4}-\d{2}/.test(date) ? date.slice(0, 7) : "";
 
@@ -67,16 +75,17 @@ export function inRange(operation: DashboardOperation, range: Range, today: stri
   return !start || (Boolean(key) && key >= start);
 }
 
-export type Totals = { usd: number; brl: number; volume: number; count: number; unconverted: number };
+export type Totals = { usd: number; brl: number; volume: number; containers: number; count: number; unconverted: number };
 
 export function exportedTotals(operations: DashboardOperation[], range: Range, today: string): Totals {
   const fallback = referenceRate(operations);
-  const totals: Totals = { usd: 0, brl: 0, volume: 0, count: 0, unconverted: 0 };
+  const totals: Totals = { usd: 0, brl: 0, volume: 0, containers: 0, count: 0, unconverted: 0 };
   for (const operation of operations) {
     if (!isExported(operation) || !inRange(operation, range, today)) continue;
     const value = amounts(operation, fallback);
     totals.count += 1;
     totals.volume += operation.volume;
+    totals.containers += operation.containers;
     if (value.usd === null || value.brl === null) totals.unconverted += 1;
     totals.usd += value.usd ?? 0;
     totals.brl += value.brl ?? 0;
@@ -112,12 +121,18 @@ export function exportedSeries(operations: DashboardOperation[], view: "month" |
   });
 }
 
-/** Embarques por mês: embarcados x a embarcar (5 meses para trás, 2 para frente). */
+/** Embarques por mês em contêineres e m³: embarcados x a embarcar (5 meses para trás, 2 para frente). */
 export function shipmentsByMonth(operations: DashboardOperation[], today: string) {
   const current = monthKey(today);
   return Array.from({ length: 8 }, (_, index) => addMonths(current, index - 5)).map((key) => {
     const list = operations.filter((operation) => !operation.cancelled && operation.etd.startsWith(key));
-    const shipped = list.filter(isExported).length;
-    return { key, name: monthLabel(key), shipped, planned: list.length - shipped, current: key === current };
+    const shipped = list.filter(isExported);
+    const planned = list.filter((operation) => !isExported(operation));
+    const sum = (items: DashboardOperation[], field: "containers" | "volume") => items.reduce((total, operation) => total + operation[field], 0);
+    return {
+      key, name: monthLabel(key), current: key === current,
+      containers: { shipped: sum(shipped, "containers"), planned: sum(planned, "containers") },
+      volume: { shipped: sum(shipped, "volume"), planned: sum(planned, "volume") },
+    };
   });
 }
