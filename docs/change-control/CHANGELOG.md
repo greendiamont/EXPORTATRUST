@@ -621,7 +621,7 @@
 
 - **ID:** CHG-20261016-008
 - **Branch:** `claude/custos-duas-moedas`
-- **PR:** a preencher
+- **PR:** #122
 - **Destino:** homologation (produção só após "alteração aprovada" e "pode produzir")
 - **Pedido de Ivam (conversa, 2026-10-16):** "em cada campo [...] a gente pode colocar em real despesas em real ou em dólar. E no final, você traz a somatório. De tudo ou em dólar ou em real. As duas opções."
 - **O que mudou:** cada custo logístico tem a sua moeda (R$ ou US$); campo "Câmbio (R$ por US$ 1)" substitui a moeda única; total estimado em US$ e em R$. No pedido, o Financeiro converte a logística para a moeda da venda (mostra também R$ + US$ separados) e a margem usa o valor convertido; a edição em "Todos os dados do pedido" tem moeda por custo. Registros antigos (moeda única) continuam válidos.
