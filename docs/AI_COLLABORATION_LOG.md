@@ -277,3 +277,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 ### 2026-10-15 — Claude — Prévia dos custos logísticos
 - **Branch:** `claude/custos-logisticos` → `homologation`; CHG-20261015-025 (pedido de Ivam na conversa); migration 0032.
 - **Para outros agentes:** custos logísticos ficam em `operations.logistics_costs_json`; use `lib/logistics-costs.ts` (sanitize/parse/total). Enviar `logisticsCosts` no POST/PUT de `/api/operations` ou em `fields.logisticsCosts` no PATCH.
+
+### 2026-10-16 — Claude — Produção publicada
+- **PR #108** (homologation → main), autorizado por Ivam ("Pode produzir"); CHG-20261016-001.
+- **Para outros agentes:** produção em https://web-api-production-e342.up.railway.app (projeto Railway "ExportaTrust", `web-api` segue `main`). Banco de produção ainda sem os dados do app antigo; não carregar dados em produção sem autorização de Ivam.

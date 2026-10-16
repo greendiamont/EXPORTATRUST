@@ -14,6 +14,13 @@ import { gunzipSync } from "node:zlib";
 // Os dados ficam só na variável do serviço — nunca no repositório — e a variável deve
 // ser removida depois da importação.
 
+// Em produção a importação só roda com liberação explícita para a carga inicial, autorizada por
+// Ivam em 2026-10-16 ("pode liberar a importação em produção"). A variável é removida junto
+// com as de importação logo depois da carga.
+function productionImportAllowed() {
+  return process.env.EXPORTATRUST_IMPORT_IN_PRODUCTION === "1";
+}
+
 const STEPS = {
   fornecedores: { path: "/api/suppliers/import" },
   clientes: { path: "/api/registry-import", kind: "clientes" },
@@ -78,8 +85,8 @@ export async function runStartupSupplierImport({ pool, worker, env, ctx, appEnv 
   const full = readEncoded("EXPORTATRUST_REGISTRY_IMPORT_B64");
   const encoded = processes || full || process.env.EXPORTATRUST_SUPPLIER_IMPORT_B64;
   if (!encoded) return;
-  if (appEnv === "production") {
-    console.warn("[importação] variável de importação ignorada em produção.");
+  if (appEnv === "production" && !productionImportAllowed()) {
+    console.warn("[importação] variável de importação ignorada em produção (carga inicial exige EXPORTATRUST_IMPORT_IN_PRODUCTION=1, autorizada por Ivam).");
     return;
   }
   const steps = processes ? ["fornecedores", "clientes", "produtos", "processos"] : full ? ["fornecedores", "clientes", "produtos"] : ["fornecedores"];
@@ -153,8 +160,8 @@ function readTar(buffer) {
 export async function runStartupFileImport({ pool, worker, env, ctx, appEnv, bucket }) {
   const url = process.env.EXPORTATRUST_FILES_IMPORT_URL;
   if (!url) return;
-  if (appEnv === "production") {
-    console.warn("[arquivos] EXPORTATRUST_FILES_IMPORT_URL ignorada em produção.");
+  if (appEnv === "production" && !productionImportAllowed()) {
+    console.warn("[arquivos] EXPORTATRUST_FILES_IMPORT_URL ignorada em produção (carga inicial exige EXPORTATRUST_IMPORT_IN_PRODUCTION=1, autorizada por Ivam).");
     return;
   }
   if (!bucket) {
