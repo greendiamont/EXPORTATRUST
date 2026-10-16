@@ -236,3 +236,43 @@ export async function runStartupFileImport({ pool, worker, env, ctx, appEnv, buc
     console.error("[arquivos] falhou:", error instanceof Error ? error.message : error);
   }
 }
+
+// Limpeza única autorizada por Ivam (2026-10-16): "As imagens de e-mail você pode cancelar,
+// pode eliminar". Remove só as imagens coladas nos e-mails do app antigo (image001.png,
+// image.jpg, Outlook-xxx.png e "noname" do tipo imagem) da categoria genérica
+// "STAGE 08 · Documentos comerciais". Cada remoção passa pela rota DELETE /api/documents
+// (apaga o arquivo do storage, o registro e grava auditoria). Ligada por
+// EXPORTATRUST_REMOVE_EMAIL_IMAGES=1; a variável é desligada depois da limpeza.
+export async function runStartupEmailImageCleanup({ pool, worker, env, ctx }) {
+  if (process.env.EXPORTATRUST_REMOVE_EMAIL_IMAGES !== "1") return;
+  try {
+    const { rows: organizations } = await targetOrganizations(pool);
+    for (const organization of organizations) {
+      if (!organization.admin_email) continue;
+      const { rows } = await pool.query(`
+        SELECT id, file_name FROM operation_documents
+        WHERE organization_id = $1 AND category ILIKE 'STAGE 08%'
+          AND (lower(file_name) ~ '^(image[0-9]*|outlook-[a-z0-9]+)\\.(png|jpe?g|gif|bmp)$'
+            OR (lower(file_name) = 'noname' AND content_type ILIKE 'image/%'))
+        ORDER BY id`, [organization.id]);
+      let removed = 0, failed = 0;
+      for (const row of rows) {
+        const request = new Request(`http://railway.invalid/api/documents?id=${row.id}`, {
+          method: "DELETE",
+          headers: {
+            "x-exportatrust-authenticated-user-email": organization.admin_email,
+            "x-exportatrust-authenticated-user-name": organization.admin_email,
+            "x-exportatrust-auth-provider": "railway-startup-cleanup",
+            cookie: `exportatrust_org=${organization.id}`,
+          },
+        });
+        const response = await worker.fetch(request, env, ctx);
+        if (response.ok) removed += 1;
+        else { failed += 1; console.error(`[limpeza] falha ao remover ${row.file_name} (#${row.id}): HTTP ${response.status}`); }
+      }
+      console.log(`[limpeza] imagens de e-mail → empresa #${organization.id} ${organization.name}: ${rows.length} encontradas, ${removed} removidas, ${failed} falha(s).`);
+    }
+  } catch (error) {
+    console.error("[limpeza] falhou:", error instanceof Error ? error.message : error);
+  }
+}
