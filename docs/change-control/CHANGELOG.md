@@ -533,3 +533,16 @@
 - **Dados/migração:** só inclui dados; nada é apagado nem sobrescrito.
 - **Rollback:** remover a variável (a trava volta a valer).
 - **Status:** concluído — carga feita (10 fornecedores, 10 clientes, 4 produtos, 19 processos, 451 arquivos; 1 arquivo ausente no pacote) e liberação desligada (`EXPORTATRUST_IMPORT_IN_PRODUCTION=0`)
+
+## 2026-10-16 — Claude — Documentos de pedido na fase certa (pelo nome do arquivo)
+
+- **ID:** CHG-20261016-003
+- **Branch:** `claude/fase-por-nome-arquivo`
+- **PR:** #113
+- **Destino:** homologation → main
+- **Tipo:** lógica (sem mudança de layout)
+- **Pedido de Ivam (conversa, 2026-10-16):** "subir todos os cadastros [...] e tbm todo os processos e arquivos já organizados em cada fase".
+- **O que mudou:** `documentPhaseIndex(category, fileName)` — na categoria genérica do app antigo "STAGE 08 · Documentos comerciais", arquivos de Sales Order / pedido de compra / contrato / proforma passam a aparecer na fase Pedido (antes caíam em Documentos). Conferido no backup de 29/09: os 400 documentos têm fase; 6 Sales Orders mudam para Pedido.
+- **Dados/migração:** nenhuma (só a exibição por fase).
+- **Testes:** eslint, tsc (sem erros novos), 84 testes unitários.
+- **Status:** em andamento
