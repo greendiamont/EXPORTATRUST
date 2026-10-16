@@ -2,6 +2,8 @@
 // operations.supply_chain_notes (JSON da emissão de documentos: orderItems, paymentTerms,
 // orderNotes, supplierOrder, packingList). Texto livre antigo (sem JSON) vira orderNotes,
 // como já faz a emissão de documentos — nada é perdido.
+// O preço indicativo de compra (antes do pedido de compra ser emitido) fica em `purchasePrice`
+// ({ unitPrice, currency }) no mesmo JSON; serve para a margem estimada do processo.
 
 export type OrderTermsSource = {
   supplyChainNotes: string | null;
@@ -40,7 +42,13 @@ export function readOrderTerms(source: OrderTermsSource) {
   const { json, text } = parse(source);
   const list = items(json);
   const effective = list.length ? list : [fallbackItem(source)];
+  const purchase = json && json.purchasePrice && typeof json.purchasePrice === "object" ? json.purchasePrice as Record<string, unknown> : {};
+  const supplierOrder = json && json.supplierOrder && typeof json.supplierOrder === "object" ? json.supplierOrder as Record<string, unknown> : null;
   return {
+    purchaseUnitPrice: Number(purchase.unitPrice) || 0,
+    purchaseCurrency: String(purchase.currency ?? "") || "BRL",
+    /** Pedido de compra emitido (com itens) na fase Pedido: substitui o preço indicativo de compra. */
+    hasSupplierOrder: Boolean(supplierOrder && Array.isArray(supplierOrder.items) && supplierOrder.items.length),
     paymentTerms: json ? String(json.paymentTerms ?? "") : "",
     notes: json ? String(json.orderNotes ?? "") : text,
     sizes: [...new Set(effective.map((item) => item.size).filter(Boolean))].join("; "),
@@ -49,7 +57,7 @@ export function readOrderTerms(source: OrderTermsSource) {
   };
 }
 
-export type OrderTermsChanges = { paymentTerms?: string; size?: string; unitPrice?: number; notes?: string };
+export type OrderTermsChanges = { paymentTerms?: string; size?: string; unitPrice?: number; notes?: string; purchaseUnitPrice?: number; purchaseCurrency?: string };
 
 /**
  * Aplica mudanças nos termos. Medida e preço só mudam quando o pedido tem um único item
@@ -61,6 +69,12 @@ export function applyOrderTerms(source: OrderTermsSource, changes: OrderTermsCha
   const next: Record<string, unknown> = json ? { ...json } : (text ? { orderNotes: text } : {});
   if (changes.paymentTerms !== undefined) next.paymentTerms = changes.paymentTerms.trim();
   if (changes.notes !== undefined) next.orderNotes = changes.notes.trim();
+  if (changes.purchaseUnitPrice !== undefined || changes.purchaseCurrency !== undefined) {
+    const previous = next.purchasePrice && typeof next.purchasePrice === "object" ? next.purchasePrice as Record<string, unknown> : {};
+    const unitPrice = changes.purchaseUnitPrice !== undefined && Number.isFinite(changes.purchaseUnitPrice) ? Math.max(0, changes.purchaseUnitPrice) : Number(previous.unitPrice) || 0;
+    const currency = (changes.purchaseCurrency ?? String(previous.currency ?? "BRL")).trim().toUpperCase().slice(0, 3) || "BRL";
+    next.purchasePrice = { unitPrice, currency };
+  }
   let commercialValue: number | undefined;
   if (changes.size !== undefined || changes.unitPrice !== undefined) {
     const list = items(json);

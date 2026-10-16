@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Preços e margem · ExportaTrust</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F4F6}
+</style>
+</helmet>
+<div style="min-height: 100vh; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #111827; background: #F3F4F6; font-size: 14px">
+  <main style="max-width: 1100px; margin: 0 auto; box-sizing: border-box; padding: 28px 24px 48px; display: flex; flex-direction: column; gap: 18px">
+    <div style="font-size: 13px; color: #6B7280">Novo processo · Seção 4 · Quantidades e condição comercial (proposta: preço de compra, preço indicativo de venda e margem)</div>
+
+    <section aria-labelledby="secao" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+      <div style="padding: 16px 24px; border-bottom: 1px solid #E5E7EB">
+        <div style="font-size: 12px; color: #6B7280">Seção 4 de 6</div>
+        <h2 id="secao" style="margin: 2px 0 0; font-size: 18px; font-weight: 600">Quantidades e condição comercial</h2>
+        <p style="margin: 4px 0 0; font-size: 13px; color: #4B5563">Os itens detalhados (preço por unidade) entram depois na emissão do pedido.</p>
+      </div>
+
+      <div style="padding: 20px 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+        <sc-for list="{{fields}}" as="f" hint-placeholder-count="9">
+          <label style="display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: #374151">
+            <span>{{f.label}}</span>
+            <input value="{{f.value}}" placeholder="{{f.placeholder}}" style="min-height: 38px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; color: #111827; background: #FFFFFF">
+            <span style="font-size: 12px; color: #6B7280">{{f.help}}</span>
+          </label>
+        </sc-for>
+      </div>
+
+      <div style="margin: 0 24px 20px; padding: 16px; border: 1px solid #FDE68A; background: #FFFBEB; border-radius: 8px">
+        <div style="font-size: 12px; font-weight: 600; color: #92400E; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 10px">Novo · Preços para a margem</div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+          <label style="display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: #374151">
+            <span>Preço indicativo de venda</span>
+            <span style="display: flex; gap: 6px">
+              <select style="width: 84px; min-height: 38px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; background: #FFFFFF"><option>US$</option><option>R$</option></select>
+              <input value="230,00" style="flex: 1; min-width: 0; min-height: 38px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit">
+            </span>
+            <span style="font-size: 12px; color: #6B7280">Por MT · total US$ 5.980,00 (26 MT)</span>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: #374151">
+            <span>Preço de compra (fornecedor)</span>
+            <span style="display: flex; gap: 6px">
+              <select style="width: 84px; min-height: 38px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; background: #FFFFFF"><option>R$</option><option>US$</option></select>
+              <input value="750,00" style="flex: 1; min-width: 0; min-height: 38px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit">
+            </span>
+            <span style="font-size: 12px; color: #6B7280">Por MT · total R$ 19.500,00 (26 MT)</span>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: #374151">
+            <span>Câmbio (R$ por US$ 1)</span>
+            <input value="5,40" style="min-height: 38px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit">
+            <span style="font-size: 12px; color: #6B7280">O mesmo da prévia logística (seção 5)</span>
+          </label>
+        </div>
+      </div>
+
+      <div style="margin: 0 24px 20px; border: 1px solid #E5E7EB; border-radius: 8px">
+        <div style="padding: 10px 16px; border-bottom: 1px solid #E5E7EB; font-weight: 600">Margem estimada do processo</div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px">
+          <thead>
+            <tr style="background: #F9FAFB; color: #6B7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; text-align: left">
+              <th style="padding: 8px 16px; font-weight: 500"> </th>
+              <th style="padding: 8px 16px; font-weight: 500; text-align: right">Valor lançado</th>
+              <th style="padding: 8px 16px; font-weight: 500; text-align: right">Em US$</th>
+              <th style="padding: 8px 16px; font-weight: 500; text-align: right">Em R$</th>
+            </tr>
+          </thead>
+          <tbody style="font-family: 'IBM Plex Mono', monospace">
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="3">
+              <tr style="border-top: 1px solid #F0F1F3">
+                <td style="padding: 8px 16px; font-family: 'IBM Plex Sans', sans-serif">{{r.label}}</td>
+                <td style="padding: 8px 16px; text-align: right">{{r.given}}</td>
+                <td style="padding: 8px 16px; text-align: right">{{r.usd}}</td>
+                <td style="padding: 8px 16px; text-align: right">{{r.brl}}</td>
+              </tr>
+            </sc-for>
+            <tr style="border-top: 1px solid #E5E7EB; font-weight: 600">
+              <td style="padding: 10px 16px; font-family: 'IBM Plex Sans', sans-serif">Margem (venda − compra − logística)</td>
+              <td style="padding: 10px 16px; text-align: right; color: #047857">11,3%</td>
+              <td style="padding: 10px 16px; text-align: right; color: #047857">US$ 675,37</td>
+              <td style="padding: 10px 16px; text-align: right; color: #047857">R$ 3.647,00</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="padding: 8px 16px; border-top: 1px solid #F0F1F3; font-size: 12px; color: #6B7280">A mesma conta aparece no card Financeiro do pedido. Quando o pedido de compra e o de venda forem emitidos (fase Pedido), os valores deles substituem estes indicativos.</div>
+      </div>
+
+      <div style="padding: 14px 24px; border-top: 1px solid #E5E7EB; display: flex; justify-content: space-between">
+        <button style="min-height: 38px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit">← Voltar</button>
+        <button style="min-height: 38px; padding: 0 16px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; font-weight: 500">Próximo →</button>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1150}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const f = (label, value, placeholder = '', help = '') => ({ label, value, placeholder, help });
+    const fields = [
+      f('Quantidade', '26'), f('Unidade', 'MT'), f('Volume (m³)', ''),
+      f('Peso líquido (kg)', '26.000'), f('Peso bruto (kg)', '26.400'), f('Incoterm', 'FOB'),
+      f('Moeda da venda', 'USD'), f('Valor comercial', '5.980,00', '', 'Quantidade × preço de venda'), f('Medidas / especificação', '', 'Ex.: 6 mm, A1'),
+      f('Condição de pagamento', '30% adiantado · 70% contra BL'),
+    ];
+    const rows = [
+      { label: 'Venda (26 MT × US$ 230,00)', given: 'US$ 5.980,00', usd: 'US$ 5.980,00', brl: 'R$ 32.292,00' },
+      { label: 'Compra (26 MT × R$ 750,00)', given: 'R$ 19.500,00', usd: 'US$ 3.611,11', brl: 'R$ 19.500,00' },
+      { label: 'Logística (prévia da seção 5)', given: 'USD 1.325 + BRL 1.990', usd: 'US$ 1.693,52', brl: 'R$ 9.145,00' },
+    ];
+    return { fields, rows };
+  }
+}
+</script>
+</body>
+</html>

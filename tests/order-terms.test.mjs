@@ -28,3 +28,12 @@ test("não altera medida/preço quando há vários itens", () => {
   assert.equal(applied.supplyChainNotes, notes);
   assert.equal(applyOrderTerms({ ...base, supplyChainNotes: notes }, { paymentTerms: "y" }).error, undefined);
 });
+
+test("preço indicativo de compra fica no JSON do pedido sem mexer no resto", () => {
+  const applied = applyOrderTerms({ ...base, supplyChainNotes: JSON.stringify({ paymentTerms: "30/70" }) }, { purchaseUnitPrice: 750, purchaseCurrency: "brl" });
+  const terms = readOrderTerms({ ...base, supplyChainNotes: applied.supplyChainNotes });
+  assert.equal(terms.purchaseUnitPrice, 750);
+  assert.equal(terms.purchaseCurrency, "BRL");
+  assert.equal(terms.paymentTerms, "30/70");
+  assert.equal(terms.hasSupplierOrder, false);
+});

@@ -175,6 +175,15 @@ type SupplierOrder = { tradingName?: string; currency?: string; incoterm?: strin
 type PackingItem = { description: string; cbm: number; totalPcs: number; piecesPerPackage: number; packages: number; length: number; width: number; thickness: number; grossWeight: number; netWeight: number };
 type PackingList = { consigneeName?: string; netWeight?: number; grossWeight?: number; packages?: number; marks?: string; containerReference?: string; items?: PackingItem[] };
 
+function previousOrderJson(notes: string | null): Record<string, unknown> {
+  try {
+    const value = JSON.parse(notes || "{}");
+    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+
 function parsedOrderDetails(operation: typeof operations.$inferSelect) {
   const fallbackItems = [{ species: operation.species || operation.rawMaterial || "Taeda Pine", quality: operation.product, size: operation.lotCodes || "As per order", volume: operation.volumeM3 || operation.quantity || 0, unitPrice: operation.volumeM3 || operation.quantity ? operation.commercialValue / (operation.volumeM3 || operation.quantity) : 0 }];
   try {
@@ -680,7 +689,8 @@ export async function POST(request: Request) {
         portOfDischarge: String(body.portOfDischarge ?? "").trim(),
         exporterName: String(body.exporterName ?? "").trim(),
         exporterTaxId: String(body.exporterTaxId ?? "").trim(),
-        supplyChainNotes: JSON.stringify({ orderItems, paymentTerms, orderNotes, supplierOrder, packingList }),
+        // Mantém as demais chaves do JSON do pedido (ex.: purchasePrice, o preço indicativo de compra).
+        supplyChainNotes: JSON.stringify({ ...previousOrderJson(operation.supplyChainNotes), orderItems, paymentTerms, orderNotes, supplierOrder, packingList }),
       };
       await db.update(operations).set(values).where(and(eq(operations.id, operationId), eq(operations.organizationId, context.organizationId)));
       const customerEmail = String(body.customerEmail ?? settings.customerEmail ?? "").trim().toLowerCase();

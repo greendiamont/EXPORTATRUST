@@ -7,6 +7,8 @@ import { ORDER_PHASES, currentPhaseIndex, isClosedStatus, phaseIndexOfCode } fro
 import { PHASE_UPLOAD_CATEGORY, documentPhaseIndex, taskPhaseIndex } from "../../lib/document-phase";
 import { type LogisticsDraft, costsFromDraft, logisticsByCurrency, logisticsDraft, logisticsTotal, logisticsTotalIn, parseLogisticsCosts } from "../../lib/logistics-costs";
 import { LogisticsCostsEditor, LogisticsCostsSummary } from "./logistics-costs-editor";
+import { amountsOf, estimateMargin } from "../../lib/margin";
+import { readOrderTerms } from "../../lib/order-terms";
 
 // Página do pedido — reprodução do protótipo aprovado (docs/redesign/prototipo/Processo.dc.html):
 // cabeçalho com os 6 dados-chave, fases em linha do tempo, emissão de documentos na fase
@@ -268,9 +270,17 @@ export default function PedidoView({ operationId }: { operationId: number }) {
   const hasLogistics = logisticsTotal(logistics) > 0;
   const logisticsValue = hasLogistics ? logisticsTotalIn(logistics, form.currency) : 0;
   const logisticsParts = Object.entries(logisticsByCurrency(logistics)).map(([code, value]) => money(value, code)).join(" + ");
-  // Margem = venda − compra − prévia logística, quando tudo está (ou foi convertido) na mesma moeda.
-  const sameCurrency = form.poCurrency === form.currency && logisticsValue !== null;
-  const margin = po.value && saleValue && sameCurrency ? ((saleValue - po.value - (logisticsValue ?? 0)) / saleValue) * 100 : null;
+  // Margem = venda − compra − prévia logística (mesma conta da seção 4 do Novo processo, lib/margin).
+  // Compra: o pedido de compra emitido na fase Pedido; antes dele, o preço indicativo de compra × quantidade.
+  const terms = readOrderTerms({ supplyChainNotes: text(operation.supplyChainNotes) || null, product: text(operation.product), species: text(operation.species), rawMaterial: text(operation.rawMaterial), lotCodes: text(operation.lotCodes), quantity: Number(operation.quantity) || 0, volumeM3: Number(operation.volumeM3) || 0, commercialValue: Number(operation.commercialValue) || 0 });
+  // Pedido de compra igual ao de venda é a cópia automática da emissão (ainda não preenchido): vale o indicativo.
+  const poIsSaleCopy = po.value === so.value && terms.purchaseUnitPrice > 0;
+  const purchaseIndicative = !(terms.hasSupplierOrder && po.value) || poIsSaleCopy;
+  const purchase = purchaseIndicative
+    ? { value: terms.purchaseUnitPrice * (Number(operation.volumeM3) || Number(operation.quantity) || 0), currency: terms.purchaseCurrency }
+    : { value: po.value, currency: form.poCurrency || form.currency };
+  const estimate = estimateMargin({ sale: { value: saleValue, currency: form.currency }, purchase, logistics: amountsOf(logisticsByCurrency(logistics)), rate: logistics.exchangeRate });
+  const margin = estimate.percent;
 
   function run(work: () => Promise<unknown>) {
     setBusy(true);
@@ -469,9 +479,9 @@ export default function PedidoView({ operationId }: { operationId: number }) {
             <h2 id="fin" style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 600 }}>Financeiro</h2>
             <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
               <div><dt className="pd-sub">Venda</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{saleValue ? money(saleValue, form.currency || currency) : "—"}</dd></div>
-              <div><dt className="pd-sub">Compra</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{po.value ? money(po.value, form.poCurrency || currency) : "—"}</dd></div>
+              <div><dt className="pd-sub">Compra</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{purchase.value ? money(purchase.value, purchase.currency) : "—"}{purchase.value > 0 && purchaseIndicative && <span className="pd-sub" style={{ display: "block" }}>indicativo · {money(terms.purchaseUnitPrice, purchase.currency)} por {Number(operation.volumeM3) ? "m³" : form.quantityUnit}</span>}</dd></div>
               <div><dt className="pd-sub">Logística (prévia)</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{!hasLogistics ? "—" : logisticsValue !== null ? money(logisticsValue, form.currency) : logisticsParts}{hasLogistics && <span className="pd-sub" style={{ display: "block" }}>{logisticsValue !== null ? logisticsParts : "informe o câmbio"}</span>}</dd></div>
-              <div><dt className="pd-sub">Margem{logisticsValue ? " (com logística)" : ""}</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{margin === null ? (po.value && !sameCurrency ? "moedas diferentes" : "—") : `${margin.toFixed(1).replace(".", ",")}%`}</dd></div>
+              <div><dt className="pd-sub">Margem{logisticsValue ? " (com logística)" : ""}</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{margin === null ? (purchase.value && saleValue ? "informe o câmbio" : "—") : `${margin.toFixed(1).replace(".", ",")}%`}{margin !== null && estimate.inSale !== null && <span className="pd-sub" style={{ display: "block" }}>{money(estimate.inSale, form.currency)}</span>}</dd></div>
               <div><dt className="pd-sub">Pagamento</dt><dd style={{ margin: "3px 0 0" }}>{form.paymentTerms || "Não registrado"}</dd></div>
             </dl>
           </section>
