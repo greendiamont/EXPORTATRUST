@@ -818,4 +818,4 @@
 - **Regras das contas (`lib/dashboard.ts`):** exportado = fase Trânsito ou depois, ou operação concluída; cancelado nunca conta. Mês = data de embarque (ETD). Volume = soma do volume dos itens do pedido. US$: pedido em USD direto, em BRL pelo câmbio do processo; R$ pelo câmbio de cada processo (custos logísticos), média dos câmbios quando o processo não tem.
 - **API:** `/api/overview` passa a devolver `volume`, `exchangeRate`, `containers`, `completedAt` e `blockedStep` por pedido (sem mudança de banco).
 - **Testes:** tsc (92, sem erros novos), `tests/dashboard.test.mjs` (5), build Railway, Playwright local em 1440 px e 390 px (sem rolagem lateral).
-- **Status:** em andamento
+- **Status:** aprovado por Ivam ("pode produzir") — em produção (PR #152)

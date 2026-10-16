@@ -66,6 +66,7 @@ Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout n
 |---|---|---|
 | 2026-10-14 | Ivam | Aprovou o redesign (protótipos 1 a 6) — `docs/redesign/PLANO_REDESIGN.md` |
 | 2026-10-15 | Ivam | Reafirmou o layout aprovado do Pedido (fases e emissão de documentos) e criou esta regra |
+| 2026-10-16 | Ivam | Aprovou para produção o Painel em formato de dashboard ("1b"): "pode produzir" |
 | 2026-10-16 | Ivam | Aprovou o Painel em formato de dashboard (quadro "1b · Painel dashboard": exportado em US$/R$, m³, preço médio, volume e valor mês a mês/ano a ano, embarques por mês): "alteração aprovada" |
 | 2026-10-16 | Ivam | Aprovou para produção comissão, cancelar pedido, convite de colaborador ("3c") e operação concluída: "pode produzir" |
 | 2026-10-16 | Ivam | Aprovou para produção o Shipment Advice da fase Documentos ("3b"), os botões "Editar" e a tabela de itens com "+ Adicionar item": "pode produzir TUDO O QUE ALTERAMOS E AS CORREÇÕES" |
