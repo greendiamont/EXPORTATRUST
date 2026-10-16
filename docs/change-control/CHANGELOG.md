@@ -726,7 +726,7 @@
 - **Pedido de Ivam (conversa, 2026-10-16):** "tem processos que eu faço que [...] não vendo por um preço maior, eu simplesmente ganho comissão. [...] incluísse uma opção [...] comissionamento [...] o percentual do comissionamento de cada processo e aí ele calcula [...] a margem do pedido [...] por comissionamento."
 - **O que mudou:** seção 4 do Novo processo / Editar: "Como ganhamos neste processo: Margem (compra e venda) | Comissão". Em comissão, campo "Comissão (%)" no lugar do preço de compra e quadro "Comissão estimada do processo" (valor do pedido, comissão e comissão por m³, em US$ e R$ pelo câmbio). Card Financeiro do pedido mostra "Comissão %" e "Ganho (comissão)" com valor por m³. Gravado em `supply_chain_notes.remuneration = {mode, percent}` via `lib/order-terms.ts`; cálculo em `lib/margin.ts` (`estimateCommission`).
 - **Testes:** tsc (sem erros novos), 96 testes unitários, build Railway, Playwright local (3,5% sobre US$ 61.700 → US$ 2.159,50 / R$ 11.661,30; US$ 16,30/m³; Financeiro igual).
-- **Status:** em andamento
+- **Status:** aprovado por Ivam ("pode produzir") — em produção (PR #143, deploy 3eaaa9c1)
 
 ## 2026-10-16 — Claude — Cancelar pedido
 
@@ -737,7 +737,7 @@
 - **Pedido de Ivam (conversa, 2026-10-16):** "um botão [...] do lado de cada pedido, lá na lista de processos, do lado do EUDR, [...] cancelar pedido [...] pode colocar no final [...] como cancelado e colocar ele em vermelho" e "um nome mais curto também para o botão não ficar muito grande".
 - **O que mudou:** lista de Pedidos ganha botão pequeno "Cancelar" (ou "Reabrir") depois da coluna EUDR, com confirmação. Pedido cancelado fica no fim da lista, em vermelho, com o selo "Cancelado"; sai das contagens por fase, das pendências e dos próximos embarques; filtro "Cancelados (n)". No Painel, cancelados vão para o fim da tabela de processos, em vermelho. A marca fica em `supply_chain_notes.cancelled = {at, by, previousStatus}` (a situação do processo é reescrita a cada etapa); `operations.status` vira "Cancelado" e volta ao anterior ao reabrir. `PATCH /api/operations` com `action: "cancel" | "reopen"`, auditado.
 - **Testes:** tsc (sem erros novos), build Railway, Playwright local (cancelar → fim da lista em vermelho, filtro Cancelados (1), contagem da fase Pedido 9→8; reabrir → volta).
-- **Status:** em andamento
+- **Status:** aprovado por Ivam ("pode produzir") — em produção (PR #143, deploy 3eaaa9c1)
 
 ## 2026-10-16 — Claude — Convidar colaborador para o processo (acesso só aos processos convidados)
 
@@ -752,7 +752,7 @@
   - Trava do convidado no servidor (`guestGate`): só `/pedidos/<id>` dos processos liberados e as APIs operacionais deles (acompanhamento, documentos, atividade); todo o resto 403/redireciona. No app (`lib/security.ts` → `assertOperationAccess`), as rotas liberadas conferem o processo de novo; o acompanhamento sai sem valor comercial, itens, preços, logística e notificações; documentos comerciais da fase Pedido (pedido de venda/compra, contrato, proforma) ficam ocultos; atividade só operacional. Tela do convidado sem Editar, Concluir etapa, envio ao cliente, emissão, Shipment Advice, Financeiro, documentos do pedido e "Todos os dados"; tarefas só leitura.
 - **Dados/migration:** tabela nova `operation_collaborators` (criada pelo servidor na inicialização, Postgres). Perfil `convidado` adicionado a `APP_ROLES`.
 - **Testes:** tsc (sem erros novos), 98 testes unitários (2 novos da trava), build Railway, Playwright local (convite → link → senha → convidado cai no processo; sem Financeiro/valores/Editar; APIs de outros processos, overview, cadastros e documentos comerciais = 403; snapshot sem valores; remoção corta o acesso).
-- **Status:** em andamento
+- **Status:** aprovado por Ivam ("pode produzir") — em produção (PR #143, deploy 3eaaa9c1)
 
 ## 2026-10-16 — Claude — "Concluir etapa" na fase aberta; "Operação concluída" na fase Entregue
 
@@ -764,4 +764,4 @@
 - **Causa:** o botão "Concluir etapa" do topo concluía a próxima etapa da fase *atual do pedido*, não da fase aberta na tela; e a "Aprovação para embarque" é travada pela regra do app antigo (etapas anteriores concluídas) com uma mensagem que não dizia quais faltavam.
 - **O que mudou:** "Concluir etapa" age na fase selecionada. A recusa da aprovação para embarque lista as etapas que faltam. Na fase 6 · Entregue, faixa "Encerrar a operação" com botão "Operação concluída ✓" (conclui a etapa Entregue, marca `supply_chain_notes.completed = {at, by}` e a situação "Concluído"); depois mostra "Operação concluída em … por …" e "Reabrir operação". Lista de Pedidos: filtro "Concluídos (n)", concluídos fora das fases em andamento e das pendências, depois dos ativos (cancelados continuam no fim); selo "Operação concluída". Painel: concluídos no fim da tabela com "Concluída". `PATCH /api/operations` `action: "complete" | "uncomplete"`, auditado.
 - **Testes:** tsc (sem erros novos), build Railway, Playwright local (concluir etapa na fase Embarque; aprovação recusada mostra "Falta concluir: …"; operação concluída → filtro Concluídos (1), fora das fases).
-- **Status:** em andamento
+- **Status:** aprovado por Ivam ("pode produzir") — em produção (PR #143, deploy 3eaaa9c1)
