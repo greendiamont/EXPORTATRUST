@@ -282,3 +282,10 @@ a.et2-btn--primary, a.et2-btn--ok { color: #fff; }
 .et2 a.pd-btn { color: var(--et2-ink); }
 .et2 a.pd-btn--dark { color: #fff; }
 .pd-row .pd-badge { white-space: normal; max-width: 45%; text-align: right; }
+
+/* Painel · Processos: tabela cabe na largura do quadro (sem corte à direita, sem quebrar palavras). */
+.et2-table.pn-procs { width: 100%; table-layout: fixed; }
+.et2-table.pn-procs th, .et2-table.pn-procs td { padding: 10px 8px; overflow-wrap: break-word; word-break: normal; hyphens: auto; }
+.et2-table.pn-procs th:first-child, .et2-table.pn-procs td:first-child { padding-left: 16px; }
+.et2-table.pn-procs th:last-child, .et2-table.pn-procs td:last-child { padding-right: 16px; }
+.et2-table.pn-procs .num { font-family: inherit; }
