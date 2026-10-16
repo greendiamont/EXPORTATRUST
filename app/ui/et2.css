@@ -314,3 +314,16 @@ a.et2-btn--primary, a.et2-btn--ok { color: #fff; }
 .lc-totals { padding: 14px 20px; border-top: 1px solid #e5e7eb; display: flex; flex-wrap: wrap; gap: 24px; justify-content: flex-end; align-items: flex-start; margin-bottom: 18px; }
 .lc-label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: .4px; }
 .lc-big { font-size: 18px; font-weight: 600; }
+
+/* Seção 4 · Preços para a margem e margem estimada (protótipo "5c · Preços e margem", aprovado em 2026-10-16) */
+.pm-prices { margin-top: 20px; padding: 16px; border: 1px solid #fde68a; background: #fffbeb; border-radius: 8px; }
+.pm-prices-title { font-size: 12px; font-weight: 600; color: #92400e; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 10px; }
+.pm-margin { margin-top: 20px; border: 1px solid #e5e7eb; border-radius: 8px; overflow-x: auto; }
+.pm-margin-head { padding: 10px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 600; }
+.pm-table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 13px; }
+.pm-table th { background: #f9fafb; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; text-align: left; font-weight: 500; padding: 8px 16px; }
+.pm-table td { padding: 8px 16px; border-top: 1px solid #f0f1f3; }
+.pm-table .num { text-align: right; white-space: nowrap; font-family: var(--font-geist-mono), ui-monospace, monospace; }
+.pm-table .pm-total td { border-top: 1px solid #e5e7eb; font-weight: 600; padding: 10px 16px; }
+.pm-table .pm-total .num { color: #047857; }
+.pm-note { padding: 8px 16px; border-top: 1px solid #f0f1f3; font-size: 12px; color: #6b7280; }

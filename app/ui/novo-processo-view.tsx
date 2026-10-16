@@ -6,6 +6,8 @@ import { api, normalize, processHref } from "./format";
 import { LEGACY_COST_FIELDS, costsFromDraft, logisticsDraft, parseAmount, parseLogisticsCosts, type LogisticsDraft } from "../../lib/logistics-costs";
 import { LogisticsCostsEditor } from "./logistics-costs-editor";
 import { readOrderTerms } from "../../lib/order-terms";
+import { logisticsByCurrency } from "../../lib/logistics-costs";
+import { amountsOf, estimateMargin } from "../../lib/margin";
 
 type Supplier = { id: number; legalName: string; tradeName: string; taxId: string; city: string; state: string; country: string; products: string; productionUnits: string };
 type Client = { id: number; legalName: string; aliases: string; country: string; eori: string; preferredPort: string; preferredIncoterm?: string; preferredCurrency?: string };
@@ -18,7 +20,7 @@ const EMPTY = {
   rawMaterial: "", species: "", forestOriginType: "Reflorestamento", productionUnit: "", lotCodes: "", propertyIds: [] as string[],
   quantity: "", quantityUnit: "MT", volumeM3: "", netWeightKg: "", grossWeightKg: "", incoterm: "FOB", currency: "USD", commercialValue: "",
   transportMode: "Marítimo", shipmentDate: "", destinationCountry: "", portOfLoading: "", portOfDischarge: "", carrier: "", bookingNumber: "", billOfLadingNumber: "", containerNumbers: "", vesselVoyage: "",
-  supplyChainNotes: "", paymentTerms: "", itemSize: "", unitPrice: "",
+  supplyChainNotes: "", paymentTerms: "", itemSize: "", unitPrice: "", purchaseUnitPrice: "", purchaseCurrency: "BRL",
   logistics: logisticsDraft(parseLogisticsCosts("{}")) as LogisticsDraft,
 };
 type Form = typeof EMPTY;
@@ -46,12 +48,18 @@ function formFromOperation(operation: OperationRow): Form {
     reference: operation.reference, supplierId: text(operation.supplierId), importerClientId: text(operation.importerClientId),
     propertyIds: Array.isArray(propertyIds) ? propertyIds.map(String) : [],
     supplyChainNotes: terms.notes, paymentTerms: terms.paymentTerms, itemSize: terms.sizes, unitPrice: terms.unitPrice ? String(terms.unitPrice) : "",
+    purchaseUnitPrice: terms.purchaseUnitPrice ? String(terms.purchaseUnitPrice) : "", purchaseCurrency: terms.purchaseCurrency,
     logistics: logisticsDraft(costs),
   } as Form;
 }
 
 /** Valor digitado no padrão brasileiro (1.234,56) ou internacional (1234.56). */
 const amount = parseAmount;
+/** Campo <input type="number">: o navegador sempre entrega com ponto decimal (ex.: "203.212"). */
+const numberInput = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
 
 const SECTIONS = [
   { title: "Identificação da operação", hint: "Referência, produto, contrato", description: "Se a referência ficar vazia, o sistema gera uma automaticamente." },
@@ -197,7 +205,7 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
     setSaving(true);
     try {
       if (editing) { await saveEdit(); return; }
-      const result = await api<{ operation: { id: number; reference: string }; duplicate?: boolean }>("/api/operations", { method: "POST", body: JSON.stringify({ ...form, logisticsCosts: logisticsCosts(), terms: { paymentTerms: form.paymentTerms, size: form.itemSize, unitPrice: amount(form.unitPrice) } }) });
+      const result = await api<{ operation: { id: number; reference: string }; duplicate?: boolean }>("/api/operations", { method: "POST", body: JSON.stringify({ ...form, logisticsCosts: logisticsCosts(), terms: { paymentTerms: form.paymentTerms, size: form.itemSize, unitPrice: amount(form.unitPrice), purchaseUnitPrice: amount(form.purchaseUnitPrice), purchaseCurrency: form.purchaseCurrency } }) });
       if (result.duplicate) {
         setError(`Já existe um processo com a referência ${result.operation.reference}. Use outra referência ou deixe em branco.`);
         setStep(0);
@@ -218,7 +226,7 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
     const fields: Record<string, unknown> = {};
     const before: Record<string, unknown> = {};
     for (const key of TEXT_FIELDS) if (form[key] !== original[key]) { fields[key] = form[key]; before[key] = operation[key]; }
-    for (const key of NUMBER_FIELDS) if (form[key] !== original[key]) { fields[key] = amount(form[key]); before[key] = operation[key]; }
+    for (const key of NUMBER_FIELDS) if (form[key] !== original[key]) { fields[key] = numberInput(form[key]); before[key] = operation[key]; }
     if (form.supplierId !== original.supplierId) fields.supplierId = Number(form.supplierId);
     if (form.importerClientId !== original.importerClientId) fields.importerClientId = Number(form.importerClientId) || null;
     if (JSON.stringify(logisticsCosts()) !== JSON.stringify(costsFromDraft(original.logistics))) { fields.logisticsCosts = logisticsCosts(); before.logisticsCostsJson = operation.logisticsCostsJson; }
@@ -226,6 +234,7 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
     if (form.paymentTerms !== original.paymentTerms) terms.paymentTerms = form.paymentTerms;
     if (form.itemSize !== original.itemSize) terms.size = form.itemSize;
     if (form.unitPrice !== original.unitPrice) terms.unitPrice = amount(form.unitPrice);
+    if (form.purchaseUnitPrice !== original.purchaseUnitPrice || form.purchaseCurrency !== original.purchaseCurrency) { terms.purchaseUnitPrice = amount(form.purchaseUnitPrice); terms.purchaseCurrency = form.purchaseCurrency; }
     if (form.supplyChainNotes !== original.supplyChainNotes) terms.notes = form.supplyChainNotes;
     if (Object.keys(terms).length) { fields.terms = terms; before.supplyChainNotes = operation.supplyChainNotes; }
     const propertiesChanged = JSON.stringify(form.propertyIds) !== JSON.stringify(original.propertyIds);
@@ -364,12 +373,12 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
               {input("netWeightKg", "Peso líquido (kg)", { type: "number" })}
               {input("grossWeightKg", "Peso bruto (kg)", { type: "number" })}
               {select("incoterm", "Incoterm", ["FOB", "EXW", "FCA", "CFR", "CIF", "DAP", "DDP"])}
-              {select("currency", "Moeda", ["USD", "EUR", "GBP", "BRL"])}
-              {input("commercialValue", "Valor comercial", { type: "number" })}
+              {select("currency", "Moeda da venda", ["USD", "EUR", "GBP", "BRL"])}
+              {input("commercialValue", "Valor comercial", { type: "number", help: "Quantidade × preço de venda" })}
               {input("itemSize", "Medidas / especificação", { placeholder: "Ex.: 22 × 98 × 2440 mm" })}
-              {input("unitPrice", "Preço unitário", { placeholder: "Ex.: 155,00", help: `Por ${form.quantityUnit || "unidade"}, em ${form.currency}` })}
               {input("paymentTerms", "Condição de pagamento", { placeholder: "Ex.: 30% adiantado · 70% contra BL" })}
             </div>}
+            {step === 3 && <PricesAndMargin form={form} setForm={setForm} />}
 
             {step === 4 && <div className="et2-grid">
               {select("transportMode", "Modal", ["Marítimo", "Rodoviário", "Ferroviário", "Aéreo", "Multimodal"])}
@@ -407,5 +416,76 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
         </section>
       </div>
     </main>
+  );
+}
+
+// Seção 4 · Preços para a margem e margem estimada (protótipo "5c · Preços e margem",
+// aprovado por Ivam em 2026-10-16). O câmbio é o mesmo da prévia logística (seção 5).
+const SYMBOL: Record<string, string> = { USD: "US$", BRL: "R$", EUR: "€", GBP: "£" };
+const two = (value: number) => value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const show = (value: number | null, currency: string) => value === null ? "—" : `${SYMBOL[currency] ?? currency} ${two(value)}`;
+
+function PricesAndMargin({ form, setForm }: { form: Form; setForm: (update: (current: Form) => Form) => void }) {
+  // Mesma base do pedido (lib/order-terms): volume em m³ quando informado; senão, a quantidade.
+  const quantity = numberInput(form.volumeM3) || numberInput(form.quantity);
+  const unit = numberInput(form.volumeM3) ? "m³" : form.quantityUnit || "unidade";
+  const salePrice = amount(form.unitPrice);
+  const purchasePrice = amount(form.purchaseUnitPrice);
+  const rate = amount(form.logistics.exchangeRate);
+  const sale = { value: salePrice && quantity ? salePrice * quantity : numberInput(form.commercialValue), currency: form.currency };
+  const purchase = { value: purchasePrice * quantity, currency: form.purchaseCurrency };
+  const margin = estimateMargin({ sale, purchase, logistics: amountsOf(logisticsByCurrency(costsFromDraft(form.logistics))), rate });
+  const qty = quantity ? `${quantity.toLocaleString("pt-BR")} ${unit}` : "";
+  const field = (key: "unitPrice" | "purchaseUnitPrice", currencyKey: "currency" | "purchaseCurrency", label: string, total: number) => (
+    <label className="et2-field">
+      <span>{label}</span>
+      <span style={{ display: "flex", gap: 6 }}>
+        <select aria-label={`Moeda: ${label}`} style={{ width: 84, flex: "none" }} value={form[currencyKey]} onChange={(event) => { const value = event.target.value; setForm((current) => ({ ...current, [currencyKey]: value })); }}>
+          {(currencyKey === "currency" ? ["USD", "BRL", "EUR", "GBP"] : ["BRL", "USD"]).map((code) => <option key={code} value={code}>{SYMBOL[code]}</option>)}
+        </select>
+        <input aria-label={label} inputMode="decimal" placeholder="0,00" value={form[key]} onChange={(event) => { const value = event.target.value; setForm((current) => ({ ...current, [key]: value })); }} style={{ flex: 1, minWidth: 0 }} />
+      </span>
+      <small>Por {unit}{total && qty ? ` · total ${show(total, form[currencyKey])} (${qty})` : ""}</small>
+    </label>
+  );
+  const given = (items: Array<{ value: number; currency: string }>) => items.length ? items.map((item) => item.currency === "USD" || item.currency === "BRL" ? `${item.currency} ${two(item.value)}` : show(item.value, item.currency)).join(" + ") : "—";
+  return (
+    <>
+      <div className="pm-prices">
+        <div className="pm-prices-title">Preços para a margem</div>
+        <div className="et2-grid">
+          {field("unitPrice", "currency", "Preço indicativo de venda", salePrice * quantity)}
+          {field("purchaseUnitPrice", "purchaseCurrency", "Preço de compra (fornecedor)", purchasePrice * quantity)}
+          <label className="et2-field">
+            <span>Câmbio (R$ por US$ 1)</span>
+            <input inputMode="decimal" placeholder="Ex.: 5,40" value={form.logistics.exchangeRate} onChange={(event) => { const value = event.target.value; setForm((current) => ({ ...current, logistics: { ...current.logistics, exchangeRate: value } })); }} />
+            <small>O mesmo da prévia logística (seção 5)</small>
+          </label>
+        </div>
+      </div>
+      <div className="pm-margin">
+        <div className="pm-margin-head">Margem estimada do processo</div>
+        <table className="pm-table">
+          <thead><tr><th><span className="sr-only">Item</span></th><th className="num">Valor lançado</th><th className="num">Em US$</th><th className="num">Em R$</th></tr></thead>
+          <tbody>
+            {margin.rows.map((row, index) => (
+              <tr key={row.label}>
+                <td>{index === 0 ? `Venda${salePrice && qty ? ` (${qty} × ${show(salePrice, form.currency)})` : ""}` : index === 1 ? `Compra${purchasePrice && qty ? ` (${qty} × ${show(purchasePrice, form.purchaseCurrency)})` : ""}` : "Logística (prévia da seção 5)"}</td>
+                <td className="num">{given(row.given)}</td>
+                <td className="num">{row.given.length ? show(row.usd, "USD") : "—"}</td>
+                <td className="num">{row.given.length ? show(row.brl, "BRL") : "—"}</td>
+              </tr>
+            ))}
+            <tr className="pm-total">
+              <td>Margem (venda − compra − logística)</td>
+              <td className="num">{margin.percent === null ? "—" : `${margin.percent.toFixed(1).replace(".", ",")}%`}</td>
+              <td className="num">{show(margin.usd, "USD")}</td>
+              <td className="num">{show(margin.brl, "BRL")}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div className="pm-note">{margin.percent === null && sale.value && purchase.value ? "Informe o câmbio para converter reais e dólares. " : ""}A mesma conta aparece no card Financeiro do pedido. Quando o pedido de compra e o de venda forem emitidos (fase Pedido), os valores deles substituem estes indicativos.</div>
+      </div>
+    </>
   );
 }
