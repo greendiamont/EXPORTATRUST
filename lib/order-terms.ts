@@ -65,7 +65,7 @@ export function readOrderTerms(source: OrderTermsSource) {
   };
 }
 
-export type OrderItemChange = { size?: string; unitPrice?: number };
+export type OrderItemChange = { species?: string; quality?: string; size?: string; volume?: number; unitPrice?: number };
 export type OrderTermsChanges = { paymentTerms?: string; size?: string; unitPrice?: number; notes?: string; purchaseUnitPrice?: number; purchaseCurrency?: string; items?: OrderItemChange[] };
 
 /**
@@ -89,20 +89,28 @@ export function applyOrderTerms(source: OrderTermsSource, changes: OrderTermsCha
     }
   }
   let commercialValue: number | undefined;
-  // Vários itens: medida e preço de cada item (mesma ordem do pedido); o valor comercial passa a
-  // ser a soma volume × preço, como na emissão de documentos. Demais campos do item são mantidos.
+  // Lista de itens do pedido (tabela com "+ Adicionar item"): substitui os itens na ordem dada,
+  // preservando campos extras de cada item existente; o valor comercial passa a ser a soma
+  // volume × preço, como na emissão de documentos.
   if (changes.items) {
     const raw = json && Array.isArray(json.orderItems) ? json.orderItems as Array<Record<string, unknown>> : [];
-    const base = raw.length ? raw : [fallbackItem(source) as unknown as Record<string, unknown>];
-    if (changes.items.length !== base.length) return { supplyChainNotes: source.supplyChainNotes ?? "", error: "Os itens do pedido mudaram enquanto você editava. Abra o processo de novo." };
-    const updated = base.map((item, index) => {
-      const change = changes.items![index];
-      const unitPrice = change.unitPrice !== undefined && Number.isFinite(change.unitPrice) ? change.unitPrice : Number(item.unitPrice) || 0;
-      return { ...item, size: change.size !== undefined ? change.size.trim() : String(item.size ?? ""), unitPrice } as Record<string, unknown>;
-    });
+    const text = (value: unknown) => String(value ?? "").trim();
+    const updated = changes.items.map((change, index) => {
+      const item = raw[index] ?? {};
+      const number = (value: unknown, fallback: unknown) => value !== undefined && Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : Number(fallback) || 0;
+      return {
+        ...item,
+        species: change.species !== undefined ? text(change.species) : text(item.species),
+        quality: change.quality !== undefined ? text(change.quality) : text(item.quality),
+        size: change.size !== undefined ? text(change.size) : text(item.size),
+        volume: number(change.volume, item.volume),
+        unitPrice: number(change.unitPrice, item.unitPrice),
+      } as Record<string, unknown>;
+    }).filter((item) => item.species || item.quality || item.size || item.volume || item.unitPrice);
     next.orderItems = updated;
-    commercialValue = Math.round(updated.reduce((sum, item) => sum + (Number(item.volume) || 0) * (Number(item.unitPrice) || 0), 0) * 100) / 100;
-    return { supplyChainNotes: JSON.stringify(next), commercialValue };
+    const total = updated.reduce((sum, item) => sum + (Number(item.volume) || 0) * (Number(item.unitPrice) || 0), 0);
+    if (total > 0) commercialValue = Math.round(total * 100) / 100;
+    return { supplyChainNotes: JSON.stringify(next), ...(commercialValue !== undefined ? { commercialValue } : {}) };
   }
   if (changes.size !== undefined || changes.unitPrice !== undefined) {
     const list = items(json);

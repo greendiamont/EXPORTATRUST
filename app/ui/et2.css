@@ -371,3 +371,7 @@ a.et2-btn--primary, a.et2-btn--ok { color: #fff; }
 .sa-emit-btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
 .pm-multi { min-height: 38px; display: flex; align-items: center; padding: 0 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: #f9fafb; color: #374151; }
 .pm-table .pd-input { min-height: 32px; font-size: 13px; }
+.pm-items { min-width: 860px; }
+.pm-items td { padding: 6px 8px; } .pm-items th { padding: 8px; }
+.pm-items td:nth-child(4), .pm-items td:nth-child(5) { width: 120px; }
+.pm-table .pm-negative .num { color: #b91c1c; }

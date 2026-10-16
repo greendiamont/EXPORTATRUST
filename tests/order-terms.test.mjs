@@ -60,5 +60,10 @@ test("pedido com vários itens: medida e preço por item, valor comercial somado
   assert.equal(json.orderItems[0].extra, "x");
   assert.equal(json.paymentTerms, "y");
   assert.equal(applied.commercialValue, 2100);
-  assert.ok(applyOrderTerms({ ...base, supplyChainNotes: notes }, { items: [{ size: "z" }] }).error);
+  const added = JSON.parse(applyOrderTerms({ ...base, supplyChainNotes: notes }, { items: [{}, {}, { species: "Eucalipto", size: "c", volume: 2, unitPrice: 50 }] }).supplyChainNotes);
+  assert.equal(added.orderItems.length, 3);
+  assert.equal(added.orderItems[2].species, "Eucalipto");
+  const removed = applyOrderTerms({ ...base, supplyChainNotes: notes }, { items: [{}] });
+  assert.equal(JSON.parse(removed.supplyChainNotes).orderItems.length, 1);
+  assert.equal(removed.commercialValue, 1000);
 });
