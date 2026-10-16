@@ -349,6 +349,7 @@ export default function PedidoView({ operationId }: { operationId: number }) {
                 <span style={{ display: "flex" }}>{viewers.slice(0, 5).map((person) => <Avatar key={person.email} name={person.name || person.email} email={person.email} size={30} />)}</span>
               </div>
             )}
+            <Link className="pd-btn" href={`/novo-processo?processo=${operationId}`} title="Voltar ao processo para alterar referência, empresas, produto, preços e logística">Editar processo</Link>
             <button className={`pd-btn${meFollowing ? " pd-btn--on" : ""}`} aria-pressed={meFollowing} disabled={busy} onClick={() => run(() => postActivity({ operationId, action: "follow", follow: !meFollowing }))}>{meFollowing ? "✓ Seguindo" : "Seguir pedido"}</button>
             <button className="pd-btn" onClick={mailUpdate}>Enviar atualização ao cliente</button>
             <button className="pd-btn pd-btn--dark" disabled={busy || !openStep} title={openStep ? `Concluir “${openStep.title}”` : "Nenhuma etapa aberta"}
