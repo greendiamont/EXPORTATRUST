@@ -51,6 +51,7 @@ O workflow `.github/workflows/layout-guard.yml` reprova todo PR que altere arqui
 | 3 · Pedido (todas as fases, emissão de documentos na fase Pedido) | `docs/redesign/prototipo/Processo.dc.html` | `app/ui/pedido-view.tsx` (PR #103) | Aprovado — travado; implementação aguardando conferência de Ivam em homologação |
 | 4 · EUDR | `docs/redesign/prototipo/EUDR.dc.html` | ainda não implementada | Aprovado — implementar exatamente como o protótipo |
 | 5 · Novo processo | `docs/redesign/prototipo/NovoProcesso.dc.html` | `app/ui/novo-processo-view.tsx` (também abre em modo "Editar negociação"; seção 4 com medidas, preço unitário e condição de pagamento) | Aprovado — travado |
+| 5b · Custos logísticos (seção 5 do Novo processo e "Todos os dados do pedido") | `docs/redesign/prototipo/CustosLogisticos.dc.html` (aprovado em 2026-10-16) | `app/ui/logistics-costs-editor.tsx` | Aprovado — travado |
 | 6 · Cadastros | `docs/redesign/prototipo/Cadastros.dc.html` | `app/ui/cadastros-view.tsx` | Aprovado — travado |
 
 Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout novo aprovado; não redesenhar sem pedido de Ivam.
@@ -61,6 +62,7 @@ Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout n
 |---|---|---|
 | 2026-10-14 | Ivam | Aprovou o redesign (protótipos 1 a 6) — `docs/redesign/PLANO_REDESIGN.md` |
 | 2026-10-15 | Ivam | Reafirmou o layout aprovado do Pedido (fases e emissão de documentos) e criou esta regra |
+| 2026-10-16 | Ivam | Aprovou os custos logísticos por serviço (quadro "5b · Custos logísticos", a partir da cotação HMM): "alteração aprovada PODE PRODUZIR" |
 | 2026-10-16 | Ivam | Aprovou a seção "Processos · negociação" no Painel e o "Editar negociação" pelo formulário do Novo processo: "Boa, Claude, é exatamente isso que eu preciso, tá? Pode subir para homologação e produção. Produção, layout aprovado. E alteração" |
 | 2026-10-16 | Ivam | Escolheu a trava automática ("aprovar uma permissão quando ela aparecer") e definiu: "Quando tiver qualquer alteração, você vai enviar para mim aqui e eu preciso dar o ok. Eu preciso falar alteração aprovada." |
 | 2026-10-15 | Ivam | Definiu que a autorização é dada só na conversa: "eu posso dizer assim, ó, a layout aprovado, aí vocês travam o layout que foi aprovado" — sem passos manuais |
