@@ -60,13 +60,20 @@ export function readOrderTerms(source: OrderTermsSource) {
     sizes: [...new Set(effective.map((item) => item.size).filter(Boolean))].join("; "),
     unitPrice: effective.length === 1 ? effective[0].unitPrice : null,
     itemCount: effective.length,
+    /** Operação concluída (botão na fase Entregue): vai para "Concluídos" nas listas; null se em andamento. */
+    completed: json && json.completed && typeof json.completed === "object" ? json.completed as { at: string; by: string } : null,
+    /** Pedido cancelado (fica no fim das listas, em vermelho); null se ativo. */
+    cancelled: json && json.cancelled && typeof json.cancelled === "object" ? json.cancelled as { at: string; by: string; previousStatus: string } : null,
+    /** Como ganhamos no processo: margem (compra e venda) ou comissão (% sobre o valor do pedido). */
+    gainMode: json && json.remuneration && typeof json.remuneration === "object" && (json.remuneration as Record<string, unknown>).mode === "comissao" ? "comissao" : "margem",
+    commissionPercent: json && json.remuneration && typeof json.remuneration === "object" ? Number((json.remuneration as Record<string, unknown>).percent) || 0 : 0,
     /** Itens do pedido de venda (com vários itens, medida e preço são editados item a item). */
     items: effective,
   };
 }
 
 export type OrderItemChange = { species?: string; quality?: string; size?: string; volume?: number; unitPrice?: number };
-export type OrderTermsChanges = { paymentTerms?: string; size?: string; unitPrice?: number; notes?: string; purchaseUnitPrice?: number; purchaseCurrency?: string; items?: OrderItemChange[] };
+export type OrderTermsChanges = { remuneration?: { mode: string; percent: number }; paymentTerms?: string; size?: string; unitPrice?: number; notes?: string; purchaseUnitPrice?: number; purchaseCurrency?: string; items?: OrderItemChange[] };
 
 /**
  * Aplica mudanças nos termos. Medida e preço só mudam quando o pedido tem um único item
@@ -78,6 +85,10 @@ export function applyOrderTerms(source: OrderTermsSource, changes: OrderTermsCha
   const next: Record<string, unknown> = json ? { ...json } : (text ? { orderNotes: text } : {});
   if (changes.paymentTerms !== undefined) next.paymentTerms = changes.paymentTerms.trim();
   if (changes.notes !== undefined) next.orderNotes = changes.notes.trim();
+  if (changes.remuneration) {
+    const percent = Number(changes.remuneration.percent);
+    next.remuneration = { mode: changes.remuneration.mode === "comissao" ? "comissao" : "margem", percent: Number.isFinite(percent) && percent > 0 ? Math.round(percent * 10000) / 10000 : 0 };
+  }
   if (changes.purchaseUnitPrice !== undefined || changes.purchaseCurrency !== undefined) {
     const previous = next.purchasePrice && typeof next.purchasePrice === "object" ? next.purchasePrice as Record<string, unknown> : {};
     const unitPrice = changes.purchaseUnitPrice !== undefined && Number.isFinite(changes.purchaseUnitPrice) ? Math.max(0, changes.purchaseUnitPrice) : Number(previous.unitPrice) || 0;
@@ -124,4 +135,23 @@ export function applyOrderTerms(source: OrderTermsSource, changes: OrderTermsCha
     next.orderItems = [item];
   }
   return { supplyChainNotes: JSON.stringify(next), ...(commercialValue !== undefined ? { commercialValue } : {}) };
+}
+
+/** Marca ou desfaz o cancelamento do pedido no JSON do pedido (a situação do processo muda a cada etapa). */
+export function setOrderCancelled(source: { supplyChainNotes: string | null; status: string }, cancel: boolean, by: string, at = new Date().toISOString()) {
+  const { json, text } = parse({ supplyChainNotes: source.supplyChainNotes } as OrderTermsSource);
+  const next: Record<string, unknown> = json ? { ...json } : (text ? { orderNotes: text } : {});
+  const previous = next.cancelled && typeof next.cancelled === "object" ? next.cancelled as Record<string, unknown> : null;
+  if (cancel) next.cancelled = { at, by, previousStatus: previous ? String(previous.previousStatus ?? "") : source.status };
+  else delete next.cancelled;
+  return { supplyChainNotes: JSON.stringify(next), status: cancel ? "Cancelado" : String(previous?.previousStatus || "Em andamento") };
+}
+
+/** Marca ou desfaz "operação concluída" no JSON do pedido. */
+export function setOrderCompleted(source: { supplyChainNotes: string | null; status: string }, done: boolean, by: string, at = new Date().toISOString()) {
+  const { json, text } = parse({ supplyChainNotes: source.supplyChainNotes } as OrderTermsSource);
+  const next: Record<string, unknown> = json ? { ...json } : (text ? { orderNotes: text } : {});
+  if (done) next.completed = { at, by };
+  else delete next.completed;
+  return { supplyChainNotes: JSON.stringify(next), status: done ? "Concluído" : "Entregue ao cliente" };
 }

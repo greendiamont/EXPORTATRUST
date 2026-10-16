@@ -8,6 +8,7 @@ import { PHASE_UPLOAD_CATEGORY, documentPhaseIndex, taskPhaseIndex } from "../..
 import { type LogisticsDraft, costsFromDraft, logisticsByCurrency, logisticsDraft, logisticsTotal, logisticsTotalIn, parseLogisticsCosts } from "../../lib/logistics-costs";
 import { LogisticsCostsEditor, LogisticsCostsSummary } from "./logistics-costs-editor";
 import { ShipmentAdviceCard } from "./shipment-advice-card";
+import { CollaboratorsPanel } from "./collaborators-panel";
 import { amountsOf, estimateMargin } from "../../lib/margin";
 import { readOrderTerms } from "../../lib/order-terms";
 
@@ -32,7 +33,7 @@ type OrderDetails = {
   packingList: { consigneeName?: string; netWeight?: number; grossWeight?: number; packages?: number; marks?: string; containerReference?: string; items: PackingItem[] };
 };
 type Settings = { customerName: string; customerEmail: string; updatedAt: string };
-type Snapshot = { operation: Operation; orderDetails: OrderDetails; settings: Settings; milestones: Milestone[]; tasks: Task[]; eudrBridge: { required: boolean; status: string; readiness: number } };
+type Snapshot = { operation: Operation; orderDetails: OrderDetails; settings: Settings; milestones: Milestone[]; tasks: Task[]; eudrBridge: { required: boolean; status: string; readiness: number }; viewer?: { guest?: boolean } };
 type Doc = { id: number; category: string; fileName: string; documentType: string; contentType: string; sizeBytes: number; uploadedAt: string; status: string; sourceSystem: string };
 
 const STATUSES = ["Pendente", "Em andamento", "Aguardando aprovação", "Concluído", "Bloqueado", "Suspenso"];
@@ -260,8 +261,11 @@ export default function PedidoView({ operationId }: { operationId: number }) {
   const phaseTasks = data.tasks.filter((task) => phaseOfTask(task) === selected).sort((a, b) => a.sequence - b.sequence);
   const phaseDocs = docs.filter((doc) => documentPhaseIndex(doc.category, doc.fileName) === selected);
   const otherDocs = docs.filter((doc) => documentPhaseIndex(doc.category, doc.fileName) === null);
-  const openStep = milestones.find((milestone) => phaseIndexOfCode(milestone.code) === current && !isClosedStatus(milestone.status));
+  // "Concluir etapa" age na fase que está aberta na tela (antes usava sempre a fase atual do pedido).
+  const openStep = milestones.find((milestone) => phaseIndexOfCode(milestone.code) === selected && !isClosedStatus(milestone.status));
   const meFollowing = Boolean(activity?.followers?.some((follower) => follower.email === activity.me));
+  // Colaborador convidado: só acompanha o processo (sem valores, emissão nem ações internas).
+  const guest = Boolean(data.viewer?.guest);
 
   const so = itemsTotal(form.soItems);
   const po = itemsTotal(form.poItems);
@@ -282,6 +286,9 @@ export default function PedidoView({ operationId }: { operationId: number }) {
     : { value: po.value, currency: form.poCurrency || form.currency };
   const estimate = estimateMargin({ sale: { value: saleValue, currency: form.currency }, purchase, logistics: amountsOf(logisticsByCurrency(logistics)), rate: logistics.exchangeRate });
   const margin = estimate.percent;
+  // Processo por comissão: ganho = valor do pedido × % (sem compra nem margem de revenda).
+  const commission = terms.gainMode === "comissao";
+  const commissionGain = commission ? Math.round(saleValue * terms.commissionPercent) / 100 : 0;
   // Base da margem por unidade: volume em m³ quando informado; senão, a quantidade (mesma base dos preços).
   const marginBase = so.volume || Number(operation.volumeM3) || Number(operation.quantity) || 0;
   const perUnit = (value: number, code: string) => `${code === "BRL" ? "R$" : code === "USD" ? "US$" : code} ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -350,15 +357,15 @@ export default function PedidoView({ operationId }: { operationId: number }) {
                 <span style={{ display: "flex" }}>{viewers.slice(0, 5).map((person) => <Avatar key={person.email} name={person.name || person.email} email={person.email} size={30} />)}</span>
               </div>
             )}
-            <Link className="pd-btn" href={`/novo-processo?processo=${operationId}`} title="Editar o processo: referência, empresas, produto, preços e logística">Editar</Link>
+            {!guest && <Link className="pd-btn" href={`/novo-processo?processo=${operationId}`} title="Editar o processo: referência, empresas, produto, preços e logística">Editar</Link>}
             <button className={`pd-btn${meFollowing ? " pd-btn--on" : ""}`} aria-pressed={meFollowing} disabled={busy} onClick={() => run(() => postActivity({ operationId, action: "follow", follow: !meFollowing }))}>{meFollowing ? "✓ Seguindo" : "Seguir pedido"}</button>
-            <button className="pd-btn" onClick={mailUpdate}>Enviar atualização ao cliente</button>
-            <button className="pd-btn pd-btn--dark" disabled={busy || !openStep} title={openStep ? `Concluir “${openStep.title}”` : "Nenhuma etapa aberta"}
-              onClick={() => { if (openStep && window.confirm(`Concluir a etapa “${openStep.title}”? O cliente é avisado conforme as configurações do pedido.`)) toggleMilestone(openStep); }}>Concluir etapa</button>
+            {!guest && <button className="pd-btn" onClick={mailUpdate}>Enviar atualização ao cliente</button>}
+            {!guest && <button className="pd-btn pd-btn--dark" disabled={busy || !openStep} title={openStep ? `Concluir “${openStep.title}”` : "Nenhuma etapa aberta"}
+              onClick={() => { if (openStep && window.confirm(`Concluir a etapa “${openStep.title}”? O cliente é avisado conforme as configurações do pedido.`)) toggleMilestone(openStep); }}>Concluir etapa</button>}
           </div>
         </div>
         <dl className="pd-facts">
-          <div><dt>Valor de venda</dt><dd className="mono">{saleValue ? money(saleValue, currency) : "—"}</dd></div>
+          {!guest && <div><dt>Valor de venda</dt><dd className="mono">{saleValue ? money(saleValue, currency) : "—"}</dd></div>}
           <div><dt>Quantidade</dt><dd className="mono">{Number(operation.quantity) ? `${fmt(Number(operation.quantity), 3)} ${operation.quantityUnit || ""}` : "—"}</dd></div>
           <div><dt>Incoterm</dt><dd>{[operation.incoterm, operation.portOfLoading].filter(Boolean).join(" ") || "—"}</dd></div>
           <div><dt>ETD / ETA</dt><dd>{formatDate(String(operation.shipmentDate || "")) || "—"} / —</dd></div>
@@ -387,16 +394,31 @@ export default function PedidoView({ operationId }: { operationId: number }) {
 
       <div className="pd-cols">
         <div className="pd-main">
-          {selected === 3 && (
+          {selected === 3 && !guest && (
             <ShipmentAdviceCard operationId={operationId} onChanged={refreshAll} onError={setError}
               onView={(id, fileName) => setPreview({ title: fileName, src: `/api/documents?documentId=${id}&inline=1`, download: `/api/documents?documentId=${id}` })} />
           )}
-          {selected === 0 && (
+          {selected === 0 && !guest && (
             <Emission operationId={operationId} data={data} form={form} dirty={dirty} activity={activity}
               setForm={(next) => { setForm(next); setDirty(true); dirtyRef.current = true; }}
               onEditing={onEditing} baseRef={baseRef} versionRef={versionRef} onSaved={onFormSaved}
               onReset={(next) => { setForm(next); baseRef.current = next; dirtyRef.current = false; setDirty(false); }}
               onPreview={setPreview} onError={setError} />
+          )}
+
+          {selected === 5 && !guest && (
+            <section className={`pd-card pd-done${terms.completed ? " pd-done--ok" : ""}`} aria-label="Operação concluída">
+              <div>
+                <b>{terms.completed ? "Operação concluída" : "Encerrar a operação"}</b>
+                <div className="pd-sub">{terms.completed
+                  ? `Concluída em ${formatDate(terms.completed.at)} por ${terms.completed.by}. O pedido está em “Concluídos” na lista de Pedidos.`
+                  : "Quando a entrega estiver confirmada, conclua a operação: o pedido sai das fases em andamento e vai para “Concluídos”."}</div>
+              </div>
+              <button className={terms.completed ? "pd-btn" : "pd-btn pd-btn--ok"} disabled={busy}
+                onClick={() => { const done = !terms.completed; if (window.confirm(done ? `Concluir a operação ${operation.reference}? Ela vai para “Concluídos” na lista de Pedidos.` : `Reabrir a operação ${operation.reference}?`)) run(() => api("/api/operations", { method: "PATCH", body: JSON.stringify({ id: operationId, action: done ? "complete" : "uncomplete" }) })); }}>
+                {terms.completed ? "Reabrir operação" : "Operação concluída ✓"}
+              </button>
+            </section>
           )}
 
           <section className="pd-card pd-card--scroll" aria-labelledby="etapas">
@@ -415,7 +437,7 @@ export default function PedidoView({ operationId }: { operationId: number }) {
                     <tr key={milestone.code}>
                       <td>
                         <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                          <button className="pd-check" aria-pressed={done} aria-label={`Marcar como concluída: ${milestone.title}`} disabled={busy} onClick={() => toggleMilestone(milestone)}>{done ? "✓" : ""}</button>
+                          <button className="pd-check" aria-pressed={done} aria-label={`Marcar como concluída: ${milestone.title}`} disabled={busy || guest} onClick={() => toggleMilestone(milestone)}>{done ? "✓" : ""}</button>
                           <button className="pd-link" onClick={() => setTarget({ kind: "m", code: milestone.code })}>
                             <span className="t" style={{ color: done ? "var(--et2-muted)" : undefined }}>{milestone.title}</span>
                             <span className="d">{milestone.nextAction || "Etapa do pedido"}</span>
@@ -437,7 +459,7 @@ export default function PedidoView({ operationId }: { operationId: number }) {
                     <tr key={`t${task.id}`}>
                       <td>
                         <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                          <button className="pd-check" aria-pressed={done} aria-label={`Concluir: ${task.description}`} disabled={busy} onClick={() => toggleTask(task)}>{done ? "✓" : ""}</button>
+                          <button className="pd-check" aria-pressed={done} aria-label={`Concluir: ${task.description}`} disabled={busy || guest} onClick={() => toggleTask(task)}>{done ? "✓" : ""}</button>
                           <button className="pd-link" onClick={() => setTarget({ kind: "t", id: task.id })}>
                             <span className="t" style={{ color: done ? "var(--et2-muted)" : undefined, textDecoration: done ? "line-through" : undefined }}>{task.description}</span>
                             <span className="d">{task.note || "Tarefa"}</span>
@@ -451,7 +473,7 @@ export default function PedidoView({ operationId }: { operationId: number }) {
                     </tr>
                   );
                 })}
-                <AddTask disabled={busy} onAdd={(description) => run(() => postControl({ action: "operation-task-create", operationId, description }))} />
+                {!guest && <AddTask disabled={busy} onAdd={(description) => run(() => postControl({ action: "operation-task-create", operationId, description }))} />}
               </tbody>
             </table>
           </section>
@@ -461,40 +483,50 @@ export default function PedidoView({ operationId }: { operationId: number }) {
               <h2 id="arquivos">Arquivos desta fase <span style={{ fontWeight: 400, color: "var(--et2-muted)" }}>· {phaseDocs.length}</span></h2>
               <UploadButton operationId={operationId} category={PHASE_UPLOAD_CATEGORY[selected]} onDone={refreshAll} onError={setError} />
             </div>
-            <FileTable docs={phaseDocs} onView={setPreview} onDelete={deleteDoc} empty="Nenhum arquivo nesta fase ainda." />
+            <FileTable docs={phaseDocs} onView={setPreview} onDelete={guest ? undefined : deleteDoc} empty="Nenhum arquivo nesta fase ainda." />
             {otherDocs.length > 0 && (
               <details className="pd-more">
                 <summary>Outros arquivos do pedido <span style={{ fontWeight: 400, color: "var(--et2-muted)" }}>· {otherDocs.length}</span></summary>
-                <FileTable docs={otherDocs} onView={setPreview} onDelete={deleteDoc} empty="" />
+                <FileTable docs={otherDocs} onView={setPreview} onDelete={guest ? undefined : deleteDoc} empty="" />
               </details>
             )}
           </section>
 
+          {!guest && (
           <details className="pd-card">
             <summary style={{ padding: "14px 20px", cursor: "pointer", fontWeight: 600, fontSize: 16 }}>Todos os dados do pedido</summary>
             <AllFields operation={operation} onSaved={refreshAll} onError={setError} />
           </details>
+          )}
         </div>
 
         <aside className="pd-side">
+          {!guest && (
           <section className="pd-card" aria-labelledby="docs">
             <div className="pd-card-head"><h2 id="docs">Documentos do pedido</h2></div>
             <OrderDocuments docs={docs} form={form} data={data} onPhase={setPhase} />
           </section>
+          )}
 
-          <TeamActivity operationId={operationId} activity={activity} milestones={milestones} tasks={data.tasks} onPosted={loadActivity} onError={setError} />
+          <TeamActivity operationId={operationId} activity={activity} milestones={milestones} tasks={data.tasks} onPosted={loadActivity} onError={setError} canInvite={!guest} reference={operation.reference} />
 
+          {!guest && <>
           <section className="pd-card" aria-labelledby="fin" style={{ padding: "14px 20px" }}>
             <h2 id="fin" style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 600 }}>Financeiro</h2>
             <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
               <div><dt className="pd-sub">Venda</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{saleValue ? money(saleValue, form.currency || currency) : "—"}</dd></div>
-              <div><dt className="pd-sub">Compra</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{purchase.value ? money(purchase.value, purchase.currency) : "—"}{purchase.value > 0 && purchaseIndicative && <span className="pd-sub" style={{ display: "block" }}>indicativo · {money(terms.purchaseUnitPrice, purchase.currency)} por {so.volume || Number(operation.volumeM3) ? "m³" : form.quantityUnit}</span>}</dd></div>
+              {commission
+              ? <div><dt className="pd-sub">Comissão</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{terms.commissionPercent ? `${terms.commissionPercent.toLocaleString("pt-BR")}%` : "—"}<span className="pd-sub" style={{ display: "block" }}>sobre o valor do pedido</span></dd></div>
+              : <div><dt className="pd-sub">Compra</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{purchase.value ? money(purchase.value, purchase.currency) : "—"}{purchase.value > 0 && purchaseIndicative && <span className="pd-sub" style={{ display: "block" }}>indicativo · {money(terms.purchaseUnitPrice, purchase.currency)} por {so.volume || Number(operation.volumeM3) ? "m³" : form.quantityUnit}</span>}</dd></div>}
               <div><dt className="pd-sub">Logística (prévia)</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{!hasLogistics ? "—" : logisticsValue !== null ? money(logisticsValue, form.currency) : logisticsParts}{hasLogistics && <span className="pd-sub" style={{ display: "block" }}>{logisticsValue !== null ? logisticsParts : "informe o câmbio"}</span>}</dd></div>
-              <div><dt className="pd-sub">Margem{logisticsValue ? " (com logística)" : ""}</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{margin === null ? (purchase.value && saleValue ? "informe o câmbio" : "—") : `${margin.toFixed(1).replace(".", ",")}%`}{margin !== null && estimate.inSale !== null && <span className="pd-sub" style={{ display: "block" }}>{money(estimate.inSale, form.currency)}{marginBase ? ` · ${perUnit(estimate.inSale / marginBase, form.currency)} por ${so.volume || Number(operation.volumeM3) ? "m³" : form.quantityUnit}` : ""}</span>}</dd></div>
+              {commission
+              ? <div><dt className="pd-sub">Ganho (comissão)</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{commissionGain ? money(commissionGain, form.currency) : "—"}{commissionGain > 0 && marginBase > 0 && <span className="pd-sub" style={{ display: "block" }}>{perUnit(commissionGain / marginBase, form.currency)} por {so.volume || Number(operation.volumeM3) ? "m³" : form.quantityUnit}</span>}</dd></div>
+              : <div><dt className="pd-sub">Margem{logisticsValue ? " (com logística)" : ""}</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{margin === null ? (purchase.value && saleValue ? "informe o câmbio" : "—") : `${margin.toFixed(1).replace(".", ",")}%`}{margin !== null && estimate.inSale !== null && <span className="pd-sub" style={{ display: "block" }}>{money(estimate.inSale, form.currency)}{marginBase ? ` · ${perUnit(estimate.inSale / marginBase, form.currency)} por ${so.volume || Number(operation.volumeM3) ? "m³" : form.quantityUnit}` : ""}</span>}</dd></div>}
               <div><dt className="pd-sub">Pagamento</dt><dd style={{ margin: "3px 0 0" }}>{form.paymentTerms || "Não registrado"}</dd></div>
             </dl>
           </section>
           <Link className="pd-sub" href={`/classico?processo=${operationId}`}>Abrir na versão anterior (EUDR e supply chain)</Link>
+          </>}
         </aside>
       </div>
 
@@ -850,7 +882,7 @@ function extOf(doc: Doc) {
   return { ext: ext || "ARQ", kind };
 }
 
-function FileTable({ docs, onView, onDelete, empty }: { docs: Doc[]; onView: (preview: Preview) => void; onDelete: (doc: Doc) => void; empty: string }) {
+function FileTable({ docs, onView, onDelete, empty }: { docs: Doc[]; onView: (preview: Preview) => void; onDelete?: (doc: Doc) => void; empty: string }) {
   if (!docs.length) return empty ? <p style={{ margin: 0, padding: "18px 20px", color: "var(--et2-muted)" }}>{empty}</p> : null;
   return (
     <table className="pd-table">
@@ -871,7 +903,7 @@ function FileTable({ docs, onView, onDelete, empty }: { docs: Doc[]; onView: (pr
               <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                 <button className="pd-btn pd-btn--sm" onClick={() => onView({ title: doc.fileName, src: `/api/documents?documentId=${doc.id}&inline=1`, download: `/api/documents?documentId=${doc.id}` })}>Visualizar</button>
                 <a className="pd-btn pd-btn--sm" style={{ marginLeft: 6 }} href={`/api/documents?documentId=${doc.id}`}>Baixar</a>
-                <button className="pd-btn pd-btn--sm" style={{ marginLeft: 6, color: "var(--et2-bad)" }} aria-label={`Excluir ${doc.fileName}`} onClick={() => onDelete(doc)}>Excluir</button>
+                {onDelete && <button className="pd-btn pd-btn--sm" style={{ marginLeft: 6, color: "var(--et2-bad)" }} aria-label={`Excluir ${doc.fileName}`} onClick={() => onDelete(doc)}>Excluir</button>}
               </td>
             </tr>
           );
@@ -968,7 +1000,7 @@ function MentionInput({ value, onChange, members, placeholder, label, onSubmit, 
 
 const mentionsIn = (value: string, members: Member[]) => members.filter((member) => value.includes(`@${member.name}`)).map((member) => member.email);
 
-function TeamActivity({ operationId, activity, milestones, tasks, onPosted, onError }: { operationId: number; activity: Activity | null; milestones: Milestone[]; tasks: Task[]; onPosted: () => void; onError: (message: string) => void }) {
+function TeamActivity({ operationId, activity, milestones, tasks, onPosted, onError, canInvite, reference }: { operationId: number; activity: Activity | null; milestones: Milestone[]; tasks: Task[]; onPosted: () => void; onError: (message: string) => void; canInvite: boolean; reference: string }) {
   const [value, setValue] = useState("");
   const [all, setAll] = useState(false);
   const members = activity?.members ?? [];
@@ -997,6 +1029,7 @@ function TeamActivity({ operationId, activity, milestones, tasks, onPosted, onEr
   return (
     <section className="pd-card" aria-labelledby="ativ">
       <div className="pd-card-head"><h2 id="ativ">Atividade da equipe</h2></div>
+      {canInvite && <CollaboratorsPanel operationId={operationId} reference={reference} followers={activity?.followers ?? []} />}
       {visible.map((item) => (
         <div key={item.key} className="pd-row" style={{ alignItems: "flex-start", fontSize: 13, background: item.mentioned ? "#eff6ff" : undefined }}>
           <Avatar name={item.who} email={item.email} size={28} />

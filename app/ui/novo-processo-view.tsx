@@ -7,7 +7,7 @@ import { LEGACY_COST_FIELDS, costsFromDraft, logisticsDraft, parseAmount, parseL
 import { LogisticsCostsEditor } from "./logistics-costs-editor";
 import { readOrderTerms } from "../../lib/order-terms";
 import { logisticsByCurrency } from "../../lib/logistics-costs";
-import { amountsOf, estimateMargin } from "../../lib/margin";
+import { amountsOf, estimateCommission, estimateMargin } from "../../lib/margin";
 
 type Supplier = { id: number; legalName: string; tradeName: string; taxId: string; city: string; state: string; country: string; products: string; productionUnits: string };
 type Client = { id: number; legalName: string; aliases: string; country: string; eori: string; preferredPort: string; preferredIncoterm?: string; preferredCurrency?: string };
@@ -24,7 +24,7 @@ const EMPTY = {
   rawMaterial: "", species: "", forestOriginType: "Reflorestamento", productionUnit: "", lotCodes: "", propertyIds: [] as string[],
   quantity: "", quantityUnit: "MT", volumeM3: "", netWeightKg: "", grossWeightKg: "", incoterm: "FOB", currency: "USD", commercialValue: "",
   transportMode: "Marítimo", shipmentDate: "", destinationCountry: "", portOfLoading: "", portOfDischarge: "", carrier: "", bookingNumber: "", billOfLadingNumber: "", containerNumbers: "", vesselVoyage: "",
-  supplyChainNotes: "", paymentTerms: "", itemSize: "", unitPrice: "", purchaseUnitPrice: "", purchaseCurrency: "BRL", purchaseNote: "",
+  supplyChainNotes: "", paymentTerms: "", itemSize: "", unitPrice: "", purchaseUnitPrice: "", purchaseCurrency: "BRL", purchaseNote: "", gainMode: "margem", commissionPercent: "",
   orderItems: [emptyItem()] as OrderItemDraft[],
   logistics: logisticsDraft(parseLogisticsCosts("{}")) as LogisticsDraft,
 };
@@ -54,6 +54,7 @@ function formFromOperation(operation: OperationRow): Form {
     propertyIds: Array.isArray(propertyIds) ? propertyIds.map(String) : [],
     supplyChainNotes: terms.notes, paymentTerms: terms.paymentTerms, itemSize: terms.sizes, unitPrice: terms.unitPrice ? String(terms.unitPrice) : "",
     purchaseUnitPrice: terms.purchaseUnitPrice ? String(terms.purchaseUnitPrice) : "", purchaseCurrency: terms.purchaseCurrency,
+    gainMode: terms.gainMode, commissionPercent: terms.commissionPercent ? String(terms.commissionPercent) : "",
     orderItems: terms.items.map((item) => ({ species: item.species, quality: item.quality, size: item.size, volume: item.volume ? String(Math.round(item.volume * 1000) / 1000) : "", unitPrice: item.unitPrice ? String(Math.round(item.unitPrice * 10000) / 10000) : "" })),
     purchaseNote: terms.supplierItemCount > 1 ? "Pedido de compra já emitido com vários itens: o Financeiro do pedido usa os valores dele." : "",
     logistics: logisticsDraft(costs),
@@ -212,7 +213,7 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
     setSaving(true);
     try {
       if (editing) { await saveEdit(); return; }
-      const result = await api<{ operation: { id: number; reference: string }; duplicate?: boolean }>("/api/operations", { method: "POST", body: JSON.stringify({ ...form, logisticsCosts: logisticsCosts(), terms: { paymentTerms: form.paymentTerms, items: itemsPayload(form.orderItems), purchaseUnitPrice: amount(form.purchaseUnitPrice), purchaseCurrency: form.purchaseCurrency } }) });
+      const result = await api<{ operation: { id: number; reference: string }; duplicate?: boolean }>("/api/operations", { method: "POST", body: JSON.stringify({ ...form, logisticsCosts: logisticsCosts(), terms: { paymentTerms: form.paymentTerms, items: itemsPayload(form.orderItems), remuneration: { mode: form.gainMode, percent: amount(form.commissionPercent) }, purchaseUnitPrice: amount(form.purchaseUnitPrice), purchaseCurrency: form.purchaseCurrency } }) });
       if (result.duplicate) {
         setError(`Já existe um processo com a referência ${result.operation.reference}. Use outra referência ou deixe em branco.`);
         setStep(0);
@@ -240,6 +241,7 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
     const terms: Record<string, unknown> = {};
     if (form.paymentTerms !== original.paymentTerms) terms.paymentTerms = form.paymentTerms;
     if (JSON.stringify(form.orderItems) !== JSON.stringify(original.orderItems)) terms.items = itemsPayload(form.orderItems);
+    if (form.gainMode !== original.gainMode || form.commissionPercent !== original.commissionPercent) terms.remuneration = { mode: form.gainMode, percent: amount(form.commissionPercent) };
     if (form.purchaseUnitPrice !== original.purchaseUnitPrice || form.purchaseCurrency !== original.purchaseCurrency) { terms.purchaseUnitPrice = amount(form.purchaseUnitPrice); terms.purchaseCurrency = form.purchaseCurrency; }
     if (form.supplyChainNotes !== original.supplyChainNotes) terms.notes = form.supplyChainNotes;
     if (Object.keys(terms).length) { fields.terms = terms; before.supplyChainNotes = operation.supplyChainNotes; }
@@ -443,6 +445,10 @@ function PricesAndMargin({ form, setForm }: { form: Form; setForm: (update: (cur
   const purchase = { value: purchasePrice * quantity, currency: form.purchaseCurrency };
   const margin = estimateMargin({ sale, purchase, logistics: amountsOf(logisticsByCurrency(costsFromDraft(form.logistics))), rate });
   const qty = quantity ? `${quantity.toLocaleString("pt-BR")} ${unit}` : "";
+  const commission = form.gainMode === "comissao";
+  const commissionPercent = amount(form.commissionPercent);
+  const gain = estimateCommission({ sale, percent: commissionPercent, rate });
+  const setMode = (mode: string) => setForm((current) => ({ ...current, gainMode: mode }));
   const field = (key: "unitPrice" | "purchaseUnitPrice", currencyKey: "currency" | "purchaseCurrency", label: string, total: number) => (
     <label className="et2-field">
       <span>{label}</span>
@@ -461,9 +467,20 @@ function PricesAndMargin({ form, setForm }: { form: Form; setForm: (update: (cur
     <>
       <div className="pm-prices">
         <div className="pm-prices-title">Preços para a margem</div>
+        <div className="pm-mode" role="radiogroup" aria-label="Como ganhamos neste processo">
+          <span>Como ganhamos neste processo:</span>
+          <label><input type="radio" name="gainMode" checked={!commission} onChange={() => setMode("margem")} /> Margem (compra e venda)</label>
+          <label><input type="radio" name="gainMode" checked={commission} onChange={() => setMode("comissao")} /> Comissão</label>
+        </div>
         <div className="et2-grid">
           <div className="et2-field"><span>Preço indicativo de venda</span><div className="pm-multi">{itemsTotal ? `Itens · total ${show(itemsTotal, form.currency)}` : "Preencha os preços na tabela de itens"}</div><small>Preço de cada item na tabela “Itens do pedido” acima ({form.currency})</small></div>
-          {field("purchaseUnitPrice", "purchaseCurrency", "Preço de compra (fornecedor)", purchasePrice * quantity)}
+          {commission
+            ? <label className="et2-field">
+                <span>Comissão (%)</span>
+                <input inputMode="decimal" placeholder="Ex.: 3" value={form.commissionPercent} onChange={(event) => { const value = event.target.value; setForm((current) => ({ ...current, commissionPercent: value })); }} />
+                <small>Sobre o valor do pedido{gain.gain ? ` · ${show(gain.gain, form.currency)}` : ""}</small>
+              </label>
+            : field("purchaseUnitPrice", "purchaseCurrency", "Preço de compra (fornecedor)", purchasePrice * quantity)}
           <label className="et2-field">
             <span>Câmbio (R$ por US$ 1)</span>
             <input inputMode="decimal" placeholder="Ex.: 5,40" value={form.logistics.exchangeRate} onChange={(event) => { const value = event.target.value; setForm((current) => ({ ...current, logistics: { ...current.logistics, exchangeRate: value } })); }} />
@@ -471,6 +488,20 @@ function PricesAndMargin({ form, setForm }: { form: Form; setForm: (update: (cur
           </label>
         </div>
       </div>
+      {commission ? (
+        <div className="pm-margin">
+          <div className="pm-margin-head">Comissão estimada do processo</div>
+          <table className="pm-table">
+            <thead><tr><th><span className="sr-only">Item</span></th><th className="num">Valor lançado</th><th className="num">Em US$</th><th className="num">Em R$</th></tr></thead>
+            <tbody>
+              <tr><td>Valor do pedido{itemsTotal && form.orderItems.length ? ` (${form.orderItems.length} ${form.orderItems.length > 1 ? "itens" : "item"})` : ""}</td><td className="num">{sale.value ? show(sale.value, sale.currency) : "—"}</td><td className="num">{sale.value ? show(gain.saleUsd, "USD") : "—"}</td><td className="num">{sale.value ? show(gain.saleBrl, "BRL") : "—"}</td></tr>
+              <tr className="pm-total"><td>Comissão ({commissionPercent ? `${commissionPercent.toLocaleString("pt-BR")}%` : "informe o %"})</td><td className="num">{commissionPercent ? `${commissionPercent.toLocaleString("pt-BR")}%` : "—"}</td><td className="num">{gain.gain ? show(gain.usd, "USD") : "—"}</td><td className="num">{gain.gain ? show(gain.brl, "BRL") : "—"}</td></tr>
+              <tr className="pm-total"><td>Comissão por {unit}{qty ? ` (÷ ${qty})` : ""}</td><td className="num">{commissionPercent ? `${commissionPercent.toLocaleString("pt-BR")}%` : "—"}</td><td className="num">{gain.usd === null || !gain.gain || !quantity ? "—" : `${show(gain.usd / quantity, "USD")} / ${unit}`}</td><td className="num">{gain.brl === null || !gain.gain || !quantity ? "—" : `${show(gain.brl / quantity, "BRL")} / ${unit}`}</td></tr>
+            </tbody>
+          </table>
+          <div className="pm-note">{gain.gain && (gain.usd === null || gain.brl === null) ? "Informe o câmbio para converter reais e dólares. " : ""}Processo por comissão: não há compra nem margem de revenda. A mesma conta aparece no card Financeiro do pedido.</div>
+        </div>
+      ) : (
       <div className="pm-margin">
         <div className="pm-margin-head">Margem estimada do processo</div>
         <table className="pm-table">
@@ -500,6 +531,7 @@ function PricesAndMargin({ form, setForm }: { form: Form; setForm: (update: (cur
         </table>
         <div className="pm-note">{margin.percent === null && sale.value && purchase.value ? "Informe o câmbio para converter reais e dólares. " : ""}A mesma conta aparece no card Financeiro do pedido. Quando o pedido de compra e o de venda forem emitidos (fase Pedido), os valores deles substituem estes indicativos.</div>
       </div>
+      )}
     </>
   );
 }

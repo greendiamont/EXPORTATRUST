@@ -1,7 +1,7 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { appUsers, auditLogs, organizationMemberships, operations } from "../../../db/schema";
-import { requireSecurityContext } from "../../../lib/security";
+import { assertOperationAccess, guestOperationIds, requireSecurityContext } from "../../../lib/security";
 
 // Colaboração no pedido (estilo Asana): comentários com @menções, quem está vendo o
 // pedido agora e o histórico de alterações da equipe. Tabelas aditivas (migração 0030),
@@ -66,6 +66,9 @@ const LABELS: Record<string, string> = {
   OPERATION_FOLLOWED: "passou a seguir o pedido",
 };
 
+/** Convidado vê só a atividade operacional (nada de dados comerciais do pedido). */
+const GUEST_ACTIONS = new Set(["EXPORT_MILESTONE_UPDATED", "OPERATION_TASK_CREATED", "OPERATION_TASK_UPDATED", "OPERATION_TASK_COMPLETION_TOGGLED", "DOCUMENT_UPLOADED", "DOCUMENT_DELETED", "OPERATION_FOLLOWED"]);
+
 async function ownedOperation(operationId: number, organizationId: number) {
   const db = await getDb();
   const [operation] = await db.select({ id: operations.id }).from(operations).where(and(eq(operations.id, operationId), eq(operations.organizationId, organizationId))).limit(1);
@@ -78,6 +81,7 @@ export async function GET(request: Request) {
     await ensureTables();
     const operationId = Number(new URL(request.url).searchParams.get("operationId"));
     if (!operationId || !(await ownedOperation(operationId, context.organizationId))) return Response.json({ error: "Pedido não encontrado." }, { status: 404 });
+    await assertOperationAccess(context, operationId);
     const { env } = await import("cloudflare:workers");
     const db = await getDb();
     const since = new Date(Date.now() - 60_000).toISOString();
@@ -88,9 +92,11 @@ export async function GET(request: Request) {
       db.select({ id: auditLogs.id, action: auditLogs.action, actorEmail: auditLogs.actorEmail, metadataJson: auditLogs.metadataJson, createdAt: auditLogs.createdAt }).from(auditLogs)
         .where(and(eq(auditLogs.organizationId, context.organizationId), eq(auditLogs.entityType, "operation"), eq(auditLogs.entityId, String(operationId)))).orderBy(desc(auditLogs.id)).limit(100),
       db.select({ email: appUsers.email, name: appUsers.fullName }).from(organizationMemberships).innerJoin(appUsers, eq(organizationMemberships.userId, appUsers.id))
-        .where(and(eq(organizationMemberships.organizationId, context.organizationId), eq(organizationMemberships.status, "Ativo"))),
+        .where(and(eq(organizationMemberships.organizationId, context.organizationId), eq(organizationMemberships.status, "Ativo"),
+          ...(await guestOperationIds(context) ? [ne(organizationMemberships.role, "convidado")] : []))),
     ]);
-    const activity = events.filter((event) => event.action !== "OPERATION_COMMENTED").map((event) => {
+    const guest = Boolean(await guestOperationIds(context));
+    const activity = events.filter((event) => event.action !== "OPERATION_COMMENTED" && (!guest || GUEST_ACTIONS.has(event.action))).map((event) => {
       let detail = "";
       try {
         const metadata = JSON.parse(event.metadataJson || "{}") as Record<string, unknown>;
@@ -120,6 +126,7 @@ export async function POST(request: Request) {
     const body = await request.json() as { operationId?: number; action?: string; text?: string; mentions?: string[]; target?: string; editing?: string; follow?: boolean };
     const operationId = Number(body.operationId);
     if (!operationId || !(await ownedOperation(operationId, context.organizationId))) return Response.json({ error: "Pedido não encontrado." }, { status: 404 });
+    await assertOperationAccess(context, operationId);
     const { env } = await import("cloudflare:workers");
     const now = new Date().toISOString();
 

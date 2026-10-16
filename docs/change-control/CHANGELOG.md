@@ -690,7 +690,7 @@
 - **O que mudou:** cartão "Shipment Advice · set de documentos" na fase 4 do pedido (protótipo `docs/redesign/prototipo/ShipmentAdvice.dc.html`): barra de progresso dos obrigatórios; um cartão por documento (Commercial Invoice, Packing List, BL, Certificado de Origem, Fitossanitário; HT e fotos condicionais) com situação, Ver, Aprovar/Reabrir e anexar arrastando; prévia do e-mail com destinatário editável, assunto e texto; lista de anexos; botão "Emitir Shipment Advice" liberado só com todos os obrigatórios aprovados. Usa as regras e o envio da versão anterior (`/api/shipment-advice`, nova ação `set-recipient`). Anexar no set (cartão ou "Arquivos desta fase") grava o tipo do documento e deixa aguardando aprovação. Botões "Editar negociação" (Painel) e "Editar processo" (pedido) viram "Editar".
 - **Pendente:** envio real precisa de `RESEND_API_KEY` e `EMAIL_FROM` nas variáveis do Railway (o segredo do app antigo no Cloudflare não pode ser lido de volta). Proposta de convite de colaborador por processo desenhada (`ConvidarColaborador.dc.html`), ainda não implementada.
 - **Testes:** tsc (sem erros novos), 95 testes unitários, build Railway, Playwright local (dados reais importados mostram o set aprovado; processo vazio: anexar 5 documentos pelos cartões, aprovar 4 → "Falta aprovar: Certificado Fitossanitário", aprovar o 5º → botão liberado; envio sem Resend retorna aviso; celular 390 px).
-- **Status:** aguardando aprovação de Ivam
+- **Status:** aprovado por Ivam ("pode produzir TUDO O QUE ALTERAMOS E AS CORREÇÕES") — em produção (PR #137, deploy aaf6d5e9)
 
 ## 2026-10-16 — Claude — Editar processo com vários itens no pedido
 
@@ -703,7 +703,7 @@
 - **O que mudou:** seção 4 da edição mostra "Itens do pedido" quando há vários itens (medida e preço de venda por item, volume e total); ao salvar, os itens do pedido (emissão de documentos), o valor comercial (soma volume × preço) e o Financeiro passam a usar os novos valores; demais campos dos itens são preservados. O preço de venda da margem usa o total dos itens. Valor comercial exibido com no máximo 3 casas.
 - **Dados/migration:** nenhuma.
 - **Testes:** tsc (sem erros novos), 96 testes unitários (1 novo), build Railway, Playwright local (processo com 3 itens: medida do item 1 e preço do item 2 alterados + pagamento → salvo; valor comercial US$ 27.927,24; Financeiro atualizado).
-- **Status:** em andamento
+- **Status:** aprovado por Ivam ("pode produzir TUDO O QUE ALTERAMOS E AS CORREÇÕES") — em produção (PR #137, deploy aaf6d5e9)
 
 ## 2026-10-16 — Claude — Itens do pedido como tabela com "+ Adicionar item"
 
@@ -715,4 +715,53 @@
 - **O que mudou:** a seção 4 do Novo processo / Editar sempre mostra "Itens do pedido": começa com uma linha (espécie, produto/qualidade, medidas, volume m³, preço, total, ×) e tem "+ Adicionar item". Substitui os campos fixos "Medidas" e "Preço indicativo de venda" (o bloco de margem mostra o total dos itens). Ao salvar, os itens viram os itens do pedido de venda (emissão de documentos) e o valor comercial passa a ser a soma volume × preço; na criação também. Base por m³ da margem (formulário e Financeiro) = volume dos itens. Margem negativa em vermelho.
 - **Dados/migration:** nenhuma; itens existentes preservam campos extras.
 - **Testes:** tsc (sem erros novos), 96 testes unitários, build Railway, Playwright local (processo com 2 itens + 1 adicionado → salvo, valor US$ 61.700; processo novo começa com 1 linha; criação via API com 2 itens → valor 2.750).
+- **Status:** aprovado por Ivam ("pode produzir TUDO O QUE ALTERAMOS E AS CORREÇÕES") — em produção (PR #137, deploy aaf6d5e9)
+
+## 2026-10-16 — Claude — Processo por comissão
+
+- **ID:** CHG-20261016-020
+- **Branch:** `claude/comissao`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16):** "tem processos que eu faço que [...] não vendo por um preço maior, eu simplesmente ganho comissão. [...] incluísse uma opção [...] comissionamento [...] o percentual do comissionamento de cada processo e aí ele calcula [...] a margem do pedido [...] por comissionamento."
+- **O que mudou:** seção 4 do Novo processo / Editar: "Como ganhamos neste processo: Margem (compra e venda) | Comissão". Em comissão, campo "Comissão (%)" no lugar do preço de compra e quadro "Comissão estimada do processo" (valor do pedido, comissão e comissão por m³, em US$ e R$ pelo câmbio). Card Financeiro do pedido mostra "Comissão %" e "Ganho (comissão)" com valor por m³. Gravado em `supply_chain_notes.remuneration = {mode, percent}` via `lib/order-terms.ts`; cálculo em `lib/margin.ts` (`estimateCommission`).
+- **Testes:** tsc (sem erros novos), 96 testes unitários, build Railway, Playwright local (3,5% sobre US$ 61.700 → US$ 2.159,50 / R$ 11.661,30; US$ 16,30/m³; Financeiro igual).
+- **Status:** em andamento
+
+## 2026-10-16 — Claude — Cancelar pedido
+
+- **ID:** CHG-20261016-021
+- **Branch:** `claude/cancelar-pedido`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16):** "um botão [...] do lado de cada pedido, lá na lista de processos, do lado do EUDR, [...] cancelar pedido [...] pode colocar no final [...] como cancelado e colocar ele em vermelho" e "um nome mais curto também para o botão não ficar muito grande".
+- **O que mudou:** lista de Pedidos ganha botão pequeno "Cancelar" (ou "Reabrir") depois da coluna EUDR, com confirmação. Pedido cancelado fica no fim da lista, em vermelho, com o selo "Cancelado"; sai das contagens por fase, das pendências e dos próximos embarques; filtro "Cancelados (n)". No Painel, cancelados vão para o fim da tabela de processos, em vermelho. A marca fica em `supply_chain_notes.cancelled = {at, by, previousStatus}` (a situação do processo é reescrita a cada etapa); `operations.status` vira "Cancelado" e volta ao anterior ao reabrir. `PATCH /api/operations` com `action: "cancel" | "reopen"`, auditado.
+- **Testes:** tsc (sem erros novos), build Railway, Playwright local (cancelar → fim da lista em vermelho, filtro Cancelados (1), contagem da fase Pedido 9→8; reabrir → volta).
+- **Status:** em andamento
+
+## 2026-10-16 — Claude — Convidar colaborador para o processo (acesso só aos processos convidados)
+
+- **ID:** CHG-20261016-022
+- **Branch:** `claude/convidar-colaborador`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16):** convite por e-mail para um colaborador trabalhar junto no processo, no painel de acompanhamento; acesso escolhido: "Só os processos convidados"; "o convidado não pode ver nada de margem [...] ele só pode ver o que é operacional". Protótipo `docs/redesign/prototipo/ConvidarColaborador.dc.html`.
+- **O que mudou:**
+  - Pedido → "Atividade da equipe": "Participantes" (equipe que segue + convidados, com situação) e "+ Convidar" (e-mail, nome, função, mensagem; acesso fixo "Só este processo"). Remover participante (×). Componente `app/ui/collaborators-panel.tsx`.
+  - Servidor (`server/railway/collaborators.mjs`, rotas `/__auth/collaborators`): só administrador/analista convidam; cria usuário + perfil `convidado` (quem já é da equipe mantém o perfil), registra em `operation_collaborators` e gera link para criar a senha (72 h). Envia e-mail pelo Resend quando `RESEND_API_KEY`/`EMAIL_FROM` existirem; senão a tela mostra o link para copiar. Remover o último processo de um convidado desativa o acesso dele.
+  - Trava do convidado no servidor (`guestGate`): só `/pedidos/<id>` dos processos liberados e as APIs operacionais deles (acompanhamento, documentos, atividade); todo o resto 403/redireciona. No app (`lib/security.ts` → `assertOperationAccess`), as rotas liberadas conferem o processo de novo; o acompanhamento sai sem valor comercial, itens, preços, logística e notificações; documentos comerciais da fase Pedido (pedido de venda/compra, contrato, proforma) ficam ocultos; atividade só operacional. Tela do convidado sem Editar, Concluir etapa, envio ao cliente, emissão, Shipment Advice, Financeiro, documentos do pedido e "Todos os dados"; tarefas só leitura.
+- **Dados/migration:** tabela nova `operation_collaborators` (criada pelo servidor na inicialização, Postgres). Perfil `convidado` adicionado a `APP_ROLES`.
+- **Testes:** tsc (sem erros novos), 98 testes unitários (2 novos da trava), build Railway, Playwright local (convite → link → senha → convidado cai no processo; sem Financeiro/valores/Editar; APIs de outros processos, overview, cadastros e documentos comerciais = 403; snapshot sem valores; remoção corta o acesso).
+- **Status:** em andamento
+
+## 2026-10-16 — Claude — "Concluir etapa" na fase aberta; "Operação concluída" na fase Entregue
+
+- **ID:** CHG-20261016-023
+- **Branch:** `claude/concluir-etapa`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16):** "botão de concluir etapa não está funcionando dentro do fluxo. No fluxo 6 entrega — criar um botão para operação concluída — dessa forma o pedido entra para os arquivos de pedidos concluídos."
+- **Causa:** o botão "Concluir etapa" do topo concluía a próxima etapa da fase *atual do pedido*, não da fase aberta na tela; e a "Aprovação para embarque" é travada pela regra do app antigo (etapas anteriores concluídas) com uma mensagem que não dizia quais faltavam.
+- **O que mudou:** "Concluir etapa" age na fase selecionada. A recusa da aprovação para embarque lista as etapas que faltam. Na fase 6 · Entregue, faixa "Encerrar a operação" com botão "Operação concluída ✓" (conclui a etapa Entregue, marca `supply_chain_notes.completed = {at, by}` e a situação "Concluído"); depois mostra "Operação concluída em … por …" e "Reabrir operação". Lista de Pedidos: filtro "Concluídos (n)", concluídos fora das fases em andamento e das pendências, depois dos ativos (cancelados continuam no fim); selo "Operação concluída". Painel: concluídos no fim da tabela com "Concluída". `PATCH /api/operations` `action: "complete" | "uncomplete"`, auditado.
+- **Testes:** tsc (sem erros novos), build Railway, Playwright local (concluir etapa na fase Embarque; aprovação recusada mostra "Falta concluir: …"; operação concluída → filtro Concluídos (1), fora das fases).
 - **Status:** em andamento

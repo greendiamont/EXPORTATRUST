@@ -31,6 +31,8 @@ export type OverviewOperation = {
   portOfLoading: string;
   portOfDischarge: string;
   terms: { paymentTerms: string; notes: string; sizes: string; unitPrice: number | null; itemCount: number };
+  cancelled: boolean;
+  completed: boolean;
 };
 
 export type OverviewPending = {

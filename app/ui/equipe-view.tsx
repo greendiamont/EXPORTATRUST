@@ -8,7 +8,7 @@ import { api, formatDate } from "./format";
 
 type Member = { id: number; role: string; status: string; email: string; fullName: string; lastLoginAt: string | null };
 type AccessRequest = { id: number; email: string; fullName: string; createdAt: string };
-const ROLES = ["administrador", "analista", "fornecedor", "auditor", "cliente"];
+const ROLES = ["administrador", "analista", "fornecedor", "auditor", "cliente", "convidado"];
 
 export default function EquipeView({ isAdmin, onCount }: { isAdmin: boolean; onCount: (count: number) => void }) {
   const [members, setMembers] = useState<Member[] | null>(null);

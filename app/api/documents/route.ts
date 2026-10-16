@@ -3,7 +3,13 @@ import { analyzeShipmentDocument, SHIPMENT_DOCUMENT_TYPES, SHIPMENT_SET_CATEGORY
 import { ensureBaseTables, getDb } from "../../../db";
 import { operationDocuments, operations } from "../../../db/schema";
 import { refreshOperationReadiness } from "../../../lib/readiness";
-import { audit, requireSecurityContext } from "../../../lib/security";
+import { documentPhaseIndex } from "../../../lib/document-phase";
+import { assertOperationAccess, audit, guestOperationIds, requireSecurityContext } from "../../../lib/security";
+
+/** Documentos comerciais (fase Pedido: pedido de venda/compra, contrato, proforma) têm preços: fora do alcance do convidado. */
+function commercialDocument(document: { category: string; fileName: string }) {
+  return documentPhaseIndex(document.category, document.fileName) === 0;
+}
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Erro inesperado";
@@ -25,6 +31,8 @@ export async function GET(request: Request) {
     if (documentId) {
       const [record] = await db.select().from(operationDocuments).where(and(eq(operationDocuments.id, documentId), eq(operationDocuments.organizationId, context.organizationId))).limit(1);
       if (!record) return Response.json({ error: "Documento não encontrado." }, { status: 404 });
+      await assertOperationAccess(context, record.operationId);
+      if (await guestOperationIds(context) && commercialDocument(record)) return Response.json({ error: "Acesso de convidado: documento comercial." }, { status: 403 });
       const bucket = await getBucket();
       const object = await bucket.get(record.objectKey);
       if (!object) return Response.json({ error: "Arquivo não encontrado no armazenamento." }, { status: 404 });
@@ -38,12 +46,15 @@ export async function GET(request: Request) {
     }
     const operationId = Number(url.searchParams.get("operationId"));
     if (url.searchParams.get("all") === "1") {
+      if (await guestOperationIds(context)) return Response.json({ error: "Acesso de convidado." }, { status: 403 });
       const documents = await db.select().from(operationDocuments).where(eq(operationDocuments.organizationId, context.organizationId)).orderBy(desc(operationDocuments.id)).limit(1000);
       return Response.json({ documents });
     }
     if (!operationId) return Response.json({ error: "Operação inválida." }, { status: 400 });
+    await assertOperationAccess(context, operationId);
+    const guest = Boolean(await guestOperationIds(context));
     const documents = await db.select().from(operationDocuments).where(and(eq(operationDocuments.organizationId, context.organizationId), eq(operationDocuments.operationId, operationId))).orderBy(desc(operationDocuments.id)).limit(500);
-    return Response.json({ documents });
+    return Response.json({ documents: guest ? documents.filter((document) => !commercialDocument(document)) : documents });
   } catch (error) {
     if (error instanceof Response) return error;
     return Response.json({ error: errorMessage(error) }, { status: 500 });
@@ -60,6 +71,7 @@ export async function POST(request: Request) {
     const notes = String(form.get("notes") ?? "").trim();
     const file = form.get("file");
     if (!operationId || !(file instanceof File) || !file.size) return Response.json({ error: "Selecione um arquivo válido." }, { status: 400 });
+    await assertOperationAccess(context, operationId);
     if (file.size > 20 * 1024 * 1024) return Response.json({ error: "Cada arquivo pode ter no máximo 20 MB." }, { status: 413 });
     const db = await getDb();
     if (!(await db.select({ id: operations.id }).from(operations).where(and(eq(operations.id, operationId), eq(operations.organizationId, context.organizationId))).limit(1)).length) {

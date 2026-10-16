@@ -27,6 +27,7 @@ const allowPreviewHosts = process.env.EXPORTATRUST_ALLOW_PREVIEW_HOSTS === "1" &
 const { nodeToWebRequest, sendWebResponse, tryServeStatic } = await import("vinext/server/prod-server");
 const auth = await import("./auth.mjs");
 const { UserCredentials } = await import("./user-credentials.mjs");
+const { Collaborators, guestGate } = await import("./collaborators.mjs");
 const { GoogleLogin, googleLoginConfig, clearGoogleCookie } = await import("./google-login.mjs");
 const { bindings, env } = await import("./cloudflare-workers-shim.mjs");
 
@@ -45,6 +46,8 @@ if (bindings.DB && process.env.RUN_MIGRATIONS !== "0") {
 
 const credentials = bindings.DB ? new UserCredentials(bindings.DB.pool) : null;
 if (credentials) await credentials.initialize();
+const collaborators = credentials ? new Collaborators(bindings.DB.pool, credentials) : null;
+if (collaborators) await collaborators.initialize();
 
 if (bindings.BUCKET && process.env.STORAGE_SELF_TEST !== "0") {
   // Diagnóstico não fatal: confirma escrita/leitura/remoção no storage.
@@ -197,6 +200,26 @@ async function handleAuthRoute(req, res, url, origin) {
       return send(res, error.status ?? 500, JSON.stringify({ error: error.status ? error.message : "Não foi possível gerar o link." }), json);
     }
   }
+  // Colaboradores convidados por processo (lista, convite, remoção) — só a equipe.
+  if (url.pathname === "/__auth/collaborators") {
+    if (!collaborators || !authConfig.ready) return send(res, 503, JSON.stringify({ error: "Convites indisponíveis." }), json);
+    const email = await currentEmail(req);
+    if (!email) return send(res, 401, JSON.stringify({ error: "Autenticação obrigatória." }), json);
+    try {
+      if (req.method === "GET") return send(res, 200, JSON.stringify(await collaborators.list(url.searchParams.get("operationId"), email, req.headers.cookie)), json);
+      if (req.method !== "POST") return send(res, 405, "Method Not Allowed", { allow: "GET, POST" });
+      if (!auth.allowLoginAttempt(`collaborators:${clientIp(req)}`)) return send(res, 429, JSON.stringify({ error: "Muitas tentativas. Aguarde alguns minutos." }), json);
+      let body;
+      try { body = JSON.parse(await readFormText(req)); } catch { return send(res, 400, JSON.stringify({ error: "Requisição inválida ou muito grande." }), json); }
+      const result = body?.action === "remove"
+        ? await collaborators.remove(body, email, req.headers.cookie)
+        : await collaborators.invite(body, email, req.headers.cookie, origin);
+      return send(res, 200, JSON.stringify(result), json);
+    } catch (error) {
+      if (!error.status) console.error("[auth] falha nos colaboradores", error);
+      return send(res, error.status ?? 500, JSON.stringify({ error: error.status ? error.message : "Não foi possível concluir o convite." }), json);
+    }
+  }
   if (url.pathname === "/__auth/definir-senha") {
     const privacy = { ...html, "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'" };
     if (!credentials || !authConfig.ready) return send(res, 503, auth.passwordPage({ environment: appEnv, error: "Login individual indisponível." }), privacy);
@@ -298,6 +321,16 @@ async function handle(req, res) {
     req.headers["x-exportatrust-authenticated-user-email"] = email;
     req.headers["x-exportatrust-authenticated-user-name"] = email;
     req.headers["x-exportatrust-auth-provider"] = "railway-login";
+    // Convidado: só os processos para os quais foi convidado (o app confere de novo pela lista abaixo).
+    const guest = collaborators ? await collaborators.guestAccess(email, req.headers.cookie) : null;
+    if (guest) {
+      req.headers["x-exportatrust-authenticated-guest-operations"] = guest.operations.map((operation) => operation.id).join(",") || "none";
+      const verdict = guestGate(req.method, url, guest.operations);
+      if (verdict) {
+        if (verdict.status === 303 && (req.headers.rsc || String(req.headers.accept ?? "").includes("text/x-component"))) return send(res, 403, "Forbidden");
+        return send(res, verdict.status, req.method === "HEAD" ? "" : verdict.body, verdict.headers);
+      }
+    }
   } else if (wantsPage(req, pathname) && !pathname.startsWith("/legal/")) {
     if (req.headers.rsc || String(req.headers.accept ?? "").includes("text/x-component")) return send(res, 401, "Unauthorized");
     return redirect(res, `/__auth/login?next=${encodeURIComponent(pathname + url.search)}`);

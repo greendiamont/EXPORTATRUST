@@ -132,3 +132,5 @@ Arquivos obrigatórios de coordenação:
 - Branch alvo: `main`
 - Aprovação humana obrigatória para ações críticas.
 - Mudanças diretas em produção bloqueadas por política.
+
+- Colaboradores convidados por processo (2026-10-16): perfil `convidado` só acessa os processos em `operation_collaborators` (trava em `server/railway/collaborators.mjs` → `guestGate` e em `lib/security.ts` → `assertOperationAccess`); sem dados financeiros. Toda rota nova usada pela tela do pedido precisa ser liberada explicitamente para convidados.

@@ -4,7 +4,7 @@ import { exportControlSettings, exportMilestones, importerClients, industrialPla
 import { addDays, EXPORT_ORDER_MILESTONES } from "../../../lib/export-control";
 import { normalizeMasterName } from "../../../lib/master-data";
 import { sanitizeLogisticsCosts } from "../../../lib/logistics-costs";
-import { applyOrderTerms, type OrderTermsChanges } from "../../../lib/order-terms";
+import { applyOrderTerms, setOrderCancelled, setOrderCompleted, type OrderTermsChanges } from "../../../lib/order-terms";
 import { calculateReadiness, hasPolygonGeometry } from "../../../lib/readiness";
 import { audit, requireSecurityContext } from "../../../lib/security";
 
@@ -25,6 +25,12 @@ function message(error: unknown) {
     }
   }
   return "Erro inesperado no servidor ao salvar a operação.";
+}
+
+/** Como ganhamos no processo: margem ou comissão (% sobre o valor do pedido). */
+function remunerationOf(value: unknown) {
+  const source = value as Record<string, unknown>;
+  return { mode: source.mode === "comissao" ? "comissao" : "margem", percent: numeric(source.percent) };
 }
 
 /** Itens do pedido enviados pela tabela do processo (espécie, qualidade, medidas, volume, preço). */
@@ -407,13 +413,14 @@ export async function POST(request: Request) {
     const [operation] = await db.insert(operations).values({ ...values(body, supplier, master), ...logisticsCostsField(body), organizationId: context.organizationId }).returning();
     const terms = body.terms && typeof body.terms === "object" ? body.terms as Record<string, unknown> : null;
     const createItems = terms && Array.isArray(terms.items) ? orderItemChanges(terms.items) : [];
-    if (terms && (String(terms.paymentTerms ?? "").trim() || String(terms.size ?? "").trim() || numeric(terms.unitPrice) || numeric(terms.purchaseUnitPrice) || createItems.length)) {
+    if (terms && (String(terms.paymentTerms ?? "").trim() || String(terms.size ?? "").trim() || numeric(terms.unitPrice) || numeric(terms.purchaseUnitPrice) || createItems.length || terms.remuneration)) {
       const applied = applyOrderTerms(operation, {
         paymentTerms: String(terms.paymentTerms ?? ""),
         ...(String(terms.size ?? "").trim() ? { size: String(terms.size) } : {}),
         ...(numeric(terms.unitPrice) ? { unitPrice: numeric(terms.unitPrice) } : {}),
         ...(numeric(terms.purchaseUnitPrice) ? { purchaseUnitPrice: numeric(terms.purchaseUnitPrice), purchaseCurrency: String(terms.purchaseCurrency ?? "BRL") } : {}),
         ...(createItems.length ? { items: createItems } : {}),
+        ...(terms.remuneration && typeof terms.remuneration === "object" ? { remuneration: remunerationOf(terms.remuneration) } : {}),
       });
       if (!applied.error) {
         await db.update(operations).set({ supplyChainNotes: applied.supplyChainNotes, ...(applied.commercialValue !== undefined && (createItems.length || !numeric(body.commercialValue)) ? { commercialValue: applied.commercialValue } : {}) })
@@ -465,6 +472,29 @@ export async function PATCH(request: Request) {
     const id = Number(body.id);
     if (!id) return Response.json({ error: "Processo inválido." }, { status: 400 });
     const db = await getDb();
+    // Operação concluída (fase Entregue): conclui as etapas que faltam e leva o pedido para "Concluídos".
+    if (body.action === "complete" || body.action === "uncomplete") {
+      const [current] = await db.select().from(operations).where(and(eq(operations.id, id), eq(operations.organizationId, context.organizationId))).limit(1);
+      if (!current) return Response.json({ error: "Processo não encontrado." }, { status: 404 });
+      const done = body.action === "complete";
+      const now = new Date().toISOString();
+      if (done) {
+        await db.update(exportMilestones).set({ status: "Concluído", completedAt: now, updatedAt: now })
+          .where(and(eq(exportMilestones.operationId, id), eq(exportMilestones.organizationId, context.organizationId), eq(exportMilestones.code, "DELIVERED")));
+      }
+      const [operation] = await db.update(operations).set(setOrderCompleted(current, done, context.email, now)).where(and(eq(operations.id, id), eq(operations.organizationId, context.organizationId))).returning();
+      await audit(context, done ? "OPERATION_COMPLETED" : "OPERATION_REOPENED", "operation", String(id), { reference: current.reference });
+      return Response.json({ operation });
+    }
+    // Cancelar / reabrir pedido (lista de Pedidos): a marca fica no JSON do pedido.
+    if (body.action === "cancel" || body.action === "reopen") {
+      const [current] = await db.select().from(operations).where(and(eq(operations.id, id), eq(operations.organizationId, context.organizationId))).limit(1);
+      if (!current) return Response.json({ error: "Processo não encontrado." }, { status: 404 });
+      const change = setOrderCancelled(current, body.action === "cancel", context.email);
+      const [operation] = await db.update(operations).set(change).where(and(eq(operations.id, id), eq(operations.organizationId, context.organizationId))).returning();
+      await audit(context, body.action === "cancel" ? "OPERATION_CANCELLED" : "OPERATION_REOPENED", "operation", String(id), { reference: current.reference });
+      return Response.json({ operation });
+    }
     if (Array.isArray(body.propertyIds)) {
       const requested = [...new Set(body.propertyIds.map(String).map((value) => value.trim()).filter(Boolean))];
       const existingProperties = await db.select({ carCode: ruralProperties.carCode }).from(ruralProperties).where(eq(ruralProperties.organizationId, context.organizationId)).limit(5000);
@@ -511,6 +541,7 @@ export async function PATCH(request: Request) {
         if (terms.purchaseUnitPrice !== undefined) termChanges.purchaseUnitPrice = numeric(terms.purchaseUnitPrice);
         if (terms.purchaseCurrency !== undefined) termChanges.purchaseCurrency = String(terms.purchaseCurrency);
         if (Array.isArray(terms.items)) termChanges.items = orderItemChanges(terms.items);
+        if (terms.remuneration && typeof terms.remuneration === "object") termChanges.remuneration = remunerationOf(terms.remuneration);
         const applied = applyOrderTerms({ ...current, quantity: Number(changes.quantity ?? current.quantity), volumeM3: Number(changes.volumeM3 ?? current.volumeM3) }, termChanges);
         if (applied.error) return Response.json({ error: applied.error }, { status: 400 });
         changes.supplyChainNotes = applied.supplyChainNotes;

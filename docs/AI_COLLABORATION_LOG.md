@@ -304,3 +304,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 ### 2026-10-16 — Claude — Shipment Advice no pedido novo
 - **Branch:** `claude/shipment-advice`; CHG-20261016-016.
 - **Para outros agentes:** a fase 4 do pedido usa `app/ui/shipment-advice-card.tsx` sobre `/api/shipment-advice` (mesmas regras do app antigo). `POST /api/documents` aceita `documentType` e, na categoria do set, grava tipo + "Candidato"/"Revisão pendente". Envio real depende de `RESEND_API_KEY`/`EMAIL_FROM` no Railway.
+
+### 2026-10-16 — Claude — Convidado por processo (SEGURANÇA)
+- **Branch:** `claude/convidar-colaborador`; CHG-20261016-022.
+- **Para outros agentes (OBRIGATÓRIO):** o perfil `convidado` passa pela trava `guestGate` (server/railway/collaborators.mjs): APIs não listadas lá respondem 403 para convidados. Ao criar rota usada pela tela do pedido, decida se o convidado pode usar; se sim, libere no `guestGate` E chame `assertOperationAccess` na rota, sem devolver dados financeiros.
