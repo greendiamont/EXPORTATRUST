@@ -285,6 +285,16 @@ export default function PedidoView({ operationId }: { operationId: number }) {
     });
   }
 
+  // Exclui o arquivo do storage e o registro (rota DELETE /api/documents, com auditoria).
+  function deleteDoc(doc: Doc) {
+    if (!window.confirm(`Excluir o arquivo "${doc.fileName}" deste pedido? Ele será apagado do armazenamento e não poderá ser recuperado.`)) return;
+    run(async () => {
+      const response = await fetch(`/api/documents?id=${doc.id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `HTTP ${response.status}`);
+      setToast(`Arquivo "${doc.fileName}" excluído.`);
+    });
+  }
+
   function toggleTask(task: Task) {
     run(() => postControl({ action: "operation-task-complete", operationId, taskId: task.id, completed: task.status !== "Concluído" }));
   }
@@ -428,11 +438,11 @@ export default function PedidoView({ operationId }: { operationId: number }) {
               <h2 id="arquivos">Arquivos desta fase <span style={{ fontWeight: 400, color: "var(--et2-muted)" }}>· {phaseDocs.length}</span></h2>
               <UploadButton operationId={operationId} category={PHASE_UPLOAD_CATEGORY[selected]} onDone={refreshAll} onError={setError} />
             </div>
-            <FileTable docs={phaseDocs} onView={setPreview} empty="Nenhum arquivo nesta fase ainda." />
+            <FileTable docs={phaseDocs} onView={setPreview} onDelete={deleteDoc} empty="Nenhum arquivo nesta fase ainda." />
             {otherDocs.length > 0 && (
               <details className="pd-more">
                 <summary>Outros arquivos do pedido <span style={{ fontWeight: 400, color: "var(--et2-muted)" }}>· {otherDocs.length}</span></summary>
-                <FileTable docs={otherDocs} onView={setPreview} empty="" />
+                <FileTable docs={otherDocs} onView={setPreview} onDelete={deleteDoc} empty="" />
               </details>
             )}
           </section>
@@ -817,7 +827,7 @@ function extOf(doc: Doc) {
   return { ext: ext || "ARQ", kind };
 }
 
-function FileTable({ docs, onView, empty }: { docs: Doc[]; onView: (preview: Preview) => void; empty: string }) {
+function FileTable({ docs, onView, onDelete, empty }: { docs: Doc[]; onView: (preview: Preview) => void; onDelete: (doc: Doc) => void; empty: string }) {
   if (!docs.length) return empty ? <p style={{ margin: 0, padding: "18px 20px", color: "var(--et2-muted)" }}>{empty}</p> : null;
   return (
     <table className="pd-table">
@@ -838,6 +848,7 @@ function FileTable({ docs, onView, empty }: { docs: Doc[]; onView: (preview: Pre
               <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                 <button className="pd-btn pd-btn--sm" onClick={() => onView({ title: doc.fileName, src: `/api/documents?documentId=${doc.id}&inline=1`, download: `/api/documents?documentId=${doc.id}` })}>Visualizar</button>
                 <a className="pd-btn pd-btn--sm" style={{ marginLeft: 6 }} href={`/api/documents?documentId=${doc.id}`}>Baixar</a>
+                <button className="pd-btn pd-btn--sm" style={{ marginLeft: 6, color: "var(--et2-bad)" }} aria-label={`Excluir ${doc.fileName}`} onClick={() => onDelete(doc)}>Excluir</button>
               </td>
             </tr>
           );
