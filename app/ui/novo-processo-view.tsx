@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { api, money, normalize, processHref } from "./format";
+import { api, normalize, processHref } from "./format";
 import { LEGACY_COST_FIELDS, costsFromDraft, logisticsDraft, parseAmount, parseLogisticsCosts, type LogisticsDraft } from "../../lib/logistics-costs";
 import { LogisticsCostsEditor } from "./logistics-costs-editor";
 import { readOrderTerms } from "../../lib/order-terms";
