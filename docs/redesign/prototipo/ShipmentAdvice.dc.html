@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Shipment Advice · ExportaTrust</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F4F6}
+a{color:#1D4ED8}
+</style>
+</helmet>
+<div style="min-height: 100vh; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #111827; background: #F3F4F6; font-size: 14px">
+  <main style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+    <div style="font-size: 13px; color: #6B7280">Pedido GBU061/26 · Fase 4 · Documentos — proposta: Shipment Advice</div>
+
+    <section aria-labelledby="sa" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+      <div style="padding: 16px 20px; border-bottom: 1px solid #E5E7EB; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between">
+        <div>
+          <h2 id="sa" style="margin: 0; font-size: 16px; font-weight: 600">Shipment Advice · set de documentos</h2>
+          <div style="font-size: 13px; color: #6B7280; margin-top: 2px">Anexe e aprove cada documento. O Shipment Advice só pode ser emitido com todos os obrigatórios aprovados.</div>
+        </div>
+        <div style="min-width: 240px">
+          <div style="display: flex; justify-content: space-between; font-size: 13px"><span style="font-weight: 500">{{readyText}}</span><span style="{{statusStyle}}">{{statusText}}</span></div>
+          <div style="height: 8px; background: #E5E7EB; border-radius: 4px; margin-top: 6px; overflow: hidden"><div style="{{barStyle}}"></div></div>
+        </div>
+      </div>
+
+      <div style="padding: 16px 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px">
+        <sc-for list="{{docs}}" as="d" hint-placeholder-count="7">
+          <div style="{{d.cardStyle}}">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px">
+              <div>
+                <div style="font-weight: 600">{{d.label}}</div>
+                <div style="font-size: 12px; color: #6B7280">{{d.kind}}</div>
+              </div>
+              <span style="{{d.badgeStyle}}">{{d.badge}}</span>
+            </div>
+            <sc-if value="{{d.hasFile}}" hint-placeholder-val="{{ true }}">
+              <div style="margin-top: 10px; padding: 8px 10px; background: #F9FAFB; border: 1px solid #F0F1F3; border-radius: 6px; font-size: 13px; display: flex; justify-content: space-between; gap: 8px">
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">📄 {{d.file}}</span>
+                <a href="#" style="flex: none">Ver</a>
+              </div>
+            </sc-if>
+            <sc-if value="{{d.noFile}}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top: 10px; padding: 14px 10px; border: 1px dashed #D1D5DB; border-radius: 6px; font-size: 13px; color: #6B7280; text-align: center">Arraste o arquivo aqui ou <a href="#">escolha</a></div>
+            </sc-if>
+            <div style="margin-top: 10px; display: flex; gap: 8px">
+              <sc-if value="{{d.hasFile}}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{d.toggle}}" style="{{d.btnStyle}}">{{d.btn}}</button>
+              </sc-if>
+              <sc-if value="{{d.hasFile}}" hint-placeholder-val="{{ true }}">
+                <button style="min-height: 32px; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">Trocar arquivo</button>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="margin: 0 20px 20px; border: 1px solid #E5E7EB; border-radius: 8px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr)">
+        <div style="padding: 14px 16px; border-right: 1px solid #E5E7EB; min-width: 0">
+          <div style="font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.4px">Prévia do e-mail</div>
+          <div style="margin-top: 8px; font-size: 13px"><span style="color: #6B7280">Para:</span> imports@jafglobal.com</div>
+          <div style="margin-top: 4px; font-size: 13px"><span style="color: #6B7280">Assunto:</span> <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px">SHIPMENT - HMM BL 0612345 - INVOICE GBU061/26 // VJ RAUBER X JAF GLOBAL // INDIA, NHAVA SHEVA // 1*40HC</span></div>
+          <div style="margin-top: 10px; padding: 10px 12px; background: #F9FAFB; border-radius: 6px; font-size: 13px; line-height: 1.5; color: #374151">Dear JAF GLOBAL GMBH,<br>Pls find attached the draft docs for GBU061/26 — ETD 24/10/2026, 14 day free time…<br>Total US$ 38.400,00 · Advance US$ 11.520,00 · Balance US$ 26.880,00</div>
+        </div>
+        <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+          <div style="font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.4px">Anexos ({{attachCount}})</div>
+          <sc-for list="{{attachments}}" as="a" hint-placeholder-count="4">
+            <div style="font-size: 13px">✓ {{a}}</div>
+          </sc-for>
+          <div style="margin-top: auto; display: flex; flex-direction: column; gap: 8px">
+            <button style="{{emitStyle}}">Emitir Shipment Advice</button>
+            <div style="font-size: 12px; color: #6B7280">{{emitHelp}}</div>
+            <button style="min-height: 34px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">Ver prévia completa</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { approved: ['invoice', 'packing', 'origin'] }; }
+  renderVals() {
+    const DOCS = [
+      { key: 'invoice', label: 'Commercial Invoice', req: true, file: 'INVOICE GBU061-26.pdf' },
+      { key: 'packing', label: 'Packing List', req: true, file: 'PACKING LIST GBU061-26.pdf' },
+      { key: 'bl', label: 'Bill of Lading (BL)', req: true, file: 'DRAFT BL HMM 0612345.pdf' },
+      { key: 'origin', label: 'Certificado de Origem', req: true, file: 'CO 061-2026.pdf' },
+      { key: 'phyto', label: 'Certificado Fitossanitário', req: true, file: '' },
+      { key: 'ht', label: 'Tratamento térmico / HT', req: false, file: '' },
+      { key: 'photos', label: 'Fotos / evidências de carregamento', req: false, file: 'FOTOS CARREGAMENTO.zip' },
+    ];
+    const approved = this.state.approved;
+    const docs = DOCS.map((d) => {
+      const ok = approved.includes(d.key);
+      const has = Boolean(d.file);
+      const tone = ok ? ['#ECFDF5', '#065F46', '#A7F3D0', 'Aprovado'] : has ? ['#FFFBEB', '#92400E', '#FDE68A', 'Aguardando aprovação'] : d.req ? ['#FEF2F2', '#991B1B', '#FECACA', 'Falta anexar'] : ['#F3F4F6', '#4B5563', '#E5E7EB', 'Opcional'];
+      return { label: d.label, kind: d.req ? 'Obrigatório' : 'Condicional', file: d.file, hasFile: has, noFile: !has, badge: tone[3],
+        badgeStyle: 'flex: none; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: ' + tone[0] + '; color: ' + tone[1] + '; border: 1px solid ' + tone[2],
+        cardStyle: 'border: 1px solid ' + (ok ? '#A7F3D0' : '#E5E7EB') + '; border-radius: 8px; padding: 12px; background: #FFFFFF',
+        btn: ok ? 'Reabrir' : 'Aprovar',
+        btnStyle: 'min-height: 32px; padding: 0 12px; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; ' + (ok ? 'border: 1px solid #D1D5DB; background: #FFFFFF; color: #111827' : 'border: 0; background: #047857; color: #FFFFFF'),
+        toggle: () => this.setState({ approved: ok ? approved.filter((k) => k !== d.key) : [...approved, d.key] }) };
+    });
+    const required = DOCS.filter((d) => d.req);
+    const readyReq = required.filter((d) => approved.includes(d.key)).length;
+    const complete = readyReq === required.length;
+    const attachments = DOCS.filter((d) => approved.includes(d.key) && d.file).map((d) => d.label);
+    return { docs,
+      readyText: readyReq + ' de ' + required.length + ' obrigatórios aprovados',
+      statusText: complete ? 'Pronto para emitir' : 'Em preparação',
+      statusStyle: 'font-weight: 600; color: ' + (complete ? '#047857' : '#92400E'),
+      barStyle: 'height: 100%; width: ' + Math.round(readyReq / required.length * 100) + '%; background: ' + (complete ? '#047857' : '#D97706'),
+      attachments, attachCount: String(attachments.length),
+      emitStyle: 'min-height: 40px; border: 0; border-radius: 6px; font: inherit; font-weight: 600; ' + (complete ? 'background: #047857; color: #FFFFFF; cursor: pointer' : 'background: #E5E7EB; color: #9CA3AF; cursor: not-allowed'),
+      emitHelp: complete ? 'Envia o e-mail ao cliente com os anexos aprovados e registra no histórico do pedido.' : 'Falta aprovar: ' + required.filter((d) => !approved.includes(d.key)).map((d) => d.label).join(', ') + '.',
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -7,6 +7,7 @@ import { ORDER_PHASES, currentPhaseIndex, isClosedStatus, phaseIndexOfCode } fro
 import { PHASE_UPLOAD_CATEGORY, documentPhaseIndex, taskPhaseIndex } from "../../lib/document-phase";
 import { type LogisticsDraft, costsFromDraft, logisticsByCurrency, logisticsDraft, logisticsTotal, logisticsTotalIn, parseLogisticsCosts } from "../../lib/logistics-costs";
 import { LogisticsCostsEditor, LogisticsCostsSummary } from "./logistics-costs-editor";
+import { ShipmentAdviceCard } from "./shipment-advice-card";
 import { amountsOf, estimateMargin } from "../../lib/margin";
 import { readOrderTerms } from "../../lib/order-terms";
 
@@ -349,7 +350,7 @@ export default function PedidoView({ operationId }: { operationId: number }) {
                 <span style={{ display: "flex" }}>{viewers.slice(0, 5).map((person) => <Avatar key={person.email} name={person.name || person.email} email={person.email} size={30} />)}</span>
               </div>
             )}
-            <Link className="pd-btn" href={`/novo-processo?processo=${operationId}`} title="Voltar ao processo para alterar referência, empresas, produto, preços e logística">Editar processo</Link>
+            <Link className="pd-btn" href={`/novo-processo?processo=${operationId}`} title="Editar o processo: referência, empresas, produto, preços e logística">Editar</Link>
             <button className={`pd-btn${meFollowing ? " pd-btn--on" : ""}`} aria-pressed={meFollowing} disabled={busy} onClick={() => run(() => postActivity({ operationId, action: "follow", follow: !meFollowing }))}>{meFollowing ? "✓ Seguindo" : "Seguir pedido"}</button>
             <button className="pd-btn" onClick={mailUpdate}>Enviar atualização ao cliente</button>
             <button className="pd-btn pd-btn--dark" disabled={busy || !openStep} title={openStep ? `Concluir “${openStep.title}”` : "Nenhuma etapa aberta"}
@@ -386,6 +387,10 @@ export default function PedidoView({ operationId }: { operationId: number }) {
 
       <div className="pd-cols">
         <div className="pd-main">
+          {selected === 3 && (
+            <ShipmentAdviceCard operationId={operationId} onChanged={refreshAll} onError={setError}
+              onView={(id, fileName) => setPreview({ title: fileName, src: `/api/documents?documentId=${id}&inline=1`, download: `/api/documents?documentId=${id}` })} />
+          )}
           {selected === 0 && (
             <Emission operationId={operationId} data={data} form={form} dirty={dirty} activity={activity}
               setForm={(next) => { setForm(next); setDirty(true); dirtyRef.current = true; }}

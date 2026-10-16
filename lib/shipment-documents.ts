@@ -103,6 +103,9 @@ export function shipmentChecklist(documents: Array<{ fileName?: string; document
 
 export const SHIPMENT_SET_CATEGORY = "Export Control · Set documental";
 
+/** Tipos aceitos ao anexar um arquivo direto num cartão do Shipment Advice. */
+export const SHIPMENT_DOCUMENT_TYPES: string[] = SHIPMENT_ADVICE_CHECKLIST.flatMap((item) => [...item.types]);
+
 export type ShipmentInvoiceFinancials = {
   invoiceNumber?: string;
   currency?: string;

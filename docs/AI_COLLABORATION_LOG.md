@@ -300,3 +300,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 ### 2026-10-16 — Claude — Margem por m³
 - **Branch:** `claude/margem-por-m3`; CHG-20261016-013.
 - **Para outros agentes:** `applyOrderTerms` com `purchaseUnitPrice` também atualiza `supplierOrder.items[0]` quando o pedido de compra tem um item; `readOrderTerms` devolve `supplierItemCount`.
+
+### 2026-10-16 — Claude — Shipment Advice no pedido novo
+- **Branch:** `claude/shipment-advice`; CHG-20261016-016.
+- **Para outros agentes:** a fase 4 do pedido usa `app/ui/shipment-advice-card.tsx` sobre `/api/shipment-advice` (mesmas regras do app antigo). `POST /api/documents` aceita `documentType` e, na categoria do set, grava tipo + "Candidato"/"Revisão pendente". Envio real depende de `RESEND_API_KEY`/`EMAIL_FROM` no Railway.

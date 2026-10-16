@@ -679,3 +679,15 @@
 - **O que mudou:** botão "Editar processo" nas ações do topo do pedido (antes de "Seguir pedido"); abre `/novo-processo?processo=<id>` (mesma edição do "Editar negociação" do Painel).
 - **Testes:** build Railway, Playwright local (botão abre a edição do processo 9; desktop 1440 px e celular 390 px).
 - **Status:** aprovado por Ivam ("homologação é parte do botão e tá aprovada a sessão"; "pode produzir", 2026-10-16) — promovido para produção
+
+## 2026-10-16 — Claude — Shipment Advice na fase Documentos; botões "Editar"
+
+- **ID:** CHG-20261016-016
+- **Branch:** `claude/shipment-advice`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção só após "alteração aprovada" e "pode produzir")
+- **Pedidos de Ivam (conversa, 2026-10-16):** "na fase 4 [...] documentação [...] emitir o Shipment Advice [...] um campo onde a gente vai ter todos os documentos ali agrupados [...] um botão para a gente emitir o Shipment Advice" e "faz o layout aqui dentro do novo app mais clean, mais interativo [...] mais organizado"; "no nosso painel não precisa colocar um botão editar processo, pode só colocar editar"; "eu quero que você já entre com [o Resend]".
+- **O que mudou:** cartão "Shipment Advice · set de documentos" na fase 4 do pedido (protótipo `docs/redesign/prototipo/ShipmentAdvice.dc.html`): barra de progresso dos obrigatórios; um cartão por documento (Commercial Invoice, Packing List, BL, Certificado de Origem, Fitossanitário; HT e fotos condicionais) com situação, Ver, Aprovar/Reabrir e anexar arrastando; prévia do e-mail com destinatário editável, assunto e texto; lista de anexos; botão "Emitir Shipment Advice" liberado só com todos os obrigatórios aprovados. Usa as regras e o envio da versão anterior (`/api/shipment-advice`, nova ação `set-recipient`). Anexar no set (cartão ou "Arquivos desta fase") grava o tipo do documento e deixa aguardando aprovação. Botões "Editar negociação" (Painel) e "Editar processo" (pedido) viram "Editar".
+- **Pendente:** envio real precisa de `RESEND_API_KEY` e `EMAIL_FROM` nas variáveis do Railway (o segredo do app antigo no Cloudflare não pode ser lido de volta). Proposta de convite de colaborador por processo desenhada (`ConvidarColaborador.dc.html`), ainda não implementada.
+- **Testes:** tsc (sem erros novos), 95 testes unitários, build Railway, Playwright local (dados reais importados mostram o set aprovado; processo vazio: anexar 5 documentos pelos cartões, aprovar 4 → "Falta aprovar: Certificado Fitossanitário", aprovar o 5º → botão liberado; envio sem Resend retorna aviso; celular 390 px).
+- **Status:** aguardando aprovação de Ivam
