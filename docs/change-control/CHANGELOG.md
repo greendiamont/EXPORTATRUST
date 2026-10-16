@@ -667,7 +667,7 @@
 - **O que mudou:** (1) preço de compra do processo atualiza também o pedido de compra emitido com um item (moeda e preço), como o preço de venda já atualiza o pedido de venda; ao abrir o processo, o preço de compra vem do pedido de compra quando não há indicativo; com vários itens, aviso de que o Financeiro usa o pedido emitido. (2) Linha "Margem por m³" (ou pela unidade do processo) no quadro da margem, em US$ e R$; o card Financeiro mostra a margem total e por m³. Protótipo `PrecosMargem.dc.html` atualizado com a linha.
 - **Dados/migration:** nenhuma.
 - **Testes:** tsc (sem erros novos), 95 testes unitários (1 novo), build Railway, Playwright local (processo com pedido de compra emitido: 203,212 m³, venda US$ 230, compra US$ 160, câmbio 5 → 26,7%, US$ 12.501,84, US$ 61,52/m³ no formulário e no Financeiro).
-- **Status:** aguardando aprovação de Ivam
+- **Status:** aprovado por Ivam ("alteração aprovada PODE PRODUZIR") — em produção (PR #130)
 
 ## 2026-10-16 — Claude — Pedido: botão "Editar processo"
 
@@ -678,4 +678,4 @@
 - **Pedido de Ivam (conversa, 2026-10-16):** "eu quero que você inclua também um botão para voltar e alterar o processo do pedido".
 - **O que mudou:** botão "Editar processo" nas ações do topo do pedido (antes de "Seguir pedido"); abre `/novo-processo?processo=<id>` (mesma edição do "Editar negociação" do Painel).
 - **Testes:** build Railway, Playwright local (botão abre a edição do processo 9; desktop 1440 px e celular 390 px).
-- **Status:** aguardando aprovação de Ivam
+- **Status:** aprovado por Ivam ("homologação é parte do botão e tá aprovada a sessão"; "pode produzir", 2026-10-16) — promovido para produção
