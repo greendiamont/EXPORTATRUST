@@ -60,13 +60,16 @@ export function readOrderTerms(source: OrderTermsSource) {
     sizes: [...new Set(effective.map((item) => item.size).filter(Boolean))].join("; "),
     unitPrice: effective.length === 1 ? effective[0].unitPrice : null,
     itemCount: effective.length,
+    /** Como ganhamos no processo: margem (compra e venda) ou comissão (% sobre o valor do pedido). */
+    gainMode: json && json.remuneration && typeof json.remuneration === "object" && (json.remuneration as Record<string, unknown>).mode === "comissao" ? "comissao" : "margem",
+    commissionPercent: json && json.remuneration && typeof json.remuneration === "object" ? Number((json.remuneration as Record<string, unknown>).percent) || 0 : 0,
     /** Itens do pedido de venda (com vários itens, medida e preço são editados item a item). */
     items: effective,
   };
 }
 
 export type OrderItemChange = { species?: string; quality?: string; size?: string; volume?: number; unitPrice?: number };
-export type OrderTermsChanges = { paymentTerms?: string; size?: string; unitPrice?: number; notes?: string; purchaseUnitPrice?: number; purchaseCurrency?: string; items?: OrderItemChange[] };
+export type OrderTermsChanges = { remuneration?: { mode: string; percent: number }; paymentTerms?: string; size?: string; unitPrice?: number; notes?: string; purchaseUnitPrice?: number; purchaseCurrency?: string; items?: OrderItemChange[] };
 
 /**
  * Aplica mudanças nos termos. Medida e preço só mudam quando o pedido tem um único item
@@ -78,6 +81,10 @@ export function applyOrderTerms(source: OrderTermsSource, changes: OrderTermsCha
   const next: Record<string, unknown> = json ? { ...json } : (text ? { orderNotes: text } : {});
   if (changes.paymentTerms !== undefined) next.paymentTerms = changes.paymentTerms.trim();
   if (changes.notes !== undefined) next.orderNotes = changes.notes.trim();
+  if (changes.remuneration) {
+    const percent = Number(changes.remuneration.percent);
+    next.remuneration = { mode: changes.remuneration.mode === "comissao" ? "comissao" : "margem", percent: Number.isFinite(percent) && percent > 0 ? Math.round(percent * 10000) / 10000 : 0 };
+  }
   if (changes.purchaseUnitPrice !== undefined || changes.purchaseCurrency !== undefined) {
     const previous = next.purchasePrice && typeof next.purchasePrice === "object" ? next.purchasePrice as Record<string, unknown> : {};
     const unitPrice = changes.purchaseUnitPrice !== undefined && Number.isFinite(changes.purchaseUnitPrice) ? Math.max(0, changes.purchaseUnitPrice) : Number(previous.unitPrice) || 0;
