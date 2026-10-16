@@ -633,7 +633,7 @@
 
 - **ID:** CHG-20261016-009
 - **Branch:** `claude/custos-por-servico`
-- **PR:** a preencher
+- **PR:** #123 (homologation) e promoção para main
 - **Destino:** homologation e produção
 - **Pedido de Ivam (conversa, 2026-10-16):** enviou a cotação padrão da HMM ("Esse é um exemplo do custo [...] portuário que a gente recebe como uma base padrão [...] do que eu preciso colocar lá dentro"). Proposta desenhada no protótipo (`docs/redesign/prototipo/CustosLogisticos.dc.html`, quadro "5b · Custos logísticos") e aprovada: "alteração aprovada PODE PRODUZIR".
 - **O que mudou:** a prévia dos custos logísticos (seção 5 do Novo processo / Editar negociação e "Todos os dados do pedido") vira a cotação do agente: câmbio, agente/armador, equipamento e validade; grupos (Frete internacional, Custos de origem, e outros que o usuário criar) com uma linha por serviço — moeda, tarifa, quantidade, unidade e total calculado; total por moeda e total convertido em US$ e R$; observações. Componente compartilhado `app/ui/logistics-costs-editor.tsx`. O Financeiro do pedido e a margem continuam usando o total convertido.
