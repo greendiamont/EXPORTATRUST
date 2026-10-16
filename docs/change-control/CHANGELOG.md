@@ -641,3 +641,16 @@
 - **Testes:** tsc (sem erros novos), 91 testes unitários (4 de custos), build Railway, Playwright local (registro antigo exibido como linhas; cotação HMM lançada → BRL 1.990,00 / USD 1.325,00, US$ 1.693,52 / R$ 9.145,00 com câmbio 5,40; edição pelo pedido).
 - **Railway:** homologation deploy 516415bd SUCCESS; produção (PR #124, homologation → main, inclui #121 e #122) deploy 7baa0f07 SUCCESS.
 - **Status:** concluído — em produção
+
+## 2026-10-16 — Claude — Preço de compra, preço indicativo de venda e margem estimada
+
+- **ID:** CHG-20261016-011
+- **Branch:** `claude/preco-compra-venda`
+- **PR:** a preencher (homologation) e promoção para main
+- **Destino:** homologation e produção
+- **Pedido de Ivam (conversa, 2026-10-16):** "dentro de quantidades e condição do pedido [...] tem que ter um campo com o preço de compra [...] e preço indicativo de venda, para [...] o nosso financeiro [...] calcular a margem" e "linka e alinha e amarra com o nosso financeiro". Protótipo `docs/redesign/prototipo/PrecosMargem.dc.html` (quadro "5c · Preços e margem") aprovado: "alteração aprovada PODE SUBIR PRA PRODUÇÃO".
+- **O que mudou:** seção 4 do Novo processo / Editar negociação ganha o bloco "Preços para a margem" (preço indicativo de venda e preço de compra, cada um com moeda e total; câmbio compartilhado com a prévia logística) e o quadro "Margem estimada do processo" (venda, compra, logística em US$ e R$; margem = venda − compra − logística, em % e valor). O antigo "Preço unitário" virou "Preço indicativo de venda"; "Moeda" virou "Moeda da venda". O card Financeiro do pedido usa a mesma conta (`lib/margin.ts`): compra = pedido de compra emitido ou, antes dele, o preço indicativo × volume/quantidade; margem convertida pelo câmbio, com o valor da margem.
+- **Correções junto:** (1) a emissão do pedido (`order-commercial`) passa a preservar as demais chaves do JSON do pedido (ex.: `purchasePrice`); (2) na edição do processo, campos numéricos (quantidade, volume, pesos, valor) eram lidos no padrão brasileiro — "203.212" virava 203 mil; agora são lidos como número do navegador.
+- **Dados/migration:** nenhuma. Preço indicativo de compra em `operations.supply_chain_notes` (`purchasePrice: {unitPrice, currency}`), lido/gravado por `lib/order-terms.ts`.
+- **Testes:** tsc (sem erros novos), 94 testes unitários (3 novos), build Railway, Playwright local (210 m³ × US$ 230 / R$ 750, câmbio 5,40 → margem 39,6%, US$ 19.133,33 no formulário e no Financeiro; preço de compra mantido ao reabrir).
+- **Status:** em andamento

@@ -52,6 +52,7 @@ O workflow `.github/workflows/layout-guard.yml` reprova todo PR que altere arqui
 | 4 · EUDR | `docs/redesign/prototipo/EUDR.dc.html` | ainda não implementada | Aprovado — implementar exatamente como o protótipo |
 | 5 · Novo processo | `docs/redesign/prototipo/NovoProcesso.dc.html` | `app/ui/novo-processo-view.tsx` (também abre em modo "Editar negociação"; seção 4 com medidas, preço unitário e condição de pagamento) | Aprovado — travado |
 | 5b · Custos logísticos (seção 5 do Novo processo e "Todos os dados do pedido") | `docs/redesign/prototipo/CustosLogisticos.dc.html` (aprovado em 2026-10-16) | `app/ui/logistics-costs-editor.tsx` | Aprovado — travado |
+| 5c · Preços e margem (seção 4 do Novo processo; card Financeiro do pedido) | `docs/redesign/prototipo/PrecosMargem.dc.html` (aprovado em 2026-10-16) | `app/ui/novo-processo-view.tsx` (`PricesAndMargin`), `lib/margin.ts` | Aprovado — travado |
 | 6 · Cadastros | `docs/redesign/prototipo/Cadastros.dc.html` | `app/ui/cadastros-view.tsx` | Aprovado — travado |
 
 Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout novo aprovado; não redesenhar sem pedido de Ivam.
@@ -62,6 +63,7 @@ Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout n
 |---|---|---|
 | 2026-10-14 | Ivam | Aprovou o redesign (protótipos 1 a 6) — `docs/redesign/PLANO_REDESIGN.md` |
 | 2026-10-15 | Ivam | Reafirmou o layout aprovado do Pedido (fases e emissão de documentos) e criou esta regra |
+| 2026-10-16 | Ivam | Aprovou preço de compra, preço indicativo de venda e margem (quadro "5c · Preços e margem"): "alteração aprovada PODE SUBIR PRA PRODUÇÃO" |
 | 2026-10-16 | Ivam | Aprovou os custos logísticos por serviço (quadro "5b · Custos logísticos", a partir da cotação HMM): "alteração aprovada PODE PRODUZIR" |
 | 2026-10-16 | Ivam | Aprovou a seção "Processos · negociação" no Painel e o "Editar negociação" pelo formulário do Novo processo: "Boa, Claude, é exatamente isso que eu preciso, tá? Pode subir para homologação e produção. Produção, layout aprovado. E alteração" |
 | 2026-10-16 | Ivam | Escolheu a trava automática ("aprovar uma permissão quando ela aparecer") e definiu: "Quando tiver qualquer alteração, você vai enviar para mim aqui e eu preciso dar o ok. Eu preciso falar alteração aprovada." |
