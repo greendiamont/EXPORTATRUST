@@ -43,3 +43,12 @@ export function estimateMargin({ sale, purchase, logistics, rate }: { sale: Amou
 
 /** Soma por moeda ({ USD: 1325, BRL: 1990 }) → lista de valores. */
 export const amountsOf = (sums: Record<string, number>): Amount[] => Object.entries(sums).map(([currency, value]) => ({ currency, value }));
+
+/** Processo por comissão: ganho = valor do pedido × percentual, em US$ e R$ (pelo câmbio). */
+export function estimateCommission({ sale, percent, rate }: { sale: Amount; percent: number; rate: number }) {
+  const gain = sale.value * (percent > 0 ? percent : 0) / 100;
+  const amount = { value: gain, currency: sale.currency };
+  const usd = convert(amount, "USD", rate);
+  const brl = convert(amount, "BRL", rate);
+  return { gain: round2(gain), usd: usd === null ? null : round2(usd), brl: brl === null ? null : round2(brl), saleUsd: convert(sale, "USD", rate), saleBrl: convert(sale, "BRL", rate) };
+}

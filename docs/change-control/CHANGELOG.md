@@ -716,3 +716,14 @@
 - **Dados/migration:** nenhuma; itens existentes preservam campos extras.
 - **Testes:** tsc (sem erros novos), 96 testes unitários, build Railway, Playwright local (processo com 2 itens + 1 adicionado → salvo, valor US$ 61.700; processo novo começa com 1 linha; criação via API com 2 itens → valor 2.750).
 - **Status:** aprovado por Ivam ("pode produzir TUDO O QUE ALTERAMOS E AS CORREÇÕES") — em produção (PR #137, deploy aaf6d5e9)
+
+## 2026-10-16 — Claude — Processo por comissão
+
+- **ID:** CHG-20261016-020
+- **Branch:** `claude/comissao`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16):** "tem processos que eu faço que [...] não vendo por um preço maior, eu simplesmente ganho comissão. [...] incluísse uma opção [...] comissionamento [...] o percentual do comissionamento de cada processo e aí ele calcula [...] a margem do pedido [...] por comissionamento."
+- **O que mudou:** seção 4 do Novo processo / Editar: "Como ganhamos neste processo: Margem (compra e venda) | Comissão". Em comissão, campo "Comissão (%)" no lugar do preço de compra e quadro "Comissão estimada do processo" (valor do pedido, comissão e comissão por m³, em US$ e R$ pelo câmbio). Card Financeiro do pedido mostra "Comissão %" e "Ganho (comissão)" com valor por m³. Gravado em `supply_chain_notes.remuneration = {mode, percent}` via `lib/order-terms.ts`; cálculo em `lib/margin.ts` (`estimateCommission`).
+- **Testes:** tsc (sem erros novos), 96 testes unitários, build Railway, Playwright local (3,5% sobre US$ 61.700 → US$ 2.159,50 / R$ 11.661,30; US$ 16,30/m³; Financeiro igual).
+- **Status:** em andamento
