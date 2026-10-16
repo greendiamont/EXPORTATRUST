@@ -47,6 +47,7 @@ O workflow `.github/workflows/layout-guard.yml` reprova todo PR que altere arqui
 | Tela | Protótipo aprovado (fonte da verdade) | Implementação | Situação |
 |---|---|---|---|
 | 1 · Painel | `docs/redesign/prototipo/Main.dc.html` (com "Processos · negociação", aprovado em 2026-10-16) | `app/ui/painel-view.tsx` | Aprovado — travado |
+| 1b · Painel dashboard (substitui o topo do Painel; "Processos · negociação" fica recolhido no fim) | `docs/redesign/prototipo/Dashboard.dc.html` (aprovado em 2026-10-16) | `app/ui/painel-view.tsx` | Aprovado — travado |
 | 2 · Pedidos (lista) | `docs/redesign/prototipo/Processos.dc.html` | `app/ui/pedidos-view.tsx` | Aprovado — travado |
 | 3 · Pedido (todas as fases, emissão de documentos na fase Pedido) | `docs/redesign/prototipo/Processo.dc.html` | `app/ui/pedido-view.tsx` (PR #103) | Aprovado — travado; implementação aguardando conferência de Ivam em homologação |
 | 4 · EUDR | `docs/redesign/prototipo/EUDR.dc.html` | ainda não implementada | Aprovado — implementar exatamente como o protótipo |
@@ -65,6 +66,7 @@ Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout n
 |---|---|---|
 | 2026-10-14 | Ivam | Aprovou o redesign (protótipos 1 a 6) — `docs/redesign/PLANO_REDESIGN.md` |
 | 2026-10-15 | Ivam | Reafirmou o layout aprovado do Pedido (fases e emissão de documentos) e criou esta regra |
+| 2026-10-16 | Ivam | Aprovou o Painel em formato de dashboard (quadro "1b · Painel dashboard": exportado em US$/R$, m³, preço médio, volume e valor mês a mês/ano a ano, embarques por mês): "alteração aprovada" |
 | 2026-10-16 | Ivam | Aprovou para produção comissão, cancelar pedido, convite de colaborador ("3c") e operação concluída: "pode produzir" |
 | 2026-10-16 | Ivam | Aprovou para produção o Shipment Advice da fase Documentos ("3b"), os botões "Editar" e a tabela de itens com "+ Adicionar item": "pode produzir TUDO O QUE ALTERAMOS E AS CORREÇÕES" |
 | 2026-10-16 | Ivam | Aprovou o botão "Editar processo" no topo do pedido: "homologação é parte do botão e tá aprovada a sessão"; "pode produzir" |
