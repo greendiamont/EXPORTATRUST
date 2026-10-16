@@ -570,4 +570,25 @@
 - **Pedido de Ivam (conversa, 2026-10-16):** "O aplicativo tem que ter também uma opção dentro de cada fase para que possa ser eliminado também documentos".
 - **O que mudou:** botão "Excluir" ao lado de Visualizar/Baixar em "Arquivos desta fase" (e em "Outros arquivos do pedido"), com confirmação; usa a rota existente `DELETE /api/documents` (apaga o arquivo do storage e o registro, grava auditoria `DOCUMENT_DELETED`) e mostra aviso. Única mudança visual: o botão na coluna Ações.
 - **Testes:** eslint, tsc (sem erros novos), build Railway, Playwright local (13 → 12 arquivos, aviso exibido).
+## 2026-10-15 — Claude — Protocolo de layout aprovado (regra de Ivam)
+
+- **ID:** CHG-20261015-022
+- **Branch:** `claude/protocolo-layout`
+- **PR:** #104
+- **Destino:** homologation
+- **Tipo:** docs / governança / CI
+- **Arquivos/módulos alterados:** `docs/change-control/LAYOUT_PROTOCOL.md` (novo), `.github/workflows/layout-guard.yml` (novo), `CLAUDE.md`, `AGENTS.md`, `docs/change-control/CURRENT_STATE.md`, `docs/skills/SENIOR_REACT_FRONTEND.md`, `docs/AI_COLLABORATION_LOG.md`
+- **Motivo:** o layout aprovado da página do pedido se perdeu e foi refeito (PR #103), gastando tempo e crédito. Ivam definiu como regra: layout aprovado não muda, não é sobrescrito nem recriado; só muda quando Ivam pedir.
+- **O que mudou:** protocolo com regras, fluxo de aprovação e registro dos layouts aprovados (protótipos 1–6); trava no GitHub que reprova PR que altera arquivos de layout sem a etiqueta `layout-autorizado-ivam` (só Ivam coloca); regra no topo de `CLAUDE.md` e `AGENTS.md`.
+- **Impacto esperado:** nenhum agente altera layout aprovado sem autorização explícita de Ivam.
+- **Riscos:** correções funcionais em arquivos de tela também precisam da etiqueta (intencional).
+- **Dados/migração:** nenhuma.
+- **Compatibilidade:** sem impacto no app.
+- **Testes executados:** documental; o próprio PR aciona a trava (toca arquivos protegidos).
+- **CI:** layout-guard.
+- **Railway homologation:** sem mudança de runtime.
+- **Railway production:** sem mudança.
+- **Rollback:** somente com autorização de Ivam.
+- **Conflitos/coordenação com outros agentes:** regra vale para todos os agentes a partir deste registro.
 - **Status:** em andamento
+- **Atualização (2026-10-16):** Ivam escolheu a trava automática e definiu que toda alteração é enviada a ele na conversa e só vale com "alteração aprovada" (produção com "pode produzir"). Protocolo, `CLAUDE.md` e `AGENTS.md` atualizados.
