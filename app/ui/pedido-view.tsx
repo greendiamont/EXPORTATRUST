@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObjec
 import { api, formatDate, money, relativeDue } from "./format";
 import { ORDER_PHASES, currentPhaseIndex, isClosedStatus, phaseIndexOfCode } from "../../lib/order-phases";
 import { PHASE_UPLOAD_CATEGORY, documentPhaseIndex, taskPhaseIndex } from "../../lib/document-phase";
-import { LOGISTICS_COST_FIELDS, logisticsTotal, parseLogisticsCosts } from "../../lib/logistics-costs";
+import { LOGISTICS_COST_FIELDS, type LogisticsCosts, logisticsByCurrency, logisticsTotal, logisticsTotalIn, parseLogisticsCosts } from "../../lib/logistics-costs";
 
 // Página do pedido — reprodução do protótipo aprovado (docs/redesign/prototipo/Processo.dc.html):
 // cabeçalho com os 6 dados-chave, fases em linha do tempo, emissão de documentos na fase
@@ -263,10 +263,13 @@ export default function PedidoView({ operationId }: { operationId: number }) {
   const po = itemsTotal(form.poItems);
   const saleValue = so.value || Number(operation.commercialValue) || 0;
   const logistics = parseLogisticsCosts(operation.logisticsCostsJson);
-  const logisticsValue = logisticsTotal(logistics);
-  // Margem = venda − compra − prévia logística, quando tudo está na mesma moeda.
-  const sameCurrency = form.poCurrency === form.currency && (!logisticsValue || logistics.currency === form.currency);
-  const margin = po.value && saleValue && sameCurrency ? ((saleValue - po.value - logisticsValue) / saleValue) * 100 : null;
+  // Custos em R$ e US$ convertidos pelo câmbio informado para a moeda da venda.
+  const hasLogistics = logisticsTotal(logistics) > 0;
+  const logisticsValue = hasLogistics ? logisticsTotalIn(logistics, form.currency) : 0;
+  const logisticsParts = Object.entries(logisticsByCurrency(logistics)).map(([code, value]) => money(value, code)).join(" + ");
+  // Margem = venda − compra − prévia logística, quando tudo está (ou foi convertido) na mesma moeda.
+  const sameCurrency = form.poCurrency === form.currency && logisticsValue !== null;
+  const margin = po.value && saleValue && sameCurrency ? ((saleValue - po.value - (logisticsValue ?? 0)) / saleValue) * 100 : null;
 
   function run(work: () => Promise<unknown>) {
     setBusy(true);
@@ -466,7 +469,7 @@ export default function PedidoView({ operationId }: { operationId: number }) {
             <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
               <div><dt className="pd-sub">Venda</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{saleValue ? money(saleValue, form.currency || currency) : "—"}</dd></div>
               <div><dt className="pd-sub">Compra</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{po.value ? money(po.value, form.poCurrency || currency) : "—"}</dd></div>
-              <div><dt className="pd-sub">Logística (prévia)</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{logisticsValue ? money(logisticsValue, logistics.currency) : "—"}</dd></div>
+              <div><dt className="pd-sub">Logística (prévia)</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{!hasLogistics ? "—" : logisticsValue !== null ? money(logisticsValue, form.currency) : logisticsParts}{hasLogistics && <span className="pd-sub" style={{ display: "block" }}>{logisticsValue !== null ? logisticsParts : "informe o câmbio"}</span>}</dd></div>
               <div><dt className="pd-sub">Margem{logisticsValue ? " (com logística)" : ""}</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{margin === null ? (po.value && !sameCurrency ? "moedas diferentes" : "—") : `${margin.toFixed(1).replace(".", ",")}%`}</dd></div>
               <div><dt className="pd-sub">Pagamento</dt><dd style={{ margin: "3px 0 0" }}>{form.paymentTerms || "Não registrado"}</dd></div>
             </dl>
@@ -1115,7 +1118,22 @@ const FIELD_GROUPS: Array<{ title: string; fields: Array<[string, string]> }> = 
   { title: "EUDR e responsáveis", fields: [["euOperatorEori", "EORI"], ["eudrReference", "Referência DDS"], ["internalResponsible", "Responsável interno"], ["responsibleEmail", "E-mail do responsável"], ["status", "Situação"]] },
 ];
 const NUMBER_FIELDS = new Set(["commercialValue", "quantity", "volumeM3", "netWeightKg", "grossWeightKg"]);
-const COST_GROUP: Array<[string, string]> = [["lc.currency", "Moeda dos custos"], ...LOGISTICS_COST_FIELDS.map(([key, label]): [string, string] => [`lc.${key}`, label]), ["lc.notes", "Observações dos custos"]];
+const COST_GROUP: Array<[string, string]> = [["lc.exchangeRate", "Câmbio (R$ por US$ 1)"], ...LOGISTICS_COST_FIELDS.flatMap(([key, label]): Array<[string, string]> => [[`lc.${key}`, label], [`lc.${key}.cur`, `Moeda · ${label}`]]), ["lc.notes", "Observações dos custos"]];
+/** Valor de um campo do grupo de custos (lc.<custo>, lc.<custo>.cur, lc.exchangeRate, lc.notes) como texto do formulário. */
+function costDraftValue(costs: LogisticsCosts, key: string) {
+  const name = key.slice(3);
+  if (name.endsWith(".cur")) return costs.currencies[name.slice(0, -4) as keyof LogisticsCosts["currencies"]] ?? "BRL";
+  if (name === "notes") return costs.notes;
+  const value = costs[name as keyof LogisticsCosts];
+  return typeof value === "number" ? fmt(value, 4) : "";
+}
+function costsFromDraft(draft: Record<string, string>) {
+  return {
+    exchangeRate: num(draft["lc.exchangeRate"]), notes: draft["lc.notes"] ?? "",
+    currencies: Object.fromEntries(LOGISTICS_COST_FIELDS.map(([key]) => [key, draft[`lc.${key}.cur`] || "BRL"])),
+    ...Object.fromEntries(LOGISTICS_COST_FIELDS.map(([key]) => [key, num(draft[`lc.${key}`])])),
+  };
+}
 const READONLY_FIELDS = new Set(["status"]);
 type Option = { id: number; name: string };
 
@@ -1130,8 +1148,12 @@ function AllFields({ operation, onSaved, onError }: { operation: Operation; onSa
   const valueOf = (key: string) => {
     if (key.startsWith("lc.")) {
       const costs = parseLogisticsCosts(operation.logisticsCostsJson);
-      const value = costs[key.slice(3) as keyof typeof costs];
-      return typeof value === "number" ? (value ? money(value, costs.currency) : "") : key === "lc.currency" && !logisticsTotal(costs) ? "" : String(value ?? "");
+      const name = key.slice(3);
+      if (name.endsWith(".cur")) return "";
+      if (name === "exchangeRate") return costs.exchangeRate ? `R$ ${fmt(costs.exchangeRate, 4)}` : "";
+      if (name === "notes") return costs.notes;
+      const value = costs[name as keyof LogisticsCosts];
+      return typeof value === "number" && value ? money(value, costs.currencies[name as keyof LogisticsCosts["currencies"]]) : "";
     }
     const value = operation[key];
     if (value === null || value === undefined || value === "") return "";
@@ -1145,7 +1167,7 @@ function AllFields({ operation, onSaved, onError }: { operation: Operation; onSa
     const next: Record<string, string> = {};
     for (const group of FIELD_GROUPS) for (const [key] of group.fields) next[key] = original(key);
     const costs = parseLogisticsCosts(operation.logisticsCostsJson);
-    for (const [key] of COST_GROUP) { const field = key.slice(3) as keyof typeof costs; next[key] = typeof costs[field] === "number" ? fmt(costs[field] as number) : String(costs[field] ?? ""); }
+    for (const [key] of COST_GROUP) next[key] = costDraftValue(costs, key);
     next.supplierId = text(operation.supplierId);
     next.importerClientId = text(operation.importerClientId);
     setDraft(next);
@@ -1159,9 +1181,9 @@ function AllFields({ operation, onSaved, onError }: { operation: Operation; onSa
     const fields: Record<string, unknown> = {};
     const before: Record<string, unknown> = {};
     const costs = parseLogisticsCosts(operation.logisticsCostsJson);
-    const costsChanged = COST_GROUP.some(([key]) => { const field = key.slice(3) as keyof typeof costs; return draft[key] !== (typeof costs[field] === "number" ? fmt(costs[field] as number) : String(costs[field] ?? "")); });
+    const costsChanged = COST_GROUP.some(([key]) => draft[key] !== costDraftValue(costs, key));
     if (costsChanged) {
-      fields.logisticsCosts = Object.fromEntries(COST_GROUP.map(([key]) => [key.slice(3), key === "lc.currency" || key === "lc.notes" ? draft[key] : num(draft[key])]));
+      fields.logisticsCosts = costsFromDraft(draft);
       before.logisticsCostsJson = operation.logisticsCostsJson;
     }
     for (const [key, value] of Object.entries(draft)) {
@@ -1198,9 +1220,9 @@ function AllFields({ operation, onSaved, onError }: { operation: Operation; onSa
         </select>
       </label>
     );
-    if (key === "lc.currency") return (
+    if (key.startsWith("lc.") && key.endsWith(".cur")) return (
       <label key={key}>{label}
-        <select className="pd-input" value={draft[key]} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })}>{["BRL", "USD", "EUR"].map((value) => <option key={value}>{value}</option>)}</select>
+        <select className="pd-input" value={draft[key]} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })}><option value="BRL">R$</option><option value="USD">US$</option></select>
       </label>
     );
     if (key === "euImporter") return (
@@ -1237,7 +1259,7 @@ function AllFields({ operation, onSaved, onError }: { operation: Operation; onSa
           {draft
             ? <div className="pd-fields">{group.fields.map(([key, label]) => input(key, label))}</div>
             : <dl className="et2-dl" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
-                {group.fields.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{valueOf(key) || <span className="muted">—</span>}</dd></div>)}
+                {group.fields.filter(([key]) => !key.endsWith(".cur")).map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{valueOf(key) || <span className="muted">—</span>}</dd></div>)}
               </dl>}
         </div>
       ))}

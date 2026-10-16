@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api, money, normalize, processHref } from "./format";
-import { LOGISTICS_COST_FIELDS, parseLogisticsCosts } from "../../lib/logistics-costs";
+import { LOGISTICS_COST_FIELDS, logisticsTotalIn, parseLogisticsCosts, sanitizeLogisticsCosts } from "../../lib/logistics-costs";
 import { readOrderTerms } from "../../lib/order-terms";
 
 type Supplier = { id: number; legalName: string; tradeName: string; taxId: string; city: string; state: string; country: string; products: string; productionUnits: string };
@@ -18,7 +18,8 @@ const EMPTY = {
   quantity: "", quantityUnit: "MT", volumeM3: "", netWeightKg: "", grossWeightKg: "", incoterm: "FOB", currency: "USD", commercialValue: "",
   transportMode: "Marítimo", shipmentDate: "", destinationCountry: "", portOfLoading: "", portOfDischarge: "", carrier: "", bookingNumber: "", billOfLadingNumber: "", containerNumbers: "", vesselVoyage: "",
   supplyChainNotes: "", paymentTerms: "", itemSize: "", unitPrice: "",
-  lcCurrency: "BRL", lcInlandFreight: "", lcPortCharges: "", lcCustomsBroker: "", lcOceanFreight: "", lcInsurance: "", lcOther: "", lcNotes: "",
+  lcCurrency: "BRL", lcInlandFreight: "", lcPortCharges: "", lcCustomsBroker: "", lcOceanFreight: "", lcInsurance: "", lcOther: "", lcNotes: "", lcRate: "",
+  lcCurInlandFreight: "BRL", lcCurPortCharges: "BRL", lcCurCustomsBroker: "BRL", lcCurOceanFreight: "USD", lcCurInsurance: "USD", lcCurOther: "BRL",
 };
 type Form = typeof EMPTY;
 type Key = Exclude<keyof Form, "propertyIds">;
@@ -45,13 +46,16 @@ function formFromOperation(operation: OperationRow): Form {
     reference: operation.reference, supplierId: text(operation.supplierId), importerClientId: text(operation.importerClientId),
     propertyIds: Array.isArray(propertyIds) ? propertyIds.map(String) : [],
     supplyChainNotes: terms.notes, paymentTerms: terms.paymentTerms, itemSize: terms.sizes, unitPrice: terms.unitPrice ? String(terms.unitPrice) : "",
-    lcCurrency: costs.currency, lcNotes: costs.notes,
+    lcCurrency: costs.currency, lcNotes: costs.notes, lcRate: costs.exchangeRate ? String(costs.exchangeRate) : "",
     ...Object.fromEntries(LOGISTICS_COST_FIELDS.map(([key]) => [costKey(key), costs[key] ? String(costs[key]) : ""])),
+    ...Object.fromEntries(LOGISTICS_COST_FIELDS.map(([key]) => [costCurrencyKey(key), costs.currencies[key]])),
   } as Form;
 }
 
 /** Campo do formulário de cada custo logístico (ex.: inlandFreight → lcInlandFreight). */
 const costKey = (key: string) => `lc${key[0].toUpperCase()}${key.slice(1)}` as Key;
+/** Campo da moeda de cada custo (ex.: inlandFreight → lcCurInlandFreight). */
+const costCurrencyKey = (key: string) => `lcCur${key[0].toUpperCase()}${key.slice(1)}` as Key;
 /** Valor digitado no padrão brasileiro (1.234,56) ou internacional (1234.56). */
 const amount = (value: unknown) => {
   const raw = String(value ?? "").replace(/\s/g, "");
@@ -129,7 +133,11 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
   // O exportador (quem aparece nos documentos) é o próprio fornecedor ou uma trading do cadastro;
   // nome e CNPJ vêm do cadastro.
   function logisticsCosts() {
-    return { currency: form.lcCurrency, notes: form.lcNotes, ...Object.fromEntries(LOGISTICS_COST_FIELDS.map(([key]) => [key, amount(form[costKey(key)])])) };
+    return {
+      currency: form.lcCurrency, notes: form.lcNotes, exchangeRate: amount(form.lcRate),
+      currencies: Object.fromEntries(LOGISTICS_COST_FIELDS.map(([key]) => [key, form[costCurrencyKey(key)]])),
+      ...Object.fromEntries(LOGISTICS_COST_FIELDS.map(([key]) => [key, amount(form[costKey(key)])])),
+    };
   }
 
   function pickSupplier(id: string) {
@@ -216,7 +224,7 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
     for (const key of NUMBER_FIELDS) if (form[key] !== original[key]) { fields[key] = amount(form[key]); before[key] = operation[key]; }
     if (form.supplierId !== original.supplierId) fields.supplierId = Number(form.supplierId);
     if (form.importerClientId !== original.importerClientId) fields.importerClientId = Number(form.importerClientId) || null;
-    const costKeys: Key[] = ["lcCurrency", "lcNotes", ...LOGISTICS_COST_FIELDS.map(([key]) => costKey(key))];
+    const costKeys: Key[] = ["lcCurrency", "lcNotes", "lcRate", ...LOGISTICS_COST_FIELDS.flatMap(([key]) => [costKey(key), costCurrencyKey(key)])];
     if (costKeys.some((key) => form[key] !== original[key])) { fields.logisticsCosts = logisticsCosts(); before.logisticsCostsJson = operation.logisticsCostsJson; }
     const terms: Record<string, unknown> = {};
     if (form.paymentTerms !== original.paymentTerms) terms.paymentTerms = form.paymentTerms;
@@ -383,11 +391,30 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
               <div style={{ fontWeight: 500 }}>Prévia dos custos logísticos</div>
               <small className="et2-sub" style={{ display: "block", margin: "2px 0 10px" }}>Estimativa para o financeiro calcular a margem do pedido. Pode ser ajustada depois, dentro do pedido.</small>
               <div className="et2-grid">
-                {select("lcCurrency", "Moeda dos custos", ["BRL", "USD", "EUR"])}
-                {LOGISTICS_COST_FIELDS.map(([key, label]) => input(costKey(key), label, { placeholder: "0,00" }))}
+                {input("lcRate", "Câmbio (R$ por US$ 1)", { placeholder: "Ex.: 5,40", help: "Usado para somar custos em reais e em dólares" })}
+                {LOGISTICS_COST_FIELDS.map(([key, label]) => (
+                  <label className="et2-field" key={key}>
+                    <span>{label}</span>
+                    <span style={{ display: "flex", gap: 6 }}>
+                      <select aria-label={`Moeda: ${label}`} style={{ width: 84, flex: "none" }} value={form[costCurrencyKey(key)]} onChange={(event) => set(costCurrencyKey(key), event.target.value)}>
+                        <option value="BRL">R$</option><option value="USD">US$</option>
+                      </select>
+                      <input aria-label={label} placeholder="0,00" value={form[costKey(key)]} onChange={(event) => set(costKey(key), event.target.value)} style={{ flex: 1, minWidth: 0 }} />
+                    </span>
+                  </label>
+                ))}
                 {input("lcNotes", "Observações dos custos", { placeholder: "Ex.: cotação do armador, validade" })}
               </div>
-              <div style={{ marginTop: 10, fontWeight: 600 }}>Total estimado: {money(LOGISTICS_COST_FIELDS.reduce((sum, [key]) => sum + amount(form[costKey(key)]), 0), form.lcCurrency)}</div>
+              {(() => {
+                const costs = sanitizeLogisticsCosts(logisticsCosts());
+                const usd = logisticsTotalIn(costs, "USD");
+                const brl = logisticsTotalIn(costs, "BRL");
+                return (
+                  <div style={{ marginTop: 10, fontWeight: 600 }}>
+                    Total estimado: {usd !== null && brl !== null ? `${money(usd, "USD")} · ${money(brl, "BRL")}` : "informe o câmbio para somar reais e dólares"}
+                  </div>
+                );
+              })()}
             </div>}
 
             {step === 5 && <label className="et2-field">

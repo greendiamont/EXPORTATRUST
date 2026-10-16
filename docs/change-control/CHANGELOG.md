@@ -616,3 +616,15 @@
 - **O que mudou:** tabela "Processos · negociação" com larguras de coluna fixas e quebra de linha sem cortar palavras — cabe inteira no quadro (1280–1920 px), mesmas colunas e informações; preço mostra a unidade numa segunda linha. Em "Editar negociação", a referência passa a ser editável: muda a referência do processo e do pedido (mesmo registro), em maiúsculas, recusando referência já usada.
 - **Testes:** eslint, tsc (sem erros novos), build Railway, Playwright local (tabela cabe em 1280/1440/1920; referência duplicada recusada; troca de referência refletida no pedido).
 - **Status:** aguardando aprovação de Ivam
+
+## 2026-10-16 — Claude — Custos logísticos em reais e dólares, com total nas duas moedas
+
+- **ID:** CHG-20261016-008
+- **Branch:** `claude/custos-duas-moedas`
+- **PR:** #122
+- **Destino:** homologation (produção só após "alteração aprovada" e "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16):** "em cada campo [...] a gente pode colocar em real despesas em real ou em dólar. E no final, você traz a somatório. De tudo ou em dólar ou em real. As duas opções."
+- **O que mudou:** cada custo logístico tem a sua moeda (R$ ou US$); campo "Câmbio (R$ por US$ 1)" substitui a moeda única; total estimado em US$ e em R$. No pedido, o Financeiro converte a logística para a moeda da venda (mostra também R$ + US$ separados) e a margem usa o valor convertido; a edição em "Todos os dados do pedido" tem moeda por custo. Registros antigos (moeda única) continuam válidos.
+- **Dados/migração:** nenhuma (mesmo campo JSON, chaves novas `currencies` e `exchangeRate`).
+- **Testes:** eslint, tsc (sem erros novos), 89 testes unitários (2 novos), build Railway, Playwright local (R$ 520 + US$ 1.325 com câmbio 5,40 → US$ 1.421 · R$ 7.675; Financeiro do pedido convertido).
+- **Status:** aguardando aprovação de Ivam
