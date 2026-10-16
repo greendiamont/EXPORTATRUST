@@ -83,7 +83,7 @@ export default function PainelView({ userName, userEmail }: { userName: string; 
                   </td>
                   <td><span title={operation.terms?.paymentTerms || undefined} style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{operation.terms?.paymentTerms || "—"}</span></td>
                   <td style={{ whiteSpace: "nowrap" }}><span className={`et2-badge et2-badge--${operation.phaseIndex === 5 ? "ok" : operation.phaseIndex === 0 ? "todo" : "warn"}`}>{operation.phaseName}</span></td>
-                  <td><a className="et2-btn et2-btn--sm" style={{ whiteSpace: "normal", textAlign: "center", lineHeight: 1.2, padding: "4px 6px", minHeight: 0, maxWidth: "100%", boxSizing: "border-box" }} href={`/novo-processo?processo=${operation.id}`}>Editar negociação</a></td>
+                  <td><a className="et2-btn et2-btn--sm" style={{ whiteSpace: "normal", textAlign: "center", lineHeight: 1.2, padding: "4px 6px", minHeight: 0, maxWidth: "100%", boxSizing: "border-box" }} href={`/novo-processo?processo=${operation.id}`} title="Editar a negociação deste processo">Editar</a></td>
                 </tr>
               ))}
             </tbody>

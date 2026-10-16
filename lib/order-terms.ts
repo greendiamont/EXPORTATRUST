@@ -60,10 +60,13 @@ export function readOrderTerms(source: OrderTermsSource) {
     sizes: [...new Set(effective.map((item) => item.size).filter(Boolean))].join("; "),
     unitPrice: effective.length === 1 ? effective[0].unitPrice : null,
     itemCount: effective.length,
+    /** Itens do pedido de venda (com vários itens, medida e preço são editados item a item). */
+    items: effective,
   };
 }
 
-export type OrderTermsChanges = { paymentTerms?: string; size?: string; unitPrice?: number; notes?: string; purchaseUnitPrice?: number; purchaseCurrency?: string };
+export type OrderItemChange = { species?: string; quality?: string; size?: string; volume?: number; unitPrice?: number };
+export type OrderTermsChanges = { paymentTerms?: string; size?: string; unitPrice?: number; notes?: string; purchaseUnitPrice?: number; purchaseCurrency?: string; items?: OrderItemChange[] };
 
 /**
  * Aplica mudanças nos termos. Medida e preço só mudam quando o pedido tem um único item
@@ -86,6 +89,29 @@ export function applyOrderTerms(source: OrderTermsSource, changes: OrderTermsCha
     }
   }
   let commercialValue: number | undefined;
+  // Lista de itens do pedido (tabela com "+ Adicionar item"): substitui os itens na ordem dada,
+  // preservando campos extras de cada item existente; o valor comercial passa a ser a soma
+  // volume × preço, como na emissão de documentos.
+  if (changes.items) {
+    const raw = json && Array.isArray(json.orderItems) ? json.orderItems as Array<Record<string, unknown>> : [];
+    const text = (value: unknown) => String(value ?? "").trim();
+    const updated = changes.items.map((change, index) => {
+      const item = raw[index] ?? {};
+      const number = (value: unknown, fallback: unknown) => value !== undefined && Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : Number(fallback) || 0;
+      return {
+        ...item,
+        species: change.species !== undefined ? text(change.species) : text(item.species),
+        quality: change.quality !== undefined ? text(change.quality) : text(item.quality),
+        size: change.size !== undefined ? text(change.size) : text(item.size),
+        volume: number(change.volume, item.volume),
+        unitPrice: number(change.unitPrice, item.unitPrice),
+      } as Record<string, unknown>;
+    }).filter((item) => item.species || item.quality || item.size || item.volume || item.unitPrice);
+    next.orderItems = updated;
+    const total = updated.reduce((sum, item) => sum + (Number(item.volume) || 0) * (Number(item.unitPrice) || 0), 0);
+    if (total > 0) commercialValue = Math.round(total * 100) / 100;
+    return { supplyChainNotes: JSON.stringify(next), ...(commercialValue !== undefined ? { commercialValue } : {}) };
+  }
   if (changes.size !== undefined || changes.unitPrice !== undefined) {
     const list = items(json);
     if (list.length > 1) return { supplyChainNotes: source.supplyChainNotes ?? "", error: "Este pedido tem vários itens: altere medidas e preços na emissão de documentos (fase Pedido)." };

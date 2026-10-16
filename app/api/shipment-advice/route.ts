@@ -123,6 +123,16 @@ export async function POST(request: Request) {
       await audit(context, body.approved ? "SHIPMENT_DOCUMENT_APPROVED" : "SHIPMENT_DOCUMENT_REVIEW_REOPENED", "operation_document", String(documentId), { operationId, fileName: document.fileName });
       return Response.json(await snapshot(operationId, context.organizationId));
     }
+    if (body.action === "set-recipient") {
+      // E-mail do cliente que recebe o Shipment Advice (mesmo campo das configurações do pedido).
+      const recipient = String(body.recipient ?? "").trim().toLowerCase();
+      if (!validEmail(recipient)) return Response.json({ error: "Informe um e-mail válido para o cliente." }, { status: 400 });
+      const [settings] = await db.select({ id: exportControlSettings.id }).from(exportControlSettings).where(and(eq(exportControlSettings.operationId, operationId), eq(exportControlSettings.organizationId, context.organizationId))).limit(1);
+      if (!settings) return Response.json({ error: "Configurações do pedido não encontradas." }, { status: 404 });
+      await db.update(exportControlSettings).set({ customerEmail: recipient, updatedAt: new Date().toISOString() }).where(eq(exportControlSettings.id, settings.id));
+      await audit(context, "SHIPMENT_ADVICE_RECIPIENT_UPDATED", "operation", String(operationId), { recipient });
+      return Response.json(await snapshot(operationId, context.organizationId));
+    }
     if (body.action === "approve-send") {
       const current = await snapshot(operationId, context.organizationId, true);
       if (!current.complete) return Response.json({ error: "O set obrigatório ainda está incompleto. Aprove os documentos pendentes da Etapa 09." }, { status: 409 });

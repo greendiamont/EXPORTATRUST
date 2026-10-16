@@ -1,4 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
+import { analyzeShipmentDocument, SHIPMENT_DOCUMENT_TYPES, SHIPMENT_SET_CATEGORY } from "../../../lib/shipment-documents";
 import { ensureBaseTables, getDb } from "../../../db";
 import { operationDocuments, operations } from "../../../db/schema";
 import { refreshOperationReadiness } from "../../../lib/readiness";
@@ -68,9 +69,16 @@ export async function POST(request: Request) {
     const objectKey = `organizations/${context.organizationId}/operations/${operationId}/${crypto.randomUUID()}-${safeName}`;
     const bucket = await getBucket();
     await bucket.put(objectKey, file.stream(), { httpMetadata: { contentType: file.type || "application/octet-stream" } });
+    // Set do Shipment Advice (fase Documentos): o tipo vem do cartão onde o arquivo foi anexado
+    // (ou é reconhecido pelo nome) e o documento entra no set aguardando aprovação humana.
+    const requestedType = String(form.get("documentType") ?? "").trim();
+    const shipmentFields = category === SHIPMENT_SET_CATEGORY ? {
+      documentType: SHIPMENT_DOCUMENT_TYPES.includes(requestedType) ? requestedType : analyzeShipmentDocument(file.name, "").documentType,
+      shipmentSetStatus: "Candidato", clientShareStatus: "Revisão pendente",
+    } : {};
     const [document] = await db.insert(operationDocuments).values({
       organizationId: context.organizationId, operationId, category, fileName: file.name, objectKey,
-      contentType: file.type || "application/octet-stream", sizeBytes: file.size, notes,
+      contentType: file.type || "application/octet-stream", sizeBytes: file.size, notes, ...shipmentFields,
     }).returning();
     await audit(context, "DOCUMENT_UPLOADED", "operation_document", String(document.id), { operationId, category, fileName: file.name, sizeBytes: file.size });
     const readiness = await refreshOperationReadiness(db, operationId);

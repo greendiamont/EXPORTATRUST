@@ -679,3 +679,40 @@
 - **O que mudou:** botão "Editar processo" nas ações do topo do pedido (antes de "Seguir pedido"); abre `/novo-processo?processo=<id>` (mesma edição do "Editar negociação" do Painel).
 - **Testes:** build Railway, Playwright local (botão abre a edição do processo 9; desktop 1440 px e celular 390 px).
 - **Status:** aprovado por Ivam ("homologação é parte do botão e tá aprovada a sessão"; "pode produzir", 2026-10-16) — promovido para produção
+
+## 2026-10-16 — Claude — Shipment Advice na fase Documentos; botões "Editar"
+
+- **ID:** CHG-20261016-016
+- **Branch:** `claude/shipment-advice`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção só após "alteração aprovada" e "pode produzir")
+- **Pedidos de Ivam (conversa, 2026-10-16):** "na fase 4 [...] documentação [...] emitir o Shipment Advice [...] um campo onde a gente vai ter todos os documentos ali agrupados [...] um botão para a gente emitir o Shipment Advice" e "faz o layout aqui dentro do novo app mais clean, mais interativo [...] mais organizado"; "no nosso painel não precisa colocar um botão editar processo, pode só colocar editar"; "eu quero que você já entre com [o Resend]".
+- **O que mudou:** cartão "Shipment Advice · set de documentos" na fase 4 do pedido (protótipo `docs/redesign/prototipo/ShipmentAdvice.dc.html`): barra de progresso dos obrigatórios; um cartão por documento (Commercial Invoice, Packing List, BL, Certificado de Origem, Fitossanitário; HT e fotos condicionais) com situação, Ver, Aprovar/Reabrir e anexar arrastando; prévia do e-mail com destinatário editável, assunto e texto; lista de anexos; botão "Emitir Shipment Advice" liberado só com todos os obrigatórios aprovados. Usa as regras e o envio da versão anterior (`/api/shipment-advice`, nova ação `set-recipient`). Anexar no set (cartão ou "Arquivos desta fase") grava o tipo do documento e deixa aguardando aprovação. Botões "Editar negociação" (Painel) e "Editar processo" (pedido) viram "Editar".
+- **Pendente:** envio real precisa de `RESEND_API_KEY` e `EMAIL_FROM` nas variáveis do Railway (o segredo do app antigo no Cloudflare não pode ser lido de volta). Proposta de convite de colaborador por processo desenhada (`ConvidarColaborador.dc.html`), ainda não implementada.
+- **Testes:** tsc (sem erros novos), 95 testes unitários, build Railway, Playwright local (dados reais importados mostram o set aprovado; processo vazio: anexar 5 documentos pelos cartões, aprovar 4 → "Falta aprovar: Certificado Fitossanitário", aprovar o 5º → botão liberado; envio sem Resend retorna aviso; celular 390 px).
+- **Status:** aguardando aprovação de Ivam
+
+## 2026-10-16 — Claude — Editar processo com vários itens no pedido
+
+- **ID:** CHG-20261016-017
+- **Branch:** `claude/editar-varios-itens`
+- **PR:** ver PR da branch
+- **Destino:** homologation; produção após "pode produzir"
+- **Pedido de Ivam (conversa, 2026-10-16, print do GBU015/26 em produção):** "estou tentando alterar um processo e ele me deu essa mensagem [Este pedido tem vários itens…], preciso que quando altere o processo ele altere em todas as fases do pedido as informações".
+- **Causa:** a edição do processo só alterava medida e preço de pedidos com um item; com vários itens a API recusava e nenhuma alteração era gravada.
+- **O que mudou:** seção 4 da edição mostra "Itens do pedido" quando há vários itens (medida e preço de venda por item, volume e total); ao salvar, os itens do pedido (emissão de documentos), o valor comercial (soma volume × preço) e o Financeiro passam a usar os novos valores; demais campos dos itens são preservados. O preço de venda da margem usa o total dos itens. Valor comercial exibido com no máximo 3 casas.
+- **Dados/migration:** nenhuma.
+- **Testes:** tsc (sem erros novos), 96 testes unitários (1 novo), build Railway, Playwright local (processo com 3 itens: medida do item 1 e preço do item 2 alterados + pagamento → salvo; valor comercial US$ 27.927,24; Financeiro atualizado).
+- **Status:** em andamento
+
+## 2026-10-16 — Claude — Itens do pedido como tabela com "+ Adicionar item"
+
+- **ID:** CHG-20261016-018
+- **Branch:** `claude/itens-dinamicos`
+- **PR:** ver PR da branch
+- **Destino:** homologation; produção após "pode produzir"
+- **Pedido de Ivam (conversa, 2026-10-16):** "colocar uma linha só de item e com linhas que a gente possa adicionar item. Não faz fixo. Faz ele sempre como um botão de adicionar item."
+- **O que mudou:** a seção 4 do Novo processo / Editar sempre mostra "Itens do pedido": começa com uma linha (espécie, produto/qualidade, medidas, volume m³, preço, total, ×) e tem "+ Adicionar item". Substitui os campos fixos "Medidas" e "Preço indicativo de venda" (o bloco de margem mostra o total dos itens). Ao salvar, os itens viram os itens do pedido de venda (emissão de documentos) e o valor comercial passa a ser a soma volume × preço; na criação também. Base por m³ da margem (formulário e Financeiro) = volume dos itens. Margem negativa em vermelho.
+- **Dados/migration:** nenhuma; itens existentes preservam campos extras.
+- **Testes:** tsc (sem erros novos), 96 testes unitários, build Railway, Playwright local (processo com 2 itens + 1 adicionado → salvo, valor US$ 61.700; processo novo começa com 1 linha; criação via API com 2 itens → valor 2.750).
+- **Status:** em andamento

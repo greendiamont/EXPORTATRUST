@@ -327,3 +327,51 @@ a.et2-btn--primary, a.et2-btn--ok { color: #fff; }
 .pm-table .pm-total td { border-top: 1px solid #e5e7eb; font-weight: 600; padding: 10px 16px; }
 .pm-table .pm-total .num { color: #047857; }
 .pm-note { padding: 8px 16px; border-top: 1px solid #f0f1f3; font-size: 12px; color: #6b7280; }
+
+/* Shipment Advice na fase Documentos (protótipo "3b · Shipment Advice") */
+.sa-head { padding: 16px 20px; border-bottom: 1px solid var(--et2-line); display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; }
+.sa-head h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.sa-progress { min-width: 240px; }
+.sa-progress-text { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.sa-progress-text .ok { color: #047857; } .sa-progress-text .warn { color: #92400e; }
+.sa-bar { height: 8px; background: #e5e7eb; border-radius: 4px; margin-top: 6px; overflow: hidden; }
+.sa-bar > div { height: 100%; } .sa-bar .ok { background: #047857; } .sa-bar .warn { background: #d97706; }
+.sa-grid { padding: 16px 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.sa-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; background: #fff; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sa-card--ok { border-color: #a7f3d0; }
+.sa-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.sa-badge { flex: none; font-size: 12px; padding: 2px 8px; border-radius: 10px; border: 1px solid; }
+.sa-badge--ok { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.sa-badge--warn { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+.sa-badge--bad { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.sa-badge--muted { background: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }
+.sa-file { padding: 6px 8px; background: #f9fafb; border: 1px solid #f0f1f3; border-radius: 6px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; }
+.sa-file > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.sa-file-actions { display: flex; gap: 6px; align-items: center; flex: none; }
+.sa-link { border: 0; background: none; padding: 0; color: #1d4ed8; font: inherit; font-size: 13px; cursor: pointer; }
+.sa-approve { background: #047857 !important; color: #fff !important; border-color: #047857 !important; }
+.sa-drop { padding: 14px 10px; border: 1px dashed #d1d5db; border-radius: 6px; font-size: 13px; color: #6b7280; text-align: center; cursor: pointer; }
+.sa-drop:hover { border-color: #9ca3af; background: #f9fafb; }
+.sa-upload-small { align-self: flex-start; cursor: pointer; }
+.sa-unmatched { padding: 0 20px 12px; font-size: 13px; } .sa-unmatched summary { cursor: pointer; color: #4b5563; margin-bottom: 6px; }
+.sa-unmatched .sa-file { margin-top: 6px; }
+.sa-mail { margin: 0 20px 20px; border: 1px solid #e5e7eb; border-radius: 8px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+@media (max-width: 800px) { .sa-mail { grid-template-columns: minmax(0, 1fr); } .sa-mail-preview { border-right: 0 !important; border-bottom: 1px solid #e5e7eb; } }
+.sa-mail-preview { padding: 14px 16px; border-right: 1px solid #e5e7eb; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.sa-mail-side { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sa-label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: .4px; }
+.sa-to { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #6b7280; }
+.sa-subject { font-size: 13px; overflow-wrap: anywhere; } .sa-subject .mono { font-size: 12px; }
+.sa-body { padding: 10px 12px; background: #f9fafb; border-radius: 6px; font-size: 13px; line-height: 1.5; color: #374151; white-space: pre-wrap; max-height: 96px; overflow: hidden; overflow-wrap: anywhere; }
+.sa-body--open { max-height: none; }
+.sa-mail-preview > .sa-link { align-self: flex-start; }
+.sa-attach { font-size: 13px; overflow-wrap: anywhere; }
+.sa-emit { margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding-top: 8px; }
+.sa-emit-btn { min-height: 40px; border: 0; border-radius: 6px; font: inherit; font-weight: 600; background: #047857; color: #fff; cursor: pointer; }
+.sa-emit-btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+.pm-multi { min-height: 38px; display: flex; align-items: center; padding: 0 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: #f9fafb; color: #374151; }
+.pm-table .pd-input { min-height: 32px; font-size: 13px; }
+.pm-items { min-width: 860px; }
+.pm-items td { padding: 6px 8px; } .pm-items th { padding: 8px; }
+.pm-items td:nth-child(4), .pm-items td:nth-child(5) { width: 120px; }
+.pm-table .pm-negative .num { color: #b91c1c; }

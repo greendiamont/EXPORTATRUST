@@ -48,3 +48,22 @@ test("preço de compra do processo atualiza o pedido de compra emitido com um it
   const kept = JSON.parse(applyOrderTerms({ ...base, supplyChainNotes: many }, { purchaseUnitPrice: 155 }).supplyChainNotes);
   assert.deepEqual(kept.supplierOrder.items.map((item) => item.unitPrice), [1, 2]);
 });
+
+test("pedido com vários itens: medida e preço por item, valor comercial somado", () => {
+  const notes = JSON.stringify({ orderItems: [{ species: "Pinus", size: "a", volume: 10, unitPrice: 100, extra: "x" }, { species: "Pinus", size: "b", volume: 5, unitPrice: 200 }], paymentTerms: "x" });
+  const terms = readOrderTerms({ ...base, supplyChainNotes: notes });
+  assert.equal(terms.items.length, 2);
+  const applied = applyOrderTerms({ ...base, supplyChainNotes: notes }, { items: [{ size: "a2", unitPrice: 110 }, { size: "b", unitPrice: 200 }], paymentTerms: "y" });
+  assert.equal(applied.error, undefined);
+  const json = JSON.parse(applied.supplyChainNotes);
+  assert.equal(json.orderItems[0].size, "a2");
+  assert.equal(json.orderItems[0].extra, "x");
+  assert.equal(json.paymentTerms, "y");
+  assert.equal(applied.commercialValue, 2100);
+  const added = JSON.parse(applyOrderTerms({ ...base, supplyChainNotes: notes }, { items: [{}, {}, { species: "Eucalipto", size: "c", volume: 2, unitPrice: 50 }] }).supplyChainNotes);
+  assert.equal(added.orderItems.length, 3);
+  assert.equal(added.orderItems[2].species, "Eucalipto");
+  const removed = applyOrderTerms({ ...base, supplyChainNotes: notes }, { items: [{}] });
+  assert.equal(JSON.parse(removed.supplyChainNotes).orderItems.length, 1);
+  assert.equal(removed.commercialValue, 1000);
+});
