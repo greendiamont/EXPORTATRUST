@@ -20,7 +20,7 @@ Atualizado em: 2026-10-15
 - URL: https://web-api-production-e342.up.railway.app
 - Bucket: `documents-production` (sjc), referenciado nas variáveis `STORAGE_S3_*`.
 - Login: cadastro por CNPJ + senha individual (segredos próprios de produção, diferentes da homologação). Login Google não configurado em produção.
-- Banco criado vazio (33 migrações aplicadas). Carga dos dados do app antigo pendente: a importação na inicialização é bloqueada em produção por desenho e liberá-la exige autorização de Ivam.
+- Carga inicial concluída em 2026-10-16 (autorizada por Ivam) na empresa #2 Hub Das Americas: 10 fornecedores, 10 clientes, 4 produtos, 19 processos, 451 arquivos (155.513.309 bytes), 400 documentos e 2 documentos de floresta ligados; 1 arquivo ausente no pacote (048-2026 CERTIFICADO FITOSSANITARIO.pdf). Variáveis de importação esvaziadas e `EXPORTATRUST_IMPORT_IN_PRODUCTION=0` (trava ativa).
 
 ### Homologação
 - Projeto: `ExportaTrust Homologation`
