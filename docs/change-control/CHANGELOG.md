@@ -551,7 +551,7 @@
 
 - **ID:** CHG-20261016-004
 - **Branch:** `claude/remover-imagens-email`
-- **PR:** a preencher
+- **PR:** #115
 - **Destino:** homologation → main
 - **Tipo:** limpeza de dados (autorizada)
 - **Autorização de Ivam (conversa, 2026-10-16):** "As imagens de e-mail você pode cancelar, pode eliminar, inclusive, tá? Não precisa trazer."
