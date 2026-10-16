@@ -504,3 +504,19 @@
 - **Rollback:** reverter o PR; a coluna pode permanecer.
 - **Conflitos/coordenação com outros agentes:** nenhum.
 - **Status:** em andamento
+
+## 2026-10-16 — Claude — Primeira publicação em produção
+
+- **ID:** CHG-20261016-001
+- **Branch:** `homologation` → `main`
+- **PR:** #108
+- **Destino:** main / Railway produção
+- **Tipo:** release / infraestrutura
+- **Autorização de Ivam (conversa, 2026-10-16):** "Pode produzir".
+- **O que mudou:** `homologation` promovida para `main` (merge sem squash). No projeto Railway "ExportaTrust" (produção): bucket `documents-production` criado; `web-api` ligado a `main` com build/start/healthcheck iguais à homologação; variáveis de storage, sessão, senha de acesso e e-mail autorizado definidas (segredos novos, só de produção); domínio https://web-api-production-e342.up.railway.app. Deploy `9f22f759` com sucesso: 33 migrações aplicadas, autoteste do storage OK.
+- **Dados/migração:** banco de produção era vazio; nenhuma tabela/dado existente foi alterado. Dados do app antigo ainda não carregados (pendente de autorização).
+- **Riscos:** baixo; app antigo (Cloudflare) não foi alterado.
+- **Railway homologation:** sem mudança.
+- **Rollback:** desligar a fonte do `web-api` de produção ou voltar `main` ao commit anterior (5a36e49).
+- **Conflitos/coordenação com outros agentes:** nenhum.
+- **Status:** em produção (sem dados)
