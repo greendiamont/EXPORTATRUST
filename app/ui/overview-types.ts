@@ -33,6 +33,11 @@ export type OverviewOperation = {
   terms: { paymentTerms: string; notes: string; sizes: string; unitPrice: number | null; itemCount: number };
   cancelled: boolean;
   completed: boolean;
+  volume: number;
+  exchangeRate: number;
+  containers: number;
+  completedAt: string;
+  blockedStep: { what: string; who: string } | null;
 };
 
 export type OverviewPending = {

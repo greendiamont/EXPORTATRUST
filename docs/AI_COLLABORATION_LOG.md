@@ -308,3 +308,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 ### 2026-10-16 — Claude — Convidado por processo (SEGURANÇA)
 - **Branch:** `claude/convidar-colaborador`; CHG-20261016-022.
 - **Para outros agentes (OBRIGATÓRIO):** o perfil `convidado` passa pela trava `guestGate` (server/railway/collaborators.mjs): APIs não listadas lá respondem 403 para convidados. Ao criar rota usada pela tela do pedido, decida se o convidado pode usar; se sim, libere no `guestGate` E chame `assertOperationAccess` na rota, sem devolver dados financeiros.
+
+### 2026-10-16 — Claude — Painel dashboard
+- **Branch:** `claude/painel-dashboard`; CHG-20261016-029; layout aprovado por Ivam ("alteração aprovada", quadro "1b").
+- **Para outros agentes:** as contas do Painel (exportado, câmbio, séries mês/ano, embarques por mês) ficam em `lib/dashboard.ts` — não duplicar. `/api/overview` ganhou `volume`, `exchangeRate`, `containers`, `completedAt`, `blockedStep`.

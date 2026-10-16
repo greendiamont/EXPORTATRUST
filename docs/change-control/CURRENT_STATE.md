@@ -79,6 +79,7 @@ Layouts aprovados por Ivam estão travados: ver `docs/change-control/LAYOUT_PROT
 
 - Plano, decisões aprovadas e pendências: `docs/redesign/PLANO_REDESIGN.md`; protótipo em `docs/redesign/prototipo/`.
 - Etapa 1 (branch `claude/redesign-etapa1`): `/` Painel, `/pedidos`, `/novo-processo`, `/cadastros`; o app anterior inteiro fica em `/classico`.
+- Painel (`/`) em formato de dashboard (2026-10-16, protótipo `Dashboard.dc.html`); contas em `lib/dashboard.ts`.
 - Pedido em 6 fases (`lib/order-phases.ts`): Pedido → Produção → Embarque → Documentos → Trânsito → Entregue.
 - Migration `0029` (aditiva): campos novos de cadastro (endereço do fornecedor, notify party/incoterm/moeda do cliente, unidade de venda/embalagem do produto).
 

@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Painel · ExportaTrust</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F4F6}
+a{color:#1D4ED8;text-decoration:none}
+.bar:hover{opacity:.85}
+</style>
+</helmet>
+<div style="min-height: 100vh; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #111827; background: #F3F4F6; font-size: 14px">
+  <header style="background: #0F1B2D; color: #FFFFFF">
+    <div style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 0 24px; min-height: 56px; display: flex; align-items: center; gap: 28px">
+      <div style="font-weight: 600; font-size: 15px">✓ ExportaTrust</div>
+      <nav style="display: flex; gap: 4px; flex: 1">
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #FFFFFF; font-weight: 500; box-shadow: inset 0 -3px 0 #5FD3A6">Painel</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Pedidos</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Cadastros</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">EUDR</a>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px">
+      <div>
+        <h1 style="margin: 0; font-size: 26px; font-weight: 600">Painel</h1>
+        <div style="color: #4B5563; margin-top: 4px">Embarques e pedidos em andamento · atualizado agora</div>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center">
+        <div style="display: inline-flex; border: 1px solid #D1D5DB; border-radius: 6px; overflow: hidden; background: #FFFFFF">
+          <sc-for list="{{ranges}}" as="r" hint-placeholder-count="3"><button onClick="{{r.pick}}" style="{{r.style}}">{{r.label}}</button></sc-for>
+        </div>
+        <a style="min-height: 40px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font-weight: 500">+ Novo processo</a>
+      </div>
+    </div>
+
+    <section aria-labelledby="valor" style="background: #0F1B2D; color: #FFFFFF; border-radius: 8px; padding: 18px 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; align-items: center">
+      <sc-for list="{{hero}}" as="h" hint-placeholder-count="4">
+        <div>
+          <div style="font-size: 12px; color: #C3CBD8; text-transform: uppercase; letter-spacing: .4px">{{h.label}}</div>
+          <div style="font-size: 32px; font-weight: 600; margin-top: 4px; font-family: 'IBM Plex Mono', monospace">{{h.value}}</div>
+          <div style="font-size: 13px; color: #C3CBD8">{{h.sub}}</div>
+        </div>
+      </sc-for>
+    </section>
+
+    <section aria-labelledby="vv" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px 20px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap">
+        <div>
+          <h2 id="vv" style="margin: 0; font-size: 16px; font-weight: 600">Volume e valor exportados</h2>
+          <div style="font-size: 13px; color: #6B7280">{{vvSub}}</div>
+        </div>
+        <div style="display: inline-flex; border: 1px solid #D1D5DB; border-radius: 6px; overflow: hidden">
+          <sc-for list="{{views}}" as="w" hint-placeholder-count="2"><button onClick="{{w.pick}}" style="{{w.style}}">{{w.label}}</button></sc-for>
+        </div>
+      </div>
+      <div style="margin-top: 14px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+        <sc-for list="{{panels}}" as="g" hint-placeholder-count="3">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline"><b style="font-size: 13px">{{g.title}}</b><span style="font-size: 12px; color: #6B7280">{{g.total}}</span></div>
+            <div style="display: flex; align-items: flex-end; gap: 6px; height: 140px; margin-top: 10px; border-bottom: 1px solid #D1D5DB; background-image: linear-gradient(#F0F1F3 1px, transparent 1px); background-size: 100% 35px">
+              <sc-for list="{{g.bars}}" as="b" hint-placeholder-count="8">
+                <div title="{{b.tip}}" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%">
+                  <span style="font-size: 10px; color: #4B5563; margin-bottom: 2px; font-family: 'IBM Plex Mono', monospace">{{b.label}}</span>
+                  <div class="bar" style="{{b.style}}"></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display: flex; gap: 6px; font-size: 11px; color: #6B7280; margin-top: 4px"><sc-for list="{{g.bars}}" as="b" hint-placeholder-count="8"><span style="flex: 1; text-align: center">{{b.name}}</span></sc-for></div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-label="Indicadores" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px">
+      <sc-for list="{{tiles}}" as="t" hint-placeholder-count="5">
+        <div style="{{t.style}}">
+          <div style="font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: .4px">{{t.label}}</div>
+          <div style="font-size: 32px; font-weight: 600; margin-top: 6px; font-family: 'IBM Plex Mono', monospace">{{t.value}}</div>
+          <div style="font-size: 13px; color: #4B5563; margin-top: 2px">{{t.sub}}</div>
+        </div>
+      </sc-for>
+    </section>
+
+    <div style="display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px">
+      <section aria-labelledby="emb" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px 20px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap">
+          <div>
+            <h2 id="emb" style="margin: 0; font-size: 16px; font-weight: 600">Embarques por mês</h2>
+            <div style="font-size: 13px; color: #6B7280">Pedidos pela data de embarque (ETD)</div>
+          </div>
+          <div style="display: flex; gap: 14px; font-size: 13px; color: #374151">
+            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #2a78d6; margin-right: 6px"></span>Embarcados</span>
+            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #eb6834; margin-right: 6px"></span>A embarcar</span>
+          </div>
+        </div>
+        <div style="margin-top: 18px; height: 220px; display: grid; grid-template-columns: 28px 1fr; gap: 6px">
+          <div style="display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; color: #6B7280; text-align: right; padding-bottom: 22px"><span>6</span><span>4</span><span>2</span><span>0</span></div>
+          <div style="position: relative; display: flex; align-items: flex-end; gap: 10px; border-bottom: 1px solid #D1D5DB; padding: 0 4px; background-image: linear-gradient(#F0F1F3 1px, transparent 1px); background-size: 100% 66px">
+            <sc-for list="{{months}}" as="m" hint-placeholder-count="8">
+              <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; position: relative" title="{{m.tip}}">
+                <span style="font-size: 12px; color: #374151; margin-bottom: 4px; font-family: 'IBM Plex Mono', monospace">{{m.total}}</span>
+                <div class="bar" style="{{m.planned}}"></div>
+                <div class="bar" style="{{m.shipped}}"></div>
+                <span style="position: absolute; bottom: -22px; font-size: 12px; color: {{m.labelColor}}">{{m.name}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="margin-top: 30px; font-size: 13px; color: #4B5563">Outubro: 2 embarcados, 3 programados · próximos 30 dias: 4 embarques (US$ 168 mil)</div>
+      </section>
+
+      <section aria-labelledby="fase" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px 20px">
+        <h2 id="fase" style="margin: 0; font-size: 16px; font-weight: 600">Pedidos por fase</h2>
+        <div style="font-size: 13px; color: #6B7280">Clique na fase para ver os pedidos</div>
+        <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px">
+          <sc-for list="{{phases}}" as="p" hint-placeholder-count="6">
+            <a style="display: grid; grid-template-columns: 110px 1fr 28px; align-items: center; gap: 10px; color: #111827" title="{{p.tip}}">
+              <span style="font-size: 13px">{{p.name}}</span>
+              <span style="height: 18px; background: #F3F4F6; border-radius: 4px; overflow: hidden"><span style="{{p.bar}}"></span></span>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; text-align: right">{{p.count}}</span>
+            </a>
+          </sc-for>
+        </div>
+        <div style="margin-top: 14px; font-size: 13px; color: #4B5563">18 em andamento · 7 concluídos · 1 cancelado</div>
+      </section>
+    </div>
+
+    <div style="display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px">
+      <section aria-labelledby="prox" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+        <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: baseline">
+          <h2 id="prox" style="margin: 0; font-size: 16px; font-weight: 600">Próximos embarques</h2>
+          <a style="font-size: 13px">Ver todos →</a>
+        </div>
+        <sc-for list="{{upcoming}}" as="u" hint-placeholder-count="5">
+          <div style="display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 20px; border-top: 1px solid #F0F1F3">
+            <div style="text-align: center; border: 1px solid #E5E7EB; border-radius: 6px; padding: 4px 0">
+              <div style="font-size: 11px; color: #6B7280; text-transform: uppercase">{{u.month}}</div>
+              <div style="font-size: 20px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">{{u.day}}</div>
+            </div>
+            <div style="min-width: 0">
+              <div><a style="font-family: 'IBM Plex Mono', monospace; font-weight: 500">{{u.ref}}</a> <span style="color: #6B7280">· {{u.client}}</span></div>
+              <div style="font-size: 13px; color: #4B5563; margin-top: 2px">{{u.route}} · {{u.load}}</div>
+              <div style="margin-top: 6px; height: 6px; background: #F3F4F6; border-radius: 3px; overflow: hidden; max-width: 260px"><div style="{{u.progress}}"></div></div>
+              <div style="font-size: 12px; color: #6B7280; margin-top: 3px">{{u.docs}}</div>
+            </div>
+            <span style="{{u.badgeStyle}}">{{u.badge}}</span>
+          </div>
+        </sc-for>
+      </section>
+
+      <div style="display: flex; flex-direction: column; gap: 18px">
+        <section aria-labelledby="aten" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+          <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB"><h2 id="aten" style="margin: 0; font-size: 16px; font-weight: 600">Precisa de atenção</h2></div>
+          <sc-for list="{{alerts}}" as="a" hint-placeholder-count="3">
+            <div style="padding: 10px 20px; border-top: 1px solid #F0F1F3; display: flex; gap: 10px; font-size: 13px">
+              <span style="{{a.iconStyle}}">{{a.icon}}</span>
+              <div><b style="font-family: 'IBM Plex Mono', monospace">{{a.ref}}</b> — {{a.text}}<div style="color: #6B7280; font-size: 12px; margin-top: 2px">{{a.who}}</div></div>
+            </div>
+          </sc-for>
+        </section>
+
+        <section aria-labelledby="cart" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 14px 20px">
+          <h2 id="cart" style="margin: 0; font-size: 16px; font-weight: 600">Valor a embarcar por cliente</h2>
+          <div style="font-size: 13px; color: #6B7280">Pedidos ainda não embarcados · US$</div>
+          <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px">
+            <sc-for list="{{clients}}" as="c" hint-placeholder-count="5">
+              <div style="display: grid; grid-template-columns: 120px 1fr 64px; gap: 8px; align-items: center; font-size: 13px" title="{{c.tip}}">
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{c.name}}</span>
+                <span style="height: 14px; background: #F3F4F6; border-radius: 3px; overflow: hidden"><span style="{{c.bar}}"></span></span>
+                <span style="font-family: 'IBM Plex Mono', monospace; text-align: right">{{c.value}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <details style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+      <summary style="padding: 14px 20px; cursor: pointer; font-weight: 600; font-size: 16px">Processos · negociação <span style="font-weight: 400; color: #6B7280">· 18 — a tabela completa continua aqui, recolhida</span></summary>
+      <div style="padding: 0 20px 16px; color: #6B7280; font-size: 13px">(mesma tabela de hoje: processo, cliente, exportador, fornecedor, produto, incoterm, quantidade, preço, pagamento, fase, Editar)</div>
+    </details>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { range: 1 }; }
+  renderVals() {
+    const ranges = ['Este ano', '12 meses', 'Tudo'].map((label, i) => ({ label, pick: () => this.setState({ range: i }),
+      style: 'min-height: 38px; padding: 0 12px; border: 0; font: inherit; font-size: 13px; cursor: pointer; ' + (i === this.state.range ? 'background: #0F1B2D; color: #FFFFFF' : 'background: #FFFFFF; color: #374151') }));
+    const tile = (label, value, sub, tone) => ({ label, value, sub,
+      style: 'background: #FFFFFF; border: 1px solid ' + (tone === 'bad' ? '#FECACA' : '#E5E7EB') + '; border-radius: 8px; padding: 14px 16px' + (tone === 'bad' ? '; box-shadow: inset 4px 0 0 #d03b3b' : '') });
+    const tiles = [
+      tile('Em andamento', '18', 'US$ 412 mil em carteira'),
+      tile('A embarcar · 30 dias', '4', 'próximo: 24/10 · 061/26'),
+      tile('Em trânsito', '3', 'chegada prevista em nov.'),
+      tile('Concluídos em 2026', '7', 'entregues ao cliente'),
+      tile('Precisa de atenção', '2', '1 bloqueado · 1 atrasado', 'bad'),
+    ];
+    const data = [['mai', 2, 0], ['jun', 3, 0], ['jul', 2, 0], ['ago', 4, 0], ['set', 3, 0], ['out', 2, 3], ['nov', 0, 4], ['dez', 0, 2]];
+    const H = 198 / 6;
+    const months = data.map(([name, s, p]) => ({ name, total: String(s + p), tip: name + ': ' + s + ' embarcado(s), ' + p + ' a embarcar',
+      labelColor: name === 'out' ? '#111827; font-weight: 600' : '#6B7280',
+      shipped: 'width: 70%; max-width: 44px; height: ' + (s * H) + 'px; background: #2a78d6; border-radius: ' + (p ? '0 0 4px 4px' : '4px 4px 0 0') + (s ? '' : '; display: none'),
+      planned: 'width: 70%; max-width: 44px; height: ' + (p * H) + 'px; background: #eb6834; border-radius: 4px 4px 0 0; margin-bottom: ' + (s && p ? '2px' : '0') + (p ? '' : '; display: none') }));
+    const ramp = ['#86b6ef', '#6da7ec', '#5598e7', '#3987e5', '#2a78d6', '#256abf'];
+    const phaseData = [['1 · Pedido', 3], ['2 · Produção', 1], ['3 · Embarque', 4], ['4 · Documentos', 3], ['5 · Trânsito', 3], ['6 · Entregue', 4]];
+    const phases = phaseData.map(([name, count], i) => ({ name, count: String(count), tip: name + ': ' + count + ' pedido(s)',
+      bar: 'display: block; height: 100%; width: ' + (count / 4 * 100) + '%; background: ' + ramp[i] + '; border-radius: 0 4px 4px 0' }));
+    const up = (month, day, ref, client, route, load, done, total, badge, tone) => ({ month, day, ref, client, route, load, badge,
+      docs: done + ' de ' + total + ' documentos aprovados',
+      progress: 'height: 100%; width: ' + Math.round(done / total * 100) + '%; background: ' + (done === total ? '#0ca30c' : '#2a78d6'),
+      badgeStyle: 'font-size: 12px; padding: 3px 10px; border-radius: 12px; white-space: nowrap; ' + (tone === 'bad' ? 'background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA' : tone === 'warn' ? 'background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A' : 'background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0') });
+    const upcoming = [
+      up('out', '24', '061/26', 'JAF GLOBAL GMBH', 'Itajaí → Nhava Sheva', '3 contêineres · US$ 37.900', 3, 5, 'em 8 dias', 'warn'),
+      up('out', '29', 'GBU015/26', 'TIRUPATI REELS', 'Navegantes → Mundra', '3 contêineres · US$ 33.300', 5, 5, 'pronto', 'ok'),
+      up('nov', '05', '278/26', 'DANUBIA WOOD', 'Itajaí → Nhava Sheva', '6 contêineres · US$ 73.307', 1, 5, 'booking pendente', 'bad'),
+      up('nov', '12', '048/26 A', 'SPRUCE WOOD', 'Itajaí → Nhava Sheva', '2 contêineres · US$ 20.200', 2, 5, 'em 27 dias', 'warn'),
+    ];
+    const alert = (ref, text, who, icon, color) => ({ ref, text, who, icon, iconStyle: 'flex: none; width: 20px; height: 20px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; color: #FFFFFF; font-size: 12px; font-weight: 700; background: ' + color });
+    const alerts = [
+      alert('278/26', 'Booking bloqueado: aguardando armador', 'Bloqueado há 3 dias · Ivam', '!', '#d03b3b'),
+      alert('048/26 A', 'Certificado fitossanitário atrasado (prazo 14/10)', 'Atrasado 2 dias · despachante', '!', '#ec835a'),
+      alert('061/26', 'Aprovação para embarque aguardando qualidade', 'Prazo 20/10 · Ivam', 'i', '#2a78d6'),
+    ];
+    const clientData = [['DANUBIA WOOD', 73.3], ['JAF GLOBAL', 37.9], ['TIRUPATI REELS', 33.3], ['SPRUCE WOOD', 20.2], ['VIETNAM WOOD', 50.0]].sort((a, b) => b[1] - a[1]);
+    const clients = clientData.map(([name, v]) => ({ name, value: v.toFixed(1).replace('.', ',') + 'k', tip: name + ': US$ ' + v.toFixed(1) + ' mil',
+      bar: 'display: block; height: 100%; width: ' + (v / 73.3 * 100) + '%; background: #2a78d6; border-radius: 0 3px 3px 0' }));
+    const vData = [['mai', 61], ['jun', 94], ['jul', 58], ['ago', 132], ['set', 88], ['out', 54], ['nov', 0], ['dez', 0]];
+    const valueBars = vData.map(([name, v]) => ({ name, tip: name + ': US$ ' + v + ' mil exportados',
+      style: 'flex: 1; height: ' + Math.max(2, v / 132 * 64) + 'px; background: ' + (v ? '#6da7ec' : '#2B3A52') + '; border-radius: 3px 3px 0 0' }));
+    const totals = [['US$ 698 mil', 'R$ 3,77 mi', '22 pedidos embarcados'], ['US$ 1,12 mi', 'R$ 6,04 mi', '31 pedidos embarcados'], ['US$ 1,48 mi', 'R$ 7,92 mi', '41 pedidos embarcados']][this.state.range];
+    const yearly = this.state.view === 1;
+    const monthNames = ['mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const m3 = [310, 455, 280, 640, 420, 260, 0, 0];
+    const usd = [61, 94, 58, 132, 88, 54, 0, 0];
+    const years = ['2023', '2024', '2025', '2026'];
+    const ym3 = [1850, 2620, 3410, 2365];
+    const yusd = [352, 518, 702, 487];
+    const panel = (title, total, names, values, fmt, color) => {
+      const max = Math.max(...values, 1);
+      return { title, total, bars: names.map((name, i) => ({ name, label: values[i] ? fmt(values[i]) : '', tip: name + ': ' + fmt(values[i]),
+        style: 'width: 72%; max-width: 40px; height: ' + Math.max(values[i] ? 3 : 0, values[i] / max * 112) + 'px; background: ' + color + '; border-radius: 4px 4px 0 0' })) };
+    };
+    const names = yearly ? years : monthNames;
+    const vol = yearly ? ym3 : m3;
+    const val = yearly ? yusd : usd;
+    const price = vol.map((v, i) => v ? Math.round(val[i] * 1000 / v) : 0);
+    const panels = [
+      panel('Volume (m³)', yearly ? '10.245 m³ no total' : '2.365 m³ no período', names, vol, (v) => v.toLocaleString('pt-BR'), '#2a78d6'),
+      panel('Valor (US$ mil)', yearly ? 'US$ 2,06 mi no total' : 'US$ 487 mil no período', names, val, (v) => String(v), '#1baf7a'),
+      panel('Preço médio (US$/m³)', yearly ? 'média US$ 201/m³' : 'média US$ 206/m³', names, price, (v) => String(v), '#6250d6'),
+    ];
+    const views = ['Mês a mês', 'Ano a ano'].map((label, i) => ({ label, pick: () => this.setState({ view: i }),
+      style: 'min-height: 34px; padding: 0 12px; border: 0; font: inherit; font-size: 13px; cursor: pointer; ' + (i === (this.state.view || 0) ? 'background: #0F1B2D; color: #FFFFFF' : 'background: #FFFFFF; color: #374151') }));
+    const hero = [
+      { label: 'Exportado em US$', value: totals[0], sub: totals[2] },
+      { label: 'Em reais', value: totals[1], sub: 'pelo câmbio de cada processo' },
+      { label: 'Volume exportado', value: ['2.365 m³', '3.410 m³', '10.245 m³'][this.state.range], sub: '≈ ' + ['98', '142', '427'][this.state.range] + ' contêineres' },
+      { label: 'Preço médio', value: ['US$ 206/m³', 'US$ 205/m³', 'US$ 201/m³'][this.state.range], sub: 'valor ÷ volume' },
+    ];
+    return { hero, panels, views, vvSub: yearly ? 'Comparação por ano · m³, US$ e preço médio' : 'Mês a mês pela data de embarque · m³, US$ e preço médio', rangeLabel: ['em 2026', 'últimos 12 meses', 'desde o início'][this.state.range], valueUsd: totals[0], valueBrl: totals[1], valueCount: totals[2], valueBars, ranges, tiles, months, phases, upcoming, alerts, clients };
+  }
+}
+</script>
+</body>
+</html>
