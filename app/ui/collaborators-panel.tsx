@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 // convidado (trava no servidor: server/railway/collaborators.mjs).
 
 type Collaborator = { email: string; fullName: string; roleLabel: string; status: string };
-type InviteResult = { email: string; guest: boolean; emailed: boolean; emailError?: string; link: string; expiresHours: number };
+type InviteResult = { email: string; guest: boolean; included?: boolean; emailed: boolean; emailError?: string; link: string; expiresHours: number };
 
 const ROLE_LABELS = ["Despachante", "Agente de carga", "Fornecedor", "Cliente / importador", "Outro"];
 const initials = (value: string) => value.split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
@@ -21,6 +21,7 @@ async function request<T>(init?: RequestInit, query = "") {
 
 export function CollaboratorsPanel({ operationId, reference, followers }: { operationId: number; reference: string; followers: Array<{ email: string; name: string }> }) {
   const [list, setList] = useState<Collaborator[]>([]);
+  const [known, setKnown] = useState<Collaborator[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ email: "", fullName: "", roleLabel: ROLE_LABELS[0], message: "" });
   const [busy, setBusy] = useState(false);
@@ -29,7 +30,7 @@ export function CollaboratorsPanel({ operationId, reference, followers }: { oper
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(() => {
-    request<{ collaborators: Collaborator[] }>(undefined, `?operationId=${operationId}`).then((data) => setList(data.collaborators)).catch(() => setList([]));
+    request<{ collaborators: Collaborator[]; known?: Collaborator[] }>(undefined, `?operationId=${operationId}`).then((data) => { setList(data.collaborators); setKnown(data.known ?? []); }).catch(() => setList([]));
   }, [operationId]);
   useEffect(load, [load]);
 
@@ -44,6 +45,22 @@ export function CollaboratorsPanel({ operationId, reference, followers }: { oper
       load();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Falha ao convidar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Convidado que já tem acesso a outro processo: um clique o inclui neste (só recebe o aviso por e-mail).
+  async function addKnown(person: Collaborator) {
+    if (!window.confirm(`Incluir ${person.fullName || person.email} neste processo (${reference})? A pessoa recebe um e-mail avisando que agora faz parte dele.`)) return;
+    setBusy(true);
+    setError("");
+    try {
+      const data = await request<InviteResult>({ method: "POST", body: JSON.stringify({ action: "invite", operationId, email: person.email, fullName: person.fullName, roleLabel: person.roleLabel || ROLE_LABELS[0] }) });
+      setResult(data);
+      load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Falha ao incluir.");
     } finally {
       setBusy(false);
     }
@@ -83,12 +100,26 @@ export function CollaboratorsPanel({ operationId, reference, followers }: { oper
           <button type="button" className="cb-remove" aria-label={`Remover ${person.email}`} onClick={() => remove(person)}>×</button>
         </div>
       ))}
+      {known.length > 0 && (
+        <div className="cb-known">
+          <div className="pd-sub">Convidados já cadastrados — clique para incluir neste processo:</div>
+          <div className="cb-known-list">
+            {known.map((person) => (
+              <button key={person.email} type="button" className="cb-avatar cb-avatar--add" disabled={busy} title={`Incluir ${person.fullName || person.email}${person.roleLabel ? ` (${person.roleLabel})` : ""}`} aria-label={`Incluir ${person.fullName || person.email} neste processo`} onClick={() => addKnown(person)}>
+                {initials(person.fullName || person.email)}<span aria-hidden="true">+</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {result && (
         <div className="cb-result" role="status">
           {result.emailed
-            ? <>Convite enviado por e-mail para <b>{result.email}</b>.</>
+            ? <><b>{result.email}</b> está no processo — e-mail enviado.</>
             : <>
-                <div>Convite criado para <b>{result.email}</b>. {result.emailError ? "O e-mail automático ainda não está ligado: " : ""}copie o link e envie para a pessoa{result.guest ? ` (vale ${result.expiresHours} horas)` : ""}:</div>
+                <div>{result.included
+                  ? <><b>{result.email}</b> já está no processo. {result.emailError ? "O e-mail automático não saiu: " : ""}avise a pessoa por este link (ela entra com o login que já tem):</>
+                  : <>Convite criado para <b>{result.email}</b>. {result.emailError ? "O e-mail automático ainda não está ligado: " : ""}copie o link e envie para a pessoa{result.guest ? ` (vale ${result.expiresHours} horas)` : ""}:</>}</div>
                 <div className="cb-link"><input readOnly value={result.link} onFocus={(event) => event.target.select()} /><button type="button" className="pd-btn pd-btn--xs" onClick={() => { navigator.clipboard?.writeText(result.link).then(() => setCopied(true)).catch(() => setCopied(false)); }}>{copied ? "Copiado ✓" : "Copiar"}</button></div>
               </>}
         </div>

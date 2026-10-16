@@ -64,11 +64,18 @@ export class Collaborators {
 
   async list(operationId, email, cookieHeader) {
     const actor = await this.staff(email, cookieHeader);
+    // Convidados que já têm acesso em outros processos: um clique os acrescenta a este, sem novo convite.
+    const { rows: known } = await this.pool.query(`SELECT DISTINCT ON (lower(c.email)) c.email, c.full_name AS "fullName", c.role_label AS "roleLabel"
+      FROM operation_collaborators c JOIN app_users u ON lower(u.email) = lower(c.email) AND u.status = 'Ativo'
+      JOIN organization_memberships m ON m.user_id = u.id AND m.organization_id = c.organization_id AND m.status = 'Ativo'
+      WHERE c.organization_id = $1 AND c.status <> 'Removido' AND NOT EXISTS (
+        SELECT 1 FROM operation_collaborators x WHERE x.organization_id = $1 AND x.operation_id = $2 AND lower(x.email) = lower(c.email) AND x.status <> 'Removido')
+      ORDER BY lower(c.email), c.id DESC LIMIT 50`, [actor.organizationId, Number(operationId)]);
     const { rows } = await this.pool.query(`SELECT c.email, c.full_name AS "fullName", c.role_label AS "roleLabel", c.status,
       c.invited_by AS "invitedBy", c.created_at AS "createdAt", c.accepted_at AS "acceptedAt"
       FROM operation_collaborators c WHERE c.organization_id = $1 AND c.operation_id = $2 AND c.status <> 'Removido' ORDER BY c.id`,
     [actor.organizationId, Number(operationId)]);
-    return { collaborators: rows };
+    return { collaborators: rows, known };
   }
 
   async invite(input, email, cookieHeader, origin) {
@@ -114,6 +121,9 @@ export class Collaborators {
         const url = new URL("/__auth/definir-senha", origin);
         url.searchParams.set("token", token);
         link = url.href;
+      } else {
+        // Já tem acesso próprio: entra no processo na hora, sem novo convite.
+        await client.query("UPDATE operation_collaborators SET status = 'Ativo', accepted_at = COALESCE(accepted_at, CURRENT_TIMESTAMP) WHERE operation_id = $1 AND email = $2", [operationId, target]);
       }
       await client.query("COMMIT");
       result = { reference: operation.reference, link, guest: isGuest };
@@ -125,7 +135,7 @@ export class Collaborators {
     }
     const processUrl = new URL(`/pedidos/${operationId}`, origin).href;
     const delivery = await sendInviteEmail({ to: target, fullName, inviter: actor.email, reference: result.reference, message, link: result.link, processUrl });
-    return { ok: true, email: target, guest: result.guest, emailed: delivery.sent, emailError: delivery.error, link: delivery.sent ? "" : (result.link || processUrl), expiresHours: LINK_HOURS };
+    return { ok: true, email: target, guest: result.guest, included: !result.link, emailed: delivery.sent, emailError: delivery.error, link: delivery.sent ? "" : (result.link || processUrl), expiresHours: LINK_HOURS };
   }
 
   async remove(input, email, cookieHeader) {
@@ -149,14 +159,16 @@ async function sendInviteEmail({ to, fullName, inviter, reference, message, link
   const apiKey = String(process.env.RESEND_API_KEY ?? "").trim();
   const from = String(process.env.EMAIL_FROM ?? "").trim();
   if (!apiKey || !from) return { sent: false, error: "E-mail não configurado (RESEND_API_KEY / EMAIL_FROM)." };
-  const action = link ? `Crie sua senha (link válido por ${LINK_HOURS} horas): ${link}` : `Acesse o processo: ${processUrl}`;
-  const text = [`Olá${fullName ? ` ${fullName}` : ""},`, "", `${inviter} convidou você para trabalhar no processo ${reference} no ExportaTrust.`, message ? `\n${message}\n` : "", action, "", "Você verá apenas este processo: etapas, documentos e comentários da equipe."].join("\n");
-  const html = `<p>Olá${fullName ? ` ${escapeHtml(fullName)}` : ""},</p><p><b>${escapeHtml(inviter)}</b> convidou você para trabalhar no processo <b>${escapeHtml(reference)}</b> no ExportaTrust.</p>${message ? `<p style="white-space:pre-wrap">${escapeHtml(message)}</p>` : ""}<p><a href="${escapeHtml(link || processUrl)}">${link ? "Criar minha senha e entrar" : "Abrir o processo"}</a></p><p style="color:#6b7280;font-size:13px">Você verá apenas este processo: etapas, documentos e comentários da equipe.${link ? ` O link vale ${LINK_HOURS} horas.` : ""}</p>`;
+  // Quem já tem acesso recebe só o aviso de que agora faz parte do processo (sem novo convite).
+  const intro = link ? `convidou você para trabalhar no processo` : `incluiu você no processo`;
+  const action = link ? `Crie sua senha (link válido por ${LINK_HOURS} horas): ${link}` : `Você agora faz parte deste processo. Acesse com o seu login: ${processUrl}`;
+  const text = [`Olá${fullName ? ` ${fullName}` : ""},`, "", `${inviter} ${intro} ${reference} no ExportaTrust.`, message ? `\n${message}\n` : "", action, "", "Você verá apenas os processos em que participa: etapas, documentos e comentários da equipe."].join("\n");
+  const html = `<p>Olá${fullName ? ` ${escapeHtml(fullName)}` : ""},</p><p><b>${escapeHtml(inviter)}</b> ${intro} <b>${escapeHtml(reference)}</b> no ExportaTrust.${link ? "" : " Você agora faz parte deste processo."}</p>${message ? `<p style="white-space:pre-wrap">${escapeHtml(message)}</p>` : ""}<p><a href="${escapeHtml(link || processUrl)}">${link ? "Criar minha senha e entrar" : "Abrir o processo"}</a></p><p style="color:#6b7280;font-size:13px">Você verá apenas os processos em que participa: etapas, documentos e comentários da equipe.${link ? ` O link vale ${LINK_HOURS} horas.` : ""}</p>`;
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-      body: JSON.stringify({ from, to: [to], subject: `Convite para o processo ${reference} · ExportaTrust`, text, html }),
+      body: JSON.stringify({ from, to: [to], subject: link ? `Convite para o processo ${reference} · ExportaTrust` : `Você agora faz parte do processo ${reference} · ExportaTrust`, text, html }),
     });
     if (!response.ok) return { sent: false, error: `Resend respondeu ${response.status}.` };
     return { sent: true, error: "" };

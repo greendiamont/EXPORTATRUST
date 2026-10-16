@@ -417,3 +417,8 @@ a.et2-btn--primary, a.et2-btn--ok { color: #fff; }
 .pd-btn--ok:hover { background: #065f46 !important; }
 .pd-row-del { border: 0; background: transparent; color: #9ca3af; font-size: 16px; line-height: 1; cursor: pointer; padding: 4px 6px; border-radius: 4px; }
 .pd-row-del:hover { color: #b91c1c; background: #fef2f2; }
+.cb-known { margin-top: 12px; display: grid; gap: 6px; }
+.cb-known-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.cb-avatar--add { position: relative; border: 1px dashed #818cf8; cursor: pointer; font: inherit; font-size: 11px; font-weight: 600; }
+.cb-avatar--add span { position: absolute; right: -3px; bottom: -3px; width: 13px; height: 13px; border-radius: 7px; background: #047857; color: #fff; font-size: 10px; line-height: 13px; text-align: center; }
+.cb-avatar--add:hover { background: #c7d2fe; }
