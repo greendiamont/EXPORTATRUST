@@ -249,13 +249,13 @@ export default function PedidoView({ operationId }: { operationId: number }) {
     const tasks = data.tasks.filter((task) => phaseOfTask(task) === index);
     const total = steps.length + tasks.length;
     const done = steps.filter((milestone) => isClosedStatus(milestone.status)).length + tasks.filter((task) => task.status === "Concluído").length;
-    const files = docs.filter((doc) => documentPhaseIndex(doc.category) === index).length;
+    const files = docs.filter((doc) => documentPhaseIndex(doc.category, doc.fileName) === index).length;
     return { ...item, total, done, files };
   });
   const phaseMilestones = milestones.filter((milestone) => phaseIndexOfCode(milestone.code) === selected);
   const phaseTasks = data.tasks.filter((task) => phaseOfTask(task) === selected).sort((a, b) => a.sequence - b.sequence);
-  const phaseDocs = docs.filter((doc) => documentPhaseIndex(doc.category) === selected);
-  const otherDocs = docs.filter((doc) => documentPhaseIndex(doc.category) === null);
+  const phaseDocs = docs.filter((doc) => documentPhaseIndex(doc.category, doc.fileName) === selected);
+  const otherDocs = docs.filter((doc) => documentPhaseIndex(doc.category, doc.fileName) === null);
   const openStep = milestones.find((milestone) => phaseIndexOfCode(milestone.code) === current && !isClosedStatus(milestone.status));
   const meFollowing = Boolean(activity?.followers?.some((follower) => follower.email === activity.me));
 
@@ -884,7 +884,7 @@ function OrderDocuments({ docs, form, data, onPhase }: { docs: Doc[]; form: Form
   const list: Array<{ key: string; name: string; phase: number | null; status: string; tone: string }> = [
     ...DOC_TABS.map((item, index) => ({ key: item.key, name: item.list, phase: 0, status: status[index].label, tone: status[index].tone })),
     ...docs.map((doc) => ({
-      key: `d${doc.id}`, name: doc.documentType && doc.documentType !== "Outro documento" ? doc.documentType : doc.fileName, phase: documentPhaseIndex(doc.category),
+      key: `d${doc.id}`, name: doc.documentType && doc.documentType !== "Outro documento" ? doc.documentType : doc.fileName, phase: documentPhaseIndex(doc.category, doc.fileName),
       status: doc.status || "Recebido", tone: /aprovad|vigente|recebid|validad/i.test(doc.status) ? "ok" : /pendente|revis/i.test(doc.status) ? "warn" : "todo",
     })),
   ];
