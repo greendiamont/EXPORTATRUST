@@ -54,6 +54,7 @@ O workflow `.github/workflows/layout-guard.yml` reprova todo PR que altere arqui
 | 5b · Custos logísticos (seção 5 do Novo processo e "Todos os dados do pedido") | `docs/redesign/prototipo/CustosLogisticos.dc.html` (aprovado em 2026-10-16) | `app/ui/logistics-costs-editor.tsx` | Aprovado — travado |
 | 5c · Preços e margem (seção 4 do Novo processo; card Financeiro do pedido) | `docs/redesign/prototipo/PrecosMargem.dc.html` (aprovado em 2026-10-16) | `app/ui/novo-processo-view.tsx` (`PricesAndMargin`), `lib/margin.ts` | Aprovado — travado |
 | 3b · Shipment Advice (fase Documentos do pedido) | `docs/redesign/prototipo/ShipmentAdvice.dc.html` (aprovado em 2026-10-16) | `app/ui/shipment-advice-card.tsx` | Aprovado — travado |
+| 3c · Convidar colaborador (painel de atividade do pedido) | `docs/redesign/prototipo/ConvidarColaborador.dc.html` (aprovado em 2026-10-16) | `app/ui/collaborators-panel.tsx` | Aprovado — travado |
 | 6 · Cadastros | `docs/redesign/prototipo/Cadastros.dc.html` | `app/ui/cadastros-view.tsx` | Aprovado — travado |
 
 Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout novo aprovado; não redesenhar sem pedido de Ivam.
@@ -64,6 +65,7 @@ Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout n
 |---|---|---|
 | 2026-10-14 | Ivam | Aprovou o redesign (protótipos 1 a 6) — `docs/redesign/PLANO_REDESIGN.md` |
 | 2026-10-15 | Ivam | Reafirmou o layout aprovado do Pedido (fases e emissão de documentos) e criou esta regra |
+| 2026-10-16 | Ivam | Aprovou para produção comissão, cancelar pedido, convite de colaborador ("3c") e operação concluída: "pode produzir" |
 | 2026-10-16 | Ivam | Aprovou para produção o Shipment Advice da fase Documentos ("3b"), os botões "Editar" e a tabela de itens com "+ Adicionar item": "pode produzir TUDO O QUE ALTERAMOS E AS CORREÇÕES" |
 | 2026-10-16 | Ivam | Aprovou o botão "Editar processo" no topo do pedido: "homologação é parte do botão e tá aprovada a sessão"; "pode produzir" |
 | 2026-10-16 | Ivam | Aprovou a margem por m³: "alteração aprovada PODE PRODUZIR" |
