@@ -668,3 +668,14 @@
 - **Dados/migration:** nenhuma.
 - **Testes:** tsc (sem erros novos), 95 testes unitários (1 novo), build Railway, Playwright local (processo com pedido de compra emitido: 203,212 m³, venda US$ 230, compra US$ 160, câmbio 5 → 26,7%, US$ 12.501,84, US$ 61,52/m³ no formulário e no Financeiro).
 - **Status:** aguardando aprovação de Ivam
+
+## 2026-10-16 — Claude — Pedido: botão "Editar processo"
+
+- **ID:** CHG-20261016-014
+- **Branch:** `claude/pedido-editar-processo`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção só após "alteração aprovada" e "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16):** "eu quero que você inclua também um botão para voltar e alterar o processo do pedido".
+- **O que mudou:** botão "Editar processo" nas ações do topo do pedido (antes de "Seguir pedido"); abre `/novo-processo?processo=<id>` (mesma edição do "Editar negociação" do Painel).
+- **Testes:** build Railway, Playwright local (botão abre a edição do processo 9; desktop 1440 px e celular 390 px).
+- **Status:** aguardando aprovação de Ivam
