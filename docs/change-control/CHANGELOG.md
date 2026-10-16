@@ -546,3 +546,16 @@
 - **Dados/migração:** nenhuma (só a exibição por fase).
 - **Testes:** eslint, tsc (sem erros novos), 84 testes unitários.
 - **Status:** em andamento
+
+## 2026-10-16 — Claude — Remoção das imagens de e-mail importadas do app antigo
+
+- **ID:** CHG-20261016-004
+- **Branch:** `claude/remover-imagens-email`
+- **PR:** #115
+- **Destino:** homologation → main
+- **Tipo:** limpeza de dados (autorizada)
+- **Autorização de Ivam (conversa, 2026-10-16):** "As imagens de e-mail você pode cancelar, pode eliminar, inclusive, tá? Não precisa trazer."
+- **O que mudou:** `runStartupEmailImageCleanup` (server/railway/startup-import.mjs), ligada só com `EXPORTATRUST_REMOVE_EMAIL_IMAGES=1`: remove os documentos da categoria "STAGE 08 · Documentos comerciais" cujo nome é imagem colada em e-mail (`image001.png`, `image.jpg`, `Outlook-xxx.png`, `noname` do tipo imagem), usando a rota `DELETE /api/documents` (apaga arquivo do storage + registro, grava auditoria `DOCUMENT_DELETED`). Teste local na cópia dos dados: 143 removidas, 257 documentos mantidos.
+- **Dados:** remove 143 imagens de e-mail em produção; nenhum outro documento é tocado.
+- **Rollback:** as imagens continuam no pacote original do app antigo, se precisar reimportar.
+- **Status:** em andamento
