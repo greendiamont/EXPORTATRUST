@@ -288,3 +288,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 ### 2026-10-16 — Claude — Painel: Processos · negociação
 - **Branch:** `claude/painel-processos`; CHG-20261016-006; layout aprovado por Ivam.
 - **Para outros agentes:** termos negociados (pagamento, medidas, preço) ficam no JSON do pedido em `operations.supply_chain_notes`; leia e grave só por `lib/order-terms.ts` (preserva texto livre antigo). Edição do processo: `/novo-processo?processo=<id>` + `PATCH /api/operations` com `fields.terms`.
+
+### 2026-10-16 — Claude — Custos logísticos por serviço
+- **Branch:** `claude/custos-por-servico`; CHG-20261016-009; aprovado por Ivam ("alteração aprovada PODE PRODUZIR").
+- **Para outros agentes:** `operations.logistics_costs_json` agora guarda `groups[{name, items[{service, currency, rate, quantity, unit}]}]` + `exchangeRate`, `agent`, `equipment`, `validUntil`, `notes`. Leia e grave só por `lib/logistics-costs.ts` (converte o formato antigo de campos fixos). Tela: `app/ui/logistics-costs-editor.tsx` (layout aprovado, travado).

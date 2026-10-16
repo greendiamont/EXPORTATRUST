@@ -5,7 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObjec
 import { api, formatDate, money, relativeDue } from "./format";
 import { ORDER_PHASES, currentPhaseIndex, isClosedStatus, phaseIndexOfCode } from "../../lib/order-phases";
 import { PHASE_UPLOAD_CATEGORY, documentPhaseIndex, taskPhaseIndex } from "../../lib/document-phase";
-import { LOGISTICS_COST_FIELDS, type LogisticsCosts, logisticsByCurrency, logisticsTotal, logisticsTotalIn, parseLogisticsCosts } from "../../lib/logistics-costs";
+import { type LogisticsDraft, costsFromDraft, logisticsByCurrency, logisticsDraft, logisticsTotal, logisticsTotalIn, parseLogisticsCosts } from "../../lib/logistics-costs";
+import { LogisticsCostsEditor, LogisticsCostsSummary } from "./logistics-costs-editor";
 
 // Página do pedido — reprodução do protótipo aprovado (docs/redesign/prototipo/Processo.dc.html):
 // cabeçalho com os 6 dados-chave, fases em linha do tempo, emissão de documentos na fase
@@ -1118,43 +1119,19 @@ const FIELD_GROUPS: Array<{ title: string; fields: Array<[string, string]> }> = 
   { title: "EUDR e responsáveis", fields: [["euOperatorEori", "EORI"], ["eudrReference", "Referência DDS"], ["internalResponsible", "Responsável interno"], ["responsibleEmail", "E-mail do responsável"], ["status", "Situação"]] },
 ];
 const NUMBER_FIELDS = new Set(["commercialValue", "quantity", "volumeM3", "netWeightKg", "grossWeightKg"]);
-const COST_GROUP: Array<[string, string]> = [["lc.exchangeRate", "Câmbio (R$ por US$ 1)"], ...LOGISTICS_COST_FIELDS.flatMap(([key, label]): Array<[string, string]> => [[`lc.${key}`, label], [`lc.${key}.cur`, `Moeda · ${label}`]]), ["lc.notes", "Observações dos custos"]];
-/** Valor de um campo do grupo de custos (lc.<custo>, lc.<custo>.cur, lc.exchangeRate, lc.notes) como texto do formulário. */
-function costDraftValue(costs: LogisticsCosts, key: string) {
-  const name = key.slice(3);
-  if (name.endsWith(".cur")) return costs.currencies[name.slice(0, -4) as keyof LogisticsCosts["currencies"]] ?? "BRL";
-  if (name === "notes") return costs.notes;
-  const value = costs[name as keyof LogisticsCosts];
-  return typeof value === "number" ? fmt(value, 4) : "";
-}
-function costsFromDraft(draft: Record<string, string>) {
-  return {
-    exchangeRate: num(draft["lc.exchangeRate"]), notes: draft["lc.notes"] ?? "",
-    currencies: Object.fromEntries(LOGISTICS_COST_FIELDS.map(([key]) => [key, draft[`lc.${key}.cur`] || "BRL"])),
-    ...Object.fromEntries(LOGISTICS_COST_FIELDS.map(([key]) => [key, num(draft[`lc.${key}`])])),
-  };
-}
 const READONLY_FIELDS = new Set(["status"]);
 type Option = { id: number; name: string };
 
 /** Dados do pedido: leitura e edição (grava só os campos alterados, com aviso se outra pessoa mudou antes). */
 function AllFields({ operation, onSaved, onError }: { operation: Operation; onSaved: () => void; onError: (message: string) => void }) {
   const [draft, setDraft] = useState<Record<string, string> | null>(null);
+  const [costsDraft, setCostsDraft] = useState<LogisticsDraft | null>(null);
   const [clients, setClients] = useState<Option[]>([]);
   const [suppliers, setSuppliers] = useState<Option[]>([]);
   const [busy, setBusy] = useState(false);
   const [conflict, setConflict] = useState("");
   const original = (key: string) => key === "shipmentDate" ? text(operation[key]).slice(0, 10) : NUMBER_FIELDS.has(key) ? fmt(Number(operation[key]) || 0, 3) : text(operation[key]);
   const valueOf = (key: string) => {
-    if (key.startsWith("lc.")) {
-      const costs = parseLogisticsCosts(operation.logisticsCostsJson);
-      const name = key.slice(3);
-      if (name.endsWith(".cur")) return "";
-      if (name === "exchangeRate") return costs.exchangeRate ? `R$ ${fmt(costs.exchangeRate, 4)}` : "";
-      if (name === "notes") return costs.notes;
-      const value = costs[name as keyof LogisticsCosts];
-      return typeof value === "number" && value ? money(value, costs.currencies[name as keyof LogisticsCosts["currencies"]]) : "";
-    }
     const value = operation[key];
     if (value === null || value === undefined || value === "") return "";
     if (key === "shipmentDate") return formatDate(String(value));
@@ -1166,8 +1143,7 @@ function AllFields({ operation, onSaved, onError }: { operation: Operation; onSa
   function startEdit() {
     const next: Record<string, string> = {};
     for (const group of FIELD_GROUPS) for (const [key] of group.fields) next[key] = original(key);
-    const costs = parseLogisticsCosts(operation.logisticsCostsJson);
-    for (const [key] of COST_GROUP) next[key] = costDraftValue(costs, key);
+    setCostsDraft(logisticsDraft(parseLogisticsCosts(operation.logisticsCostsJson)));
     next.supplierId = text(operation.supplierId);
     next.importerClientId = text(operation.importerClientId);
     setDraft(next);
@@ -1180,14 +1156,13 @@ function AllFields({ operation, onSaved, onError }: { operation: Operation; onSa
     if (!draft) return;
     const fields: Record<string, unknown> = {};
     const before: Record<string, unknown> = {};
-    const costs = parseLogisticsCosts(operation.logisticsCostsJson);
-    const costsChanged = COST_GROUP.some(([key]) => draft[key] !== costDraftValue(costs, key));
+    const costsChanged = costsDraft && JSON.stringify(costsFromDraft(costsDraft)) !== JSON.stringify(parseLogisticsCosts(operation.logisticsCostsJson));
     if (costsChanged) {
-      fields.logisticsCosts = costsFromDraft(draft);
+      fields.logisticsCosts = costsFromDraft(costsDraft);
       before.logisticsCostsJson = operation.logisticsCostsJson;
     }
     for (const [key, value] of Object.entries(draft)) {
-      if (READONLY_FIELDS.has(key) || key === "supplierName" || key.startsWith("lc.")) continue;
+      if (READONLY_FIELDS.has(key) || key === "supplierName") continue;
       const was = key === "supplierId" || key === "importerClientId" ? text(operation[key]) : original(key);
       if (value === was) continue;
       fields[key] = NUMBER_FIELDS.has(key) ? num(value) : value;
@@ -1220,11 +1195,6 @@ function AllFields({ operation, onSaved, onError }: { operation: Operation; onSa
         </select>
       </label>
     );
-    if (key.startsWith("lc.") && key.endsWith(".cur")) return (
-      <label key={key}>{label}
-        <select className="pd-input" value={draft[key]} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })}><option value="BRL">R$</option><option value="USD">US$</option></select>
-      </label>
-    );
     if (key === "euImporter") return (
       <label key={key}>{label}
         <select className="pd-input" value={clients.some((item) => String(item.id) === draft.importerClientId) ? draft.importerClientId : ""}
@@ -1253,16 +1223,22 @@ function AllFields({ operation, onSaved, onError }: { operation: Operation; onSa
           </div>
         </div>
       )}
-      {[...FIELD_GROUPS, { title: "Custos logísticos (prévia)", fields: COST_GROUP }].map((group) => (
+      {FIELD_GROUPS.map((group) => (
         <div key={group.title}>
           <h3 style={{ margin: "8px 0", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--et2-muted)" }}>{group.title}</h3>
           {draft
             ? <div className="pd-fields">{group.fields.map(([key, label]) => input(key, label))}</div>
             : <dl className="et2-dl" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
-                {group.fields.filter(([key]) => !key.endsWith(".cur")).map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{valueOf(key) || <span className="muted">—</span>}</dd></div>)}
+                {group.fields.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{valueOf(key) || <span className="muted">—</span>}</dd></div>)}
               </dl>}
         </div>
       ))}
+      <div>
+        <h3 style={{ margin: "8px 0", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.4, color: "var(--et2-muted)" }}>Custos logísticos (prévia)</h3>
+        {draft && costsDraft
+          ? <LogisticsCostsEditor value={costsDraft} onChange={setCostsDraft} />
+          : <LogisticsCostsSummary costs={parseLogisticsCosts(operation.logisticsCostsJson)} />}
+      </div>
     </div>
   );
 }
