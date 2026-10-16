@@ -765,3 +765,14 @@
 - **O que mudou:** "Concluir etapa" age na fase selecionada. A recusa da aprovação para embarque lista as etapas que faltam. Na fase 6 · Entregue, faixa "Encerrar a operação" com botão "Operação concluída ✓" (conclui a etapa Entregue, marca `supply_chain_notes.completed = {at, by}` e a situação "Concluído"); depois mostra "Operação concluída em … por …" e "Reabrir operação". Lista de Pedidos: filtro "Concluídos (n)", concluídos fora das fases em andamento e das pendências, depois dos ativos (cancelados continuam no fim); selo "Operação concluída". Painel: concluídos no fim da tabela com "Concluída". `PATCH /api/operations` `action: "complete" | "uncomplete"`, auditado.
 - **Testes:** tsc (sem erros novos), build Railway, Playwright local (concluir etapa na fase Embarque; aprovação recusada mostra "Falta concluir: …"; operação concluída → filtro Concluídos (1), fora das fases).
 - **Status:** aprovado por Ivam ("pode produzir") — em produção (PR #143, deploy 3eaaa9c1)
+
+## 2026-10-16 — Claude — Convidado com acesso total às fases do pedido
+
+- **ID:** CHG-20261016-025
+- **Branch:** `claude/convidado-fases`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16, após testar como convidado):** "as fases do pedido, desde o 1 [...] até o 6, o convidado pode ter acesso total [...] liberdade total para movimentar, para alterar, para incluir tarefa, excluir tarefa".
+- **O que mudou:** o convidado agora conclui/reabre etapas (inclusive "Concluir etapa"), cria/edita/conclui tarefas, anexa e exclui arquivos nas fases do processo liberado. `POST /api/export-control` aceita do convidado só ações de etapas e tarefas (`milestone`, `operation-task-*`) do processo dele, e a resposta sai sem dados comerciais; `DELETE /api/documents` confere o processo e recusa documentos comerciais. Continua fora para o convidado: emissão do pedido com preços, Shipment Advice, Financeiro/margem/comissão, valor de venda, documentos comerciais, editar processo, configurações e envio ao cliente.
+- **Testes:** tsc (sem erros novos), 98 testes unitários, build Railway, Playwright local como convidado (concluir etapa 1→2 de 4; criar tarefa; anexar e excluir arquivo; `order-commercial`/`settings` = 403; outro processo = 403; respostas sem valores).
+- **Status:** em andamento

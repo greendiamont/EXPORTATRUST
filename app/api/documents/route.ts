@@ -113,6 +113,8 @@ export async function DELETE(request: Request) {
     const db = await getDb();
     const [record] = await db.select().from(operationDocuments).where(and(eq(operationDocuments.id, id), eq(operationDocuments.organizationId, context.organizationId))).limit(1);
     if (!record) return Response.json({ error: "Documento não encontrado." }, { status: 404 });
+    await assertOperationAccess(context, record.operationId);
+    if (await guestOperationIds(context) && commercialDocument(record)) return Response.json({ error: "Acesso de convidado: documento comercial." }, { status: 403 });
     const bucket = await getBucket();
     await bucket.delete(record.objectKey);
     await db.delete(operationDocuments).where(and(eq(operationDocuments.id, id), eq(operationDocuments.organizationId, context.organizationId), eq(operationDocuments.objectKey, record.objectKey)));

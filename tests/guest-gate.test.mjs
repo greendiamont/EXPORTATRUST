@@ -12,8 +12,8 @@ test("convidado: só o processo liberado e as APIs operacionais dele", () => {
   assert.equal(gate("POST", "/api/documents"), null);
   assert.equal(gate("GET", "/api/export-control?operationId=15").status, 403);
   assert.equal(gate("GET", "/api/export-control?operationId=9&document=sales-order").status, 403);
-  assert.equal(gate("POST", "/api/export-control").status, 403);
-  assert.equal(gate("DELETE", "/api/documents?id=1").status, 403);
+  assert.equal(gate("POST", "/api/export-control"), null); // a rota restringe às etapas/tarefas do processo
+  assert.equal(gate("DELETE", "/api/documents?id=1"), null); // a rota confere o processo do arquivo
   assert.equal(gate("GET", "/api/overview").status, 403);
   assert.equal(gate("PATCH", "/api/operations").status, 403);
   assert.equal(gate("GET", "/api/shipment-advice?operationId=9").status, 403);
