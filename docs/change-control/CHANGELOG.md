@@ -525,11 +525,11 @@
 
 - **ID:** CHG-20261016-002
 - **Branch:** `claude/importacao-producao`
-- **PR:** a preencher
+- **PR:** #110, #111
 - **Destino:** homologation → main
 - **Tipo:** infraestrutura / dados
 - **Autorização de Ivam (conversa, 2026-10-16):** "Ok entrei no app novo, pode liberar a importação em produção".
 - **O que mudou:** `server/railway/startup-import.mjs` continua ignorando importações em produção, exceto com `EXPORTATRUST_IMPORT_IN_PRODUCTION=1`. Usado uma única vez para a carga inicial (fornecedores, clientes, produtos, processos e arquivos do app antigo, exportação de 29/09) na empresa cadastrada por Ivam; a variável e as de importação são removidas logo depois.
 - **Dados/migração:** só inclui dados; nada é apagado nem sobrescrito.
 - **Rollback:** remover a variável (a trava volta a valer).
-- **Status:** em andamento
+- **Status:** concluído — carga feita (10 fornecedores, 10 clientes, 4 produtos, 19 processos, 451 arquivos; 1 arquivo ausente no pacote) e liberação desligada (`EXPORTATRUST_IMPORT_IN_PRODUCTION=0`)
