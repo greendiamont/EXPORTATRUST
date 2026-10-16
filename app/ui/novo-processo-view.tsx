@@ -27,7 +27,7 @@ const DRAFT_KEY = "et2-novo-processo-rascunho";
 
 // Edição da negociação (Painel → "Editar negociação"): o mesmo formulário, preenchido com o
 // processo; ao salvar, só os campos alterados vão para PATCH /api/operations.
-const TEXT_FIELDS = ["contractNumber", "product", "hsCode", "destinationCountry", "incoterm", "currency", "quantityUnit", "rawMaterial", "species", "forestOriginType", "exporterName", "exporterTaxId", "productionUnit", "lotCodes", "transportMode", "portOfLoading", "portOfDischarge", "shipmentDate", "carrier", "bookingNumber", "billOfLadingNumber", "containerNumbers", "vesselVoyage", "euOperatorEori", "eudrReference", "internalResponsible", "responsibleEmail", "euImporter"] as const;
+const TEXT_FIELDS = ["reference", "contractNumber", "product", "hsCode", "destinationCountry", "incoterm", "currency", "quantityUnit", "rawMaterial", "species", "forestOriginType", "exporterName", "exporterTaxId", "productionUnit", "lotCodes", "transportMode", "portOfLoading", "portOfDischarge", "shipmentDate", "carrier", "bookingNumber", "billOfLadingNumber", "containerNumbers", "vesselVoyage", "euOperatorEori", "eudrReference", "internalResponsible", "responsibleEmail", "euImporter"] as const;
 const NUMBER_FIELDS = ["quantity", "volumeM3", "netWeightKg", "grossWeightKg", "commercialValue"] as const;
 type OperationRow = Record<string, string | number | null> & { id: number; reference: string; supplyChainNotes: string | null };
 
@@ -301,7 +301,7 @@ export default function NovoProcessoView({ userName, userEmail }: { userName: st
 
             {step === 0 && <div className="et2-grid">
               {editing
-                ? <label className="et2-field"><span>Referência da operação</span><input value={form.reference} readOnly /><small>A referência não muda depois de criada</small></label>
+                ? input("reference", "Referência da operação", { help: "Muda também a referência do pedido e do acompanhamento" })
                 : input("reference", "Referência da operação", { placeholder: "Ex.: GBU003/26 · vazio gera automático" })}
               {input("product", "Produto", { list: "et2-products", placeholder: "Selecione ou digite", help: "Do cadastro: preenche NCM, espécie e unidade", onChange: pickProduct })}
               {input("hsCode", "NCM / HS Code", { placeholder: "Pode preencher depois" })}
