@@ -806,3 +806,16 @@
 - **O que mudou:** no painel Participantes do pedido, "Convidados já cadastrados — clique para incluir neste processo" com as bolinhas dos convidados de outros processos; um clique (com confirmação) inclui a pessoa, que fica "Ativo" na hora (sem novo link de senha) e recebe e-mail "Você agora faz parte do processo X". Convite para quem ainda não tem acesso continua com link para criar a senha.
 - **Testes:** build Railway, 98 testes, Playwright local (bolinha inclui a convidada no 2º processo; situação Ativo; convidada passa a ver os dois processos).
 - **Status:** em andamento
+
+## 2026-10-16 — Claude — Painel em formato de dashboard
+
+- **ID:** CHG-20261016-029
+- **Branch:** `claude/painel-dashboard`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16):** "repaginada nesse painel inicial [...] gráficos do que foi embarcado, do que não foi [...] dashboard bem legal"; "incluir o valor das exportações [...] em dólar e em [reais]"; "total de metros cúbicos [...] mês a mês de volume [...] versus dólar, versus anual". Protótipo "1b · Painel dashboard" aprovado: "alteração aprovada".
+- **O que mudou:** `app/ui/painel-view.tsx` segue o protótipo `docs/redesign/prototipo/Dashboard.dc.html`: período (Este ano / 12 meses / Tudo); faixa escura com exportado em US$, em R$, volume m³ e preço médio US$/m³; "Volume e valor exportados" (m³, US$ mil, US$/m³) mês a mês ou ano a ano; indicadores (em andamento, a embarcar 30 dias, em trânsito, concluídos no ano, precisa de atenção); "Embarques por mês" (embarcados x a embarcar); "Pedidos por fase"; "Próximos embarques" com andamento das etapas de documentos; "Precisa de atenção" (bloqueados, atrasados, prazos de 7 dias); "Valor a embarcar por cliente"; tabela "Processos · negociação" recolhida no fim (mesmo conteúdo). A lista "Pendências" (Todas/Minhas) saiu do Painel, como no protótipo — os atrasos aparecem em "Precisa de atenção".
+- **Regras das contas (`lib/dashboard.ts`):** exportado = fase Trânsito ou depois, ou operação concluída; cancelado nunca conta. Mês = data de embarque (ETD). Volume = soma do volume dos itens do pedido. US$: pedido em USD direto, em BRL pelo câmbio do processo; R$ pelo câmbio de cada processo (custos logísticos), média dos câmbios quando o processo não tem.
+- **API:** `/api/overview` passa a devolver `volume`, `exchangeRate`, `containers`, `completedAt` e `blockedStep` por pedido (sem mudança de banco).
+- **Testes:** tsc (92, sem erros novos), `tests/dashboard.test.mjs` (5), build Railway, Playwright local em 1440 px e 390 px (sem rolagem lateral).
+- **Status:** em andamento

@@ -5,6 +5,7 @@ import { EXPORT_ORDER_MILESTONES, isEudrRequired } from "../../../lib/export-con
 import { ORDER_PHASES, currentPhaseIndex, isClosedStatus, phaseIndexOfCode } from "../../../lib/order-phases";
 import { requireSecurityContext } from "../../../lib/security";
 import { readOrderTerms } from "../../../lib/order-terms";
+import { parseLogisticsCosts } from "../../../lib/logistics-costs";
 
 // Visão consolidada para o Painel e a lista de Pedidos da interface nova:
 // fase atual de cada pedido, próximo passo e pendências com prazo.
@@ -77,7 +78,11 @@ export async function GET() {
         const inPhase = milestones.filter((milestone) => phaseIndexOfCode(milestone.code) === ORDER_PHASES.indexOf(phase));
         return { total: inPhase.length, done: inPhase.filter((milestone) => isClosedStatus(milestone.status)).length };
       });
-      const blocked = openMilestones.some((milestone) => milestone.status === "Bloqueado");
+      const blockedMilestone = openMilestones.find((milestone) => milestone.status === "Bloqueado");
+      const blocked = Boolean(blockedMilestone);
+      const terms = readOrderTerms(operation);
+      let exchangeRate = 0;
+      try { exchangeRate = parseLogisticsCosts(operation.logisticsCostsJson).exchangeRate || 0; } catch { exchangeRate = 0; }
       return {
         id: operation.id,
         reference: operation.reference,
@@ -110,9 +115,15 @@ export async function GET() {
         incoterm: operation.incoterm,
         portOfLoading: operation.portOfLoading,
         portOfDischarge: operation.portOfDischarge,
-        terms: readOrderTerms(operation),
-        cancelled: Boolean(readOrderTerms(operation).cancelled),
-        completed: Boolean(readOrderTerms(operation).completed),
+        terms,
+        cancelled: Boolean(terms.cancelled),
+        completed: Boolean(terms.completed),
+        // Painel (dashboard): volume dos itens do pedido, câmbio do processo e contêineres informados.
+        volume: Math.round(terms.items.reduce((sum, item) => sum + (Number(item.volume) || 0), 0) * 1000) / 1000,
+        exchangeRate,
+        containers: operation.containerNumbers.split(/[\s,;]+/).filter(Boolean).length,
+        completedAt: terms.completed?.at ?? "",
+        blockedStep: blockedMilestone ? { what: blockedMilestone.title, who: blockedMilestone.responsibleName } : null,
       };
     });
 
