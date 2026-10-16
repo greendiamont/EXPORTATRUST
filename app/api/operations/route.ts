@@ -4,6 +4,7 @@ import { exportControlSettings, exportMilestones, importerClients, industrialPla
 import { addDays, EXPORT_ORDER_MILESTONES } from "../../../lib/export-control";
 import { normalizeMasterName } from "../../../lib/master-data";
 import { sanitizeLogisticsCosts } from "../../../lib/logistics-costs";
+import { applyOrderTerms, type OrderTermsChanges } from "../../../lib/order-terms";
 import { calculateReadiness, hasPolygonGeometry } from "../../../lib/readiness";
 import { audit, requireSecurityContext } from "../../../lib/security";
 
@@ -393,6 +394,18 @@ export async function POST(request: Request) {
     if (!supplier) return Response.json({ error: "Fornecedor não encontrado." }, { status: 404 });
     const master = await safeMasterLinks(db, body, context.organizationId);
     const [operation] = await db.insert(operations).values({ ...values(body, supplier, master), ...logisticsCostsField(body), organizationId: context.organizationId }).returning();
+    const terms = body.terms && typeof body.terms === "object" ? body.terms as Record<string, unknown> : null;
+    if (terms && (String(terms.paymentTerms ?? "").trim() || String(terms.size ?? "").trim() || numeric(terms.unitPrice))) {
+      const applied = applyOrderTerms(operation, {
+        paymentTerms: String(terms.paymentTerms ?? ""),
+        ...(String(terms.size ?? "").trim() ? { size: String(terms.size) } : {}),
+        ...(numeric(terms.unitPrice) ? { unitPrice: numeric(terms.unitPrice) } : {}),
+      });
+      if (!applied.error) {
+        await db.update(operations).set({ supplyChainNotes: applied.supplyChainNotes, ...(applied.commercialValue !== undefined && !numeric(body.commercialValue) ? { commercialValue: applied.commercialValue } : {}) })
+          .where(and(eq(operations.id, operation.id), eq(operations.organizationId, context.organizationId)));
+      }
+    }
     await ensureExportControlForOperation(db, operation, context.organizationId);
     try { await audit(context, "OPERATION_CREATED", "operation", String(operation.id), { reference: operation.reference }); } catch (auditError) { console.error("OPERATION_AUDIT_FAILED", auditError); }
     return Response.json({ operation }, { status: 201 });
@@ -470,6 +483,21 @@ export async function PATCH(request: Request) {
           return Response.json({ error: "Outra pessoa alterou os dados do pedido enquanto você editava.", conflict: true, current }, { status: 409 });
         }
         changes.logisticsCostsJson = JSON.stringify(sanitizeLogisticsCosts(fields.logisticsCosts));
+      }
+      if (fields.terms && typeof fields.terms === "object") {
+        if ("supplyChainNotes" in original && String(original.supplyChainNotes ?? "") !== String(current.supplyChainNotes ?? "")) {
+          return Response.json({ error: "Outra pessoa alterou os dados do pedido enquanto você editava.", conflict: true, current }, { status: 409 });
+        }
+        const terms = fields.terms as Record<string, unknown>;
+        const termChanges: OrderTermsChanges = {};
+        if (terms.paymentTerms !== undefined) termChanges.paymentTerms = String(terms.paymentTerms);
+        if (terms.size !== undefined) termChanges.size = String(terms.size);
+        if (terms.notes !== undefined) termChanges.notes = String(terms.notes);
+        if (terms.unitPrice !== undefined) termChanges.unitPrice = numeric(terms.unitPrice);
+        const applied = applyOrderTerms({ ...current, quantity: Number(changes.quantity ?? current.quantity), volumeM3: Number(changes.volumeM3 ?? current.volumeM3) }, termChanges);
+        if (applied.error) return Response.json({ error: applied.error }, { status: 400 });
+        changes.supplyChainNotes = applied.supplyChainNotes;
+        if (applied.commercialValue !== undefined && !("commercialValue" in fields)) changes.commercialValue = applied.commercialValue;
       }
       if ("supplierId" in fields) {
         const supplier = await supplierFor(db, Number(fields.supplierId), context.organizationId);

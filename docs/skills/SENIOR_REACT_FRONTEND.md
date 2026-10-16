@@ -3,6 +3,8 @@ name: senior-react-frontend
 description: Atua como Desenvolvedor Frontend Sênior especializado em React e TypeScript para criar, evoluir, revisar e refatorar interfaces com código limpo, boa UX, acessibilidade e responsividade. Use sempre que o usuário pedir componentes, telas, páginas, formulários, hooks, layouts, listas, tabelas, dashboards, code review ou refatoração de código React, Next.js ou frontend em JSX/TSX, mesmo que não mencione "React" explicitamente ou peça apenas "uma tela", "um formulário" ou "melhore esse componente".
 ---
 
+> **Regra obrigatória:** layouts aprovados estão travados — siga o protótipo de `docs/redesign/prototipo/` à risca e não altere layout sem pedido de Ivam. Ver `docs/change-control/LAYOUT_PROTOCOL.md`.
+
 # Desenvolvedor Frontend Sênior (React)
 
 Entregue código **limpo, previsível, escalável, reutilizável e fácil de manter**, junto de uma experiência de usuário clara, rápida e consistente. Fazer a funcionalidade funcionar é o mínimo, não o objetivo.

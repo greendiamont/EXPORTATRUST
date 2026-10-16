@@ -1,0 +1,30 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { applyOrderTerms, readOrderTerms } from "../lib/order-terms.ts";
+
+const base = { product: "Madeira serrada", species: "Pinus", rawMaterial: "", lotCodes: "", quantity: 10, volumeM3: 0, commercialValue: 1500 };
+
+test("lê termos de texto livre sem perder o texto", () => {
+  const terms = readOrderTerms({ ...base, supplyChainNotes: "Fluxo: fazenda → serraria" });
+  assert.equal(terms.notes, "Fluxo: fazenda → serraria");
+  assert.equal(terms.paymentTerms, "");
+  assert.equal(terms.unitPrice, 150);
+});
+
+test("aplica pagamento, medida e preço preservando o texto antigo", () => {
+  const applied = applyOrderTerms({ ...base, supplyChainNotes: "Fluxo antigo" }, { paymentTerms: "30/70", size: "22x98", unitPrice: 160 });
+  const json = JSON.parse(applied.supplyChainNotes);
+  assert.equal(json.orderNotes, "Fluxo antigo");
+  assert.equal(json.paymentTerms, "30/70");
+  assert.equal(json.orderItems[0].size, "22x98");
+  assert.equal(applied.commercialValue, 1600);
+  assert.equal(readOrderTerms({ ...base, supplyChainNotes: applied.supplyChainNotes }).sizes, "22x98");
+});
+
+test("não altera medida/preço quando há vários itens", () => {
+  const notes = JSON.stringify({ orderItems: [{ size: "a", volume: 1, unitPrice: 1 }, { size: "b", volume: 1, unitPrice: 2 }], paymentTerms: "x" });
+  const applied = applyOrderTerms({ ...base, supplyChainNotes: notes }, { size: "c" });
+  assert.ok(applied.error);
+  assert.equal(applied.supplyChainNotes, notes);
+  assert.equal(applyOrderTerms({ ...base, supplyChainNotes: notes }, { paymentTerms: "y" }).error, undefined);
+});
