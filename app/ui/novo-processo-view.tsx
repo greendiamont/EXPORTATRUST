@@ -20,7 +20,7 @@ const EMPTY = {
   rawMaterial: "", species: "", forestOriginType: "Reflorestamento", productionUnit: "", lotCodes: "", propertyIds: [] as string[],
   quantity: "", quantityUnit: "MT", volumeM3: "", netWeightKg: "", grossWeightKg: "", incoterm: "FOB", currency: "USD", commercialValue: "",
   transportMode: "Marítimo", shipmentDate: "", destinationCountry: "", portOfLoading: "", portOfDischarge: "", carrier: "", bookingNumber: "", billOfLadingNumber: "", containerNumbers: "", vesselVoyage: "",
-  supplyChainNotes: "", paymentTerms: "", itemSize: "", unitPrice: "", purchaseUnitPrice: "", purchaseCurrency: "BRL",
+  supplyChainNotes: "", paymentTerms: "", itemSize: "", unitPrice: "", purchaseUnitPrice: "", purchaseCurrency: "BRL", purchaseNote: "",
   logistics: logisticsDraft(parseLogisticsCosts("{}")) as LogisticsDraft,
 };
 type Form = typeof EMPTY;
@@ -49,6 +49,7 @@ function formFromOperation(operation: OperationRow): Form {
     propertyIds: Array.isArray(propertyIds) ? propertyIds.map(String) : [],
     supplyChainNotes: terms.notes, paymentTerms: terms.paymentTerms, itemSize: terms.sizes, unitPrice: terms.unitPrice ? String(terms.unitPrice) : "",
     purchaseUnitPrice: terms.purchaseUnitPrice ? String(terms.purchaseUnitPrice) : "", purchaseCurrency: terms.purchaseCurrency,
+    purchaseNote: terms.supplierItemCount > 1 ? "Pedido de compra já emitido com vários itens: o Financeiro do pedido usa os valores dele." : "",
     logistics: logisticsDraft(costs),
   } as Form;
 }
@@ -446,6 +447,7 @@ function PricesAndMargin({ form, setForm }: { form: Form; setForm: (update: (cur
         <input aria-label={label} inputMode="decimal" placeholder="0,00" value={form[key]} onChange={(event) => { const value = event.target.value; setForm((current) => ({ ...current, [key]: value })); }} style={{ flex: 1, minWidth: 0 }} />
       </span>
       <small>Por {unit}{total && qty ? ` · total ${show(total, form[currencyKey])} (${qty})` : ""}</small>
+      {key === "purchaseUnitPrice" && form.purchaseNote && <small style={{ color: "#92400e" }}>{form.purchaseNote}</small>}
     </label>
   );
   const given = (items: Array<{ value: number; currency: string }>) => items.length ? items.map((item) => item.currency === "USD" || item.currency === "BRL" ? `${item.currency} ${two(item.value)}` : show(item.value, item.currency)).join(" + ") : "—";
@@ -481,6 +483,12 @@ function PricesAndMargin({ form, setForm }: { form: Form; setForm: (update: (cur
               <td className="num">{margin.percent === null ? "—" : `${margin.percent.toFixed(1).replace(".", ",")}%`}</td>
               <td className="num">{show(margin.usd, "USD")}</td>
               <td className="num">{show(margin.brl, "BRL")}</td>
+            </tr>
+            <tr className="pm-total">
+              <td>Margem por {unit}{qty ? ` (÷ ${qty})` : ""}</td>
+              <td className="num">{margin.percent === null ? "—" : `${margin.percent.toFixed(1).replace(".", ",")}%`}</td>
+              <td className="num">{margin.usd === null || !quantity ? "—" : `${show(margin.usd / quantity, "USD")} / ${unit}`}</td>
+              <td className="num">{margin.brl === null || !quantity ? "—" : `${show(margin.brl / quantity, "BRL")} / ${unit}`}</td>
             </tr>
           </tbody>
         </table>

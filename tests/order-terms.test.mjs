@@ -37,3 +37,14 @@ test("preço indicativo de compra fica no JSON do pedido sem mexer no resto", ()
   assert.equal(terms.paymentTerms, "30/70");
   assert.equal(terms.hasSupplierOrder, false);
 });
+
+test("preço de compra do processo atualiza o pedido de compra emitido com um item", () => {
+  const notes = JSON.stringify({ supplierOrder: { currency: "USD", items: [{ size: "a", volume: 160, unitPrice: 140 }] } });
+  assert.equal(readOrderTerms({ ...base, supplyChainNotes: notes }).purchaseUnitPrice, 140);
+  const applied = JSON.parse(applyOrderTerms({ ...base, supplyChainNotes: notes }, { purchaseUnitPrice: 155, purchaseCurrency: "USD" }).supplyChainNotes);
+  assert.equal(applied.supplierOrder.items[0].unitPrice, 155);
+  assert.equal(applied.supplierOrder.items[0].volume, 160);
+  const many = JSON.stringify({ supplierOrder: { currency: "USD", items: [{ unitPrice: 1, volume: 1 }, { unitPrice: 2, volume: 1 }] } });
+  const kept = JSON.parse(applyOrderTerms({ ...base, supplyChainNotes: many }, { purchaseUnitPrice: 155 }).supplyChainNotes);
+  assert.deepEqual(kept.supplierOrder.items.map((item) => item.unitPrice), [1, 2]);
+});
