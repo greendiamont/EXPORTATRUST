@@ -281,6 +281,9 @@ export default function PedidoView({ operationId }: { operationId: number }) {
     : { value: po.value, currency: form.poCurrency || form.currency };
   const estimate = estimateMargin({ sale: { value: saleValue, currency: form.currency }, purchase, logistics: amountsOf(logisticsByCurrency(logistics)), rate: logistics.exchangeRate });
   const margin = estimate.percent;
+  // Base da margem por unidade: volume em m³ quando informado; senão, a quantidade (mesma base dos preços).
+  const marginBase = Number(operation.volumeM3) || Number(operation.quantity) || 0;
+  const perUnit = (value: number, code: string) => `${code === "BRL" ? "R$" : code === "USD" ? "US$" : code} ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   function run(work: () => Promise<unknown>) {
     setBusy(true);
@@ -481,7 +484,7 @@ export default function PedidoView({ operationId }: { operationId: number }) {
               <div><dt className="pd-sub">Venda</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{saleValue ? money(saleValue, form.currency || currency) : "—"}</dd></div>
               <div><dt className="pd-sub">Compra</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{purchase.value ? money(purchase.value, purchase.currency) : "—"}{purchase.value > 0 && purchaseIndicative && <span className="pd-sub" style={{ display: "block" }}>indicativo · {money(terms.purchaseUnitPrice, purchase.currency)} por {Number(operation.volumeM3) ? "m³" : form.quantityUnit}</span>}</dd></div>
               <div><dt className="pd-sub">Logística (prévia)</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{!hasLogistics ? "—" : logisticsValue !== null ? money(logisticsValue, form.currency) : logisticsParts}{hasLogistics && <span className="pd-sub" style={{ display: "block" }}>{logisticsValue !== null ? logisticsParts : "informe o câmbio"}</span>}</dd></div>
-              <div><dt className="pd-sub">Margem{logisticsValue ? " (com logística)" : ""}</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{margin === null ? (purchase.value && saleValue ? "informe o câmbio" : "—") : `${margin.toFixed(1).replace(".", ",")}%`}{margin !== null && estimate.inSale !== null && <span className="pd-sub" style={{ display: "block" }}>{money(estimate.inSale, form.currency)}</span>}</dd></div>
+              <div><dt className="pd-sub">Margem{logisticsValue ? " (com logística)" : ""}</dt><dd className="mono" style={{ margin: "3px 0 0" }}>{margin === null ? (purchase.value && saleValue ? "informe o câmbio" : "—") : `${margin.toFixed(1).replace(".", ",")}%`}{margin !== null && estimate.inSale !== null && <span className="pd-sub" style={{ display: "block" }}>{money(estimate.inSale, form.currency)}{marginBase ? ` · ${perUnit(estimate.inSale / marginBase, form.currency)} por ${Number(operation.volumeM3) ? "m³" : form.quantityUnit}` : ""}</span>}</dd></div>
               <div><dt className="pd-sub">Pagamento</dt><dd style={{ margin: "3px 0 0" }}>{form.paymentTerms || "Não registrado"}</dd></div>
             </dl>
           </section>
