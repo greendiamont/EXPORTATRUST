@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { addMonths, amounts, exportedSeries, exportedTotals, isActive, isExported, monthKey, referenceRate, shipmentsByMonth, type Range } from "../../lib/dashboard";
+import { amounts, exportedSeries, exportedTotals, isActive, isExported, referenceRate, shipmentsByMonth, type Range } from "../../lib/dashboard";
 import { api, formatDate, money, normalize, processHref, relativeDue } from "./format";
 import { PHASE_NAMES, type Overview, type OverviewOperation } from "./overview-types";
 
@@ -53,6 +53,7 @@ export default function PainelView(_props: { userName: string; userEmail: string
   const [search, setSearch] = useState("");
   const [range, setRange] = useState<Range>(1);
   const [yearly, setYearly] = useState(false);
+  const [byVolume, setByVolume] = useState(false); // Embarques por mês: contêineres (padrão) ou m³
 
   useEffect(() => {
     api<Overview>("/api/overview").then(setData).catch((reason: Error) => setError(reason.message));
@@ -98,11 +99,14 @@ export default function PainelView(_props: { userName: string; userEmail: string
       .sort((a, b) => (Number(a.cancelled) * 2 + Number(a.completed)) - (Number(b.cancelled) * 2 + Number(b.completed)));
   }, [operations, search]);
 
-  const shipMax = niceMax(Math.max(...months.map((month) => month.shipped + month.planned), 0));
-  const currentMonth = months.find((month) => month.current);
+  const shipUnit = byVolume ? { one: "m³", many: "m³" } : { one: "contêiner", many: "contêineres" };
+  const shipQty = (value: number) => byVolume ? m3(value) : plural(Math.round(value), shipUnit.one, shipUnit.many);
+  const shipBars = months.map((month) => ({ ...month, ...(byVolume ? month.volume : month.containers) }));
+  const shipMax = niceMax(Math.max(...shipBars.map((month) => month.shipped + month.planned), 0));
+  const currentMonth = shipBars.find((month) => month.current);
+  const next30Qty = next30.reduce((sum, operation) => sum + (byVolume ? operation.volume : operation.containers), 0);
   const phaseCounts = data?.phaseCounts ?? PHASE_NAMES.map((name) => ({ name, count: 0, blocked: 0 }));
   const phaseMax = Math.max(...phaseCounts.map((phase) => phase.count), 1);
-  const containers = operations.filter((operation) => isExported(operation) && monthKey(operation.etd) && (range === 2 || monthKey(operation.etd) >= (range === 0 ? `${year}-01` : addMonths(monthKey(today), -11)))).reduce((sum, operation) => sum + operation.containers, 0);
   const totalVolume = series.reduce((sum, bucket) => sum + bucket.volume, 0);
   const totalUsd = series.reduce((sum, bucket) => sum + bucket.usd, 0);
   const periodLabel = yearly ? "no total" : "no período";
@@ -126,9 +130,9 @@ export default function PainelView(_props: { userName: string; userEmail: string
       {error && <div className="et2-alert et2-alert--bad" role="alert">Não foi possível carregar o painel: {error}</div>}
 
       <section className="db-hero" aria-label={`Exportado ${["em " + year, "nos últimos 12 meses", "desde o início"][range]}`}>
-        <div><div className="db-hero-label">Exportado em US$</div><div className="db-hero-value">{show ? compact(totals.usd, "US$") : "–"}</div><div className="db-hero-sub">{plural(totals.count, "pedido embarcado", "pedidos embarcados")}{totals.unconverted ? ` · ${totals.unconverted} em outra moeda fora da soma` : ""}</div></div>
+        <div><div className="db-hero-label">Exportado em US$</div><div className="db-hero-value">{show ? compact(totals.usd, "US$") : "–"}</div><div className="db-hero-sub">{totals.containers ? plural(totals.containers, "contêiner embarcado", "contêineres embarcados") : plural(totals.count, "pedido embarcado", "pedidos embarcados")}{totals.unconverted ? ` · ${totals.unconverted} em outra moeda fora da soma` : ""}</div></div>
         <div><div className="db-hero-label">Em reais</div><div className="db-hero-value">{show ? (totals.brl ? compact(totals.brl, "R$") : "—") : "–"}</div><div className="db-hero-sub">{rate ? "pelo câmbio de cada processo" : "informe o câmbio nos custos logísticos"}</div></div>
-        <div><div className="db-hero-label">Volume exportado</div><div className="db-hero-value">{show ? m3(totals.volume) : "–"}</div><div className="db-hero-sub">{containers ? `≈ ${plural(containers, "contêiner", "contêineres")}` : ["em " + year, "últimos 12 meses", "desde o início"][range]}</div></div>
+        <div><div className="db-hero-label">Volume exportado</div><div className="db-hero-value">{show ? m3(totals.volume) : "–"}</div><div className="db-hero-sub">{totals.containers ? `${plural(totals.containers, "contêiner", "contêineres")} · ${plural(totals.count, "pedido", "pedidos")}` : ["em " + year, "últimos 12 meses", "desde o início"][range]}</div></div>
         <div><div className="db-hero-label">Preço médio</div><div className="db-hero-value">{show && totals.volume ? `US$ ${Math.round(totals.usd / totals.volume).toLocaleString("pt-BR")}/m³` : "—"}</div><div className="db-hero-sub">valor ÷ volume</div></div>
       </section>
 
@@ -161,15 +165,21 @@ export default function PainelView(_props: { userName: string; userEmail: string
       <div className="db-grid">
         <section className="et2-card db-card" aria-labelledby="emb">
           <div className="db-card-head">
-            <div><h2 id="emb">Embarques por mês</h2><div className="et2-sub">Pedidos pela data de embarque (ETD)</div></div>
-            <div className="db-legend"><span><i style={{ background: "#2a78d6" }} />Embarcados</span><span><i style={{ background: "#eb6834" }} />A embarcar</span></div>
+            <div><h2 id="emb">Embarques por mês</h2><div className="et2-sub">{byVolume ? "Metros cúbicos" : "Contêineres"} pela data de embarque (ETD)</div></div>
+            <div className="db-actions">
+              <div className="db-legend"><span><i style={{ background: "#2a78d6" }} />Embarcados</span><span><i style={{ background: "#eb6834" }} />A embarcar</span></div>
+              <div className="et2-seg" role="group" aria-label="Medir embarques em">
+                <button aria-pressed={!byVolume} onClick={() => setByVolume(false)}>Contêineres</button>
+                <button aria-pressed={byVolume} onClick={() => setByVolume(true)}>m³</button>
+              </div>
+            </div>
           </div>
           <div className="db-stack">
-            <div className="db-yaxis">{[4, 3, 2, 1, 0].map((step) => <span key={step}>{(shipMax * step) / 4 % 1 ? "" : (shipMax * step) / 4}</span>)}</div>
-            <div className="db-stack-plot" role="img" aria-label={months.map((month) => `${month.name}: ${month.shipped} embarcados, ${month.planned} a embarcar`).join("; ")}>
-              {months.map((month) => (
-                <div key={month.key} className="db-stack-col" title={`${month.name}: ${plural(month.shipped, "embarcado", "embarcados")}, ${month.planned} a embarcar`}>
-                  <span className="db-val">{month.shipped + month.planned || ""}</span>
+            <div className="db-yaxis">{[4, 3, 2, 1, 0].map((step) => <span key={step}>{(shipMax * step) / 4 % 1 ? "" : ((shipMax * step) / 4).toLocaleString("pt-BR")}</span>)}</div>
+            <div className="db-stack-plot" role="img" aria-label={shipBars.map((month) => `${month.name}: ${shipQty(month.shipped)} embarcados, ${shipQty(month.planned)} a embarcar`).join("; ")}>
+              {shipBars.map((month) => (
+                <div key={month.key} className="db-stack-col" title={`${month.name}: ${shipQty(month.shipped)} embarcados, ${shipQty(month.planned)} a embarcar`}>
+                  <span className="db-val">{Math.round(month.shipped + month.planned).toLocaleString("pt-BR") === "0" ? "" : Math.round(month.shipped + month.planned).toLocaleString("pt-BR")}</span>
                   {month.planned > 0 && <div className="db-bar" style={{ height: `${(month.planned / shipMax) * 198}px`, background: "#eb6834", marginBottom: month.shipped ? 2 : 0, borderRadius: "4px 4px 0 0" }} />}
                   {month.shipped > 0 && <div className="db-bar" style={{ height: `${(month.shipped / shipMax) * 198}px`, background: "#2a78d6", borderRadius: month.planned ? 0 : "4px 4px 0 0" }} />}
                   <span className={`db-month${month.current ? " db-month--now" : ""}`}>{month.name}</span>
@@ -178,7 +188,7 @@ export default function PainelView(_props: { userName: string; userEmail: string
             </div>
           </div>
           <p className="db-foot">
-            {currentMonth && `${MONTH_FULL[Number(currentMonth.key.slice(5)) - 1]}: ${plural(currentMonth.shipped, "embarcado", "embarcados")}, ${plural(currentMonth.planned, "programado", "programados")}`} · próximos 30 dias: {plural(next30.length, "embarque", "embarques")}{next30.length ? ` (${compact(next30.reduce((sum, operation) => sum + usdOf(operation), 0), "US$")})` : ""}
+            {currentMonth && `${MONTH_FULL[Number(currentMonth.key.slice(5)) - 1]}: ${shipQty(currentMonth.shipped)} embarcados, ${shipQty(currentMonth.planned)} programados`} · próximos 30 dias: {shipQty(next30Qty)} em {plural(next30.length, "pedido", "pedidos")}{next30.length ? ` (${compact(next30.reduce((sum, operation) => sum + usdOf(operation), 0), "US$")})` : ""}
           </p>
         </section>
 

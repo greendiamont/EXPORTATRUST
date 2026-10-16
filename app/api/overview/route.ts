@@ -6,6 +6,7 @@ import { ORDER_PHASES, currentPhaseIndex, isClosedStatus, phaseIndexOfCode } fro
 import { requireSecurityContext } from "../../../lib/security";
 import { readOrderTerms } from "../../../lib/order-terms";
 import { parseLogisticsCosts } from "../../../lib/logistics-costs";
+import { containerCount } from "../../../lib/dashboard";
 
 // Visão consolidada para o Painel e a lista de Pedidos da interface nova:
 // fase atual de cada pedido, próximo passo e pendências com prazo.
@@ -119,9 +120,11 @@ export async function GET() {
         cancelled: Boolean(terms.cancelled),
         completed: Boolean(terms.completed),
         // Painel (dashboard): volume dos itens do pedido, câmbio do processo e contêineres informados.
-        volume: Math.round(terms.items.reduce((sum, item) => sum + (Number(item.volume) || 0), 0) * 1000) / 1000,
+        // Sem itens nem volume informado, a quantidade só vale como m³ se a unidade for m³ (não contêineres/MT).
+        volume: !operation.volumeM3 && terms.items.length === 1 && terms.items[0].volume === operation.quantity && !/m[³3]/i.test(operation.quantityUnit) ? 0
+          : Math.round(terms.items.reduce((sum, item) => sum + (Number(item.volume) || 0), 0) * 1000) / 1000,
         exchangeRate,
-        containers: operation.containerNumbers.split(/[\s,;]+/).filter(Boolean).length,
+        containers: containerCount(operation.containerNumbers, operation.quantity, operation.quantityUnit),
         completedAt: terms.completed?.at ?? "",
         blockedStep: blockedMilestone ? { what: blockedMilestone.title, who: blockedMilestone.responsibleName } : null,
       };
