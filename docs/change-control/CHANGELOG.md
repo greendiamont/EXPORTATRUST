@@ -6,7 +6,7 @@
 
 - **ID:** CHG-20261014-001
 - **Branch:** `docs/change-control-registry`
-- **PR:** a preencher
+- **PR:** #129
 - **Destino:** main + sincronização com homologation
 - **Tipo:** docs / governança
 - **Arquivos/módulos alterados:** `AGENTS.md`, `CLAUDE.md`, `docs/change-control/*`
@@ -29,7 +29,7 @@
 
 - **ID:** CHG-20261014-002
 - **Branch:** `docs/railway-agent-separation`
-- **PR:** a preencher
+- **PR:** #129
 - **Destino:** main + sincronização com homologation
 - **Tipo:** infra
 - **Arquivos/módulos alterados:** documentação de change control
@@ -52,7 +52,7 @@
 
 - **ID:** CHG-20261014-003
 - **Branch:** `infra/agent-runtime-online`
-- **PR:** a preencher
+- **PR:** #129
 - **Destino:** homologation primeiro
 - **Tipo:** infra
 - **O que mudou:** criado runtime Node mínimo para manter `agent-homologation` e `agent-production` online, com endpoints de saúde/status e trava explícita de execução em produção.
@@ -660,7 +660,7 @@
 
 - **ID:** CHG-20261016-013
 - **Branch:** `claude/margem-por-m3`
-- **PR:** a preencher
+- **PR:** #129
 - **Destino:** homologation (produção só após "alteração aprovada" e "pode produzir")
 - **Pedido de Ivam (conversa, 2026-10-16, com print do GBU061/26):** "alterei algumas coisas nos custos logísticos mas ele não alterou a conta/margem — trazer para ele fazer um cálculo por m3 também — margem estimada por m3 e total do processo em R$/US$".
 - **Causa:** processos importados já têm pedido de compra emitido; o Financeiro usava os valores desse pedido e ignorava o preço de compra digitado no processo, então a conta do pedido não mudava.
