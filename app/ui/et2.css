@@ -369,3 +369,5 @@ a.et2-btn--primary, a.et2-btn--ok { color: #fff; }
 .sa-emit { margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding-top: 8px; }
 .sa-emit-btn { min-height: 40px; border: 0; border-radius: 6px; font: inherit; font-weight: 600; background: #047857; color: #fff; cursor: pointer; }
 .sa-emit-btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+.pm-multi { min-height: 38px; display: flex; align-items: center; padding: 0 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: #f9fafb; color: #374151; }
+.pm-table .pd-input { min-height: 32px; font-size: 13px; }
