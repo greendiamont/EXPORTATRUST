@@ -63,6 +63,8 @@ Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout n
 |---|---|---|
 | 2026-10-14 | Ivam | Aprovou o redesign (protótipos 1 a 6) — `docs/redesign/PLANO_REDESIGN.md` |
 | 2026-10-15 | Ivam | Reafirmou o layout aprovado do Pedido (fases e emissão de documentos) e criou esta regra |
+| 2026-10-16 | Ivam | Aprovou o botão "Editar processo" no topo do pedido: "homologação é parte do botão e tá aprovada a sessão"; "pode produzir" |
+| 2026-10-16 | Ivam | Aprovou a margem por m³: "alteração aprovada PODE PRODUZIR" |
 | 2026-10-16 | Ivam | Aprovou preço de compra, preço indicativo de venda e margem (quadro "5c · Preços e margem"): "alteração aprovada PODE SUBIR PRA PRODUÇÃO" |
 | 2026-10-16 | Ivam | Aprovou os custos logísticos por serviço (quadro "5b · Custos logísticos", a partir da cotação HMM): "alteração aprovada PODE PRODUZIR" |
 | 2026-10-16 | Ivam | Aprovou a seção "Processos · negociação" no Painel e o "Editar negociação" pelo formulário do Novo processo: "Boa, Claude, é exatamente isso que eu preciso, tá? Pode subir para homologação e produção. Produção, layout aprovado. E alteração" |
