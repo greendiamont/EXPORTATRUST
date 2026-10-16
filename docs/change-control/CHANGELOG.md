@@ -605,3 +605,38 @@
 - **Dados/migração:** nenhuma migração; nada apagado.
 - **Testes:** eslint, tsc (sem erros novos), 87 testes unitários (3 novos), build Railway, Playwright local (21 processos no Painel, busca, edição de pagamento/medida/incoterm, abrir pedido).
 - **Status:** em andamento
+
+## 2026-10-16 — Claude — Painel: tabela de processos cabe na tela; referência editável
+
+- **ID:** CHG-20261016-007
+- **Branch:** `claude/painel-processos-largura`
+- **PR:** #121
+- **Destino:** homologation (produção só após "alteração aprovada" e "pode produzir")
+- **Pedidos de Ivam (conversa, 2026-10-16):** "a questão do tamanho aqui. Ela explodiu na tela. Então ela precisa ficar centralizada" e "Quando eu altero o processo, ele precisa me dar acesso total [...] se eu precisar alterar a referência do pedido, ele também tem que alterar a referência do pedido."
+- **O que mudou:** tabela "Processos · negociação" com larguras de coluna fixas e quebra de linha sem cortar palavras — cabe inteira no quadro (1280–1920 px), mesmas colunas e informações; preço mostra a unidade numa segunda linha. Em "Editar negociação", a referência passa a ser editável: muda a referência do processo e do pedido (mesmo registro), em maiúsculas, recusando referência já usada.
+- **Testes:** eslint, tsc (sem erros novos), build Railway, Playwright local (tabela cabe em 1280/1440/1920; referência duplicada recusada; troca de referência refletida no pedido).
+- **Status:** aprovado por Ivam ("alteração aprovada PODE PRODUZIR", 2026-10-16)
+
+## 2026-10-16 — Claude — Custos logísticos em reais e dólares, com total nas duas moedas
+
+- **ID:** CHG-20261016-008
+- **Branch:** `claude/custos-duas-moedas`
+- **PR:** #122
+- **Destino:** homologation (produção só após "alteração aprovada" e "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16):** "em cada campo [...] a gente pode colocar em real despesas em real ou em dólar. E no final, você traz a somatório. De tudo ou em dólar ou em real. As duas opções."
+- **O que mudou:** cada custo logístico tem a sua moeda (R$ ou US$); campo "Câmbio (R$ por US$ 1)" substitui a moeda única; total estimado em US$ e em R$. No pedido, o Financeiro converte a logística para a moeda da venda (mostra também R$ + US$ separados) e a margem usa o valor convertido; a edição em "Todos os dados do pedido" tem moeda por custo. Registros antigos (moeda única) continuam válidos.
+- **Dados/migração:** nenhuma (mesmo campo JSON, chaves novas `currencies` e `exchangeRate`).
+- **Testes:** eslint, tsc (sem erros novos), 89 testes unitários (2 novos), build Railway, Playwright local (R$ 520 + US$ 1.325 com câmbio 5,40 → US$ 1.421 · R$ 7.675; Financeiro do pedido convertido).
+- **Status:** aprovado por Ivam ("alteração aprovada PODE PRODUZIR", 2026-10-16); evoluído para a cotação por serviço em CHG-20261016-009
+
+## 2026-10-16 — Claude — Custos logísticos por serviço (cotação do agente/armador)
+
+- **ID:** CHG-20261016-009
+- **Branch:** `claude/custos-por-servico`
+- **PR:** #123 (homologation) e promoção para main
+- **Destino:** homologation e produção
+- **Pedido de Ivam (conversa, 2026-10-16):** enviou a cotação padrão da HMM ("Esse é um exemplo do custo [...] portuário que a gente recebe como uma base padrão [...] do que eu preciso colocar lá dentro"). Proposta desenhada no protótipo (`docs/redesign/prototipo/CustosLogisticos.dc.html`, quadro "5b · Custos logísticos") e aprovada: "alteração aprovada PODE PRODUZIR".
+- **O que mudou:** a prévia dos custos logísticos (seção 5 do Novo processo / Editar negociação e "Todos os dados do pedido") vira a cotação do agente: câmbio, agente/armador, equipamento e validade; grupos (Frete internacional, Custos de origem, e outros que o usuário criar) com uma linha por serviço — moeda, tarifa, quantidade, unidade e total calculado; total por moeda e total convertido em US$ e R$; observações. Componente compartilhado `app/ui/logistics-costs-editor.tsx`. O Financeiro do pedido e a margem continuam usando o total convertido.
+- **Dados/migração:** nenhuma migration. Mesmo campo `operations.logistics_costs_json`, novo formato `{exchangeRate, agent, equipment, validUntil, notes, groups[{name, items[{service, currency, rate, quantity, unit}]}]}`. Registros antigos (seis campos fixos) são convertidos na leitura em linhas dos grupos correspondentes — nenhum valor perdido; só são regravados no novo formato quando alguém salva os custos.
+- **Testes:** tsc (sem erros novos), 91 testes unitários (4 de custos), build Railway, Playwright local (registro antigo exibido como linhas; cotação HMM lançada → BRL 1.990,00 / USD 1.325,00, US$ 1.693,52 / R$ 9.145,00 com câmbio 5,40; edição pelo pedido).
+- **Status:** em andamento

@@ -515,6 +515,19 @@ export async function PATCH(request: Request) {
         } else changes.importerClientId = null;
       }
       if ("euImporter" in changes && !String(changes.euImporter)) return Response.json({ error: "Informe o cliente / importador." }, { status: 400 });
+      // Referência do processo = referência do pedido (mesmo registro); precisa continuar única.
+      if ("reference" in fields) {
+        if ("reference" in original && String(original.reference ?? "") !== String(current.reference ?? "")) {
+          return Response.json({ error: "Outra pessoa alterou os dados do pedido enquanto você editava.", conflict: true, current }, { status: 409 });
+        }
+        const reference = String(fields.reference ?? "").trim().toUpperCase();
+        if (!reference) return Response.json({ error: "Informe a referência do processo." }, { status: 400 });
+        if (reference !== current.reference) {
+          const [taken] = await db.select({ id: operations.id }).from(operations).where(eq(operations.reference, reference)).limit(1);
+          if (taken) return Response.json({ error: `Já existe um processo com a referência ${reference}.` }, { status: 409 });
+          changes.reference = reference;
+        }
+      }
       if (!Object.keys(changes).length) return Response.json({ operation: current });
       const [operation] = await db.update(operations).set(changes as Partial<typeof operations.$inferInsert>).where(and(eq(operations.id, id), eq(operations.organizationId, context.organizationId))).returning();
       // O comprador dos documentos acompanha o importador quando ainda era o mesmo nome.

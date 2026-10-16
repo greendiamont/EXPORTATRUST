@@ -282,3 +282,35 @@ a.et2-btn--primary, a.et2-btn--ok { color: #fff; }
 .et2 a.pd-btn { color: var(--et2-ink); }
 .et2 a.pd-btn--dark { color: #fff; }
 .pd-row .pd-badge { white-space: normal; max-width: 45%; text-align: right; }
+
+/* Painel · Processos: tabela cabe na largura do quadro (sem corte à direita, sem quebrar palavras). */
+.et2-table.pn-procs { width: 100%; table-layout: fixed; }
+.et2-table.pn-procs th, .et2-table.pn-procs td { padding: 10px 8px; overflow-wrap: break-word; word-break: normal; hyphens: auto; }
+.et2-table.pn-procs th:first-child, .et2-table.pn-procs td:first-child { padding-left: 16px; }
+.et2-table.pn-procs th:last-child, .et2-table.pn-procs td:last-child { padding-right: 16px; }
+.et2-table.pn-procs .num { font-family: inherit; }
+
+/* Custos logísticos por serviço (protótipo "5b · Custos logísticos", aprovado em 2026-10-16) */
+.lc-box { border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; }
+.lc-head { padding: 16px 20px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 800px) { .lc-head { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.lc-head label, .lc-notes { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #4b5563; }
+.lc-group { padding: 0 20px 18px; }
+.lc-group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px; font-size: 14px; }
+.lc-group-head .mono { font-size: 13px; color: #4b5563; white-space: nowrap; }
+.lc-group-name { border: 1px solid transparent; border-radius: 6px; padding: 2px 6px; margin-left: -6px; font: inherit; font-size: 14px; font-weight: 600; color: var(--et2-ink); background: transparent; min-width: 0; flex: 1; max-width: 420px; }
+.lc-group-name:hover, .lc-group-name:focus { border-color: #d1d5db; background: #fff; }
+.lc-table-wrap { border: 1px solid #e5e7eb; border-radius: 6px; overflow-x: auto; }
+.lc-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 13px; }
+.lc-table th { background: #f9fafb; text-align: left; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; font-weight: 500; padding: 8px 10px; }
+.lc-table td { padding: 6px 10px; border-top: 1px solid #f0f1f3; }
+.lc-table .num { text-align: right; white-space: nowrap; }
+.lc-table .pd-input { min-height: 32px; font-size: 13px; padding: 0 8px; }
+.lc-table input.num { text-align: right; }
+.lc-remove { border: 0; background: transparent; color: #6b7280; font-size: 16px; cursor: pointer; }
+.lc-add-row { padding: 8px 10px; border-top: 1px solid #f0f1f3; display: flex; gap: 8px; }
+.lc-add { min-height: 30px; padding: 0 10px; border: 1px dashed #9ca3af; border-radius: 6px; background: #fff; font: inherit; font-size: 13px; cursor: pointer; }
+.lc-pad { padding: 0 20px 18px; }
+.lc-totals { padding: 14px 20px; border-top: 1px solid #e5e7eb; display: flex; flex-wrap: wrap; gap: 24px; justify-content: flex-end; align-items: flex-start; margin-bottom: 18px; }
+.lc-label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: .4px; }
+.lc-big { font-size: 18px; font-weight: 600; }

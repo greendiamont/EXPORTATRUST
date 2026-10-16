@@ -64,25 +64,26 @@ export default function PainelView({ userName, userEmail }: { userName: string; 
           </label>
         </div>
         <div className="et2-scroll">
-          <table className="et2-table" style={{ minWidth: 1180, fontSize: 13 }}>
+          <table className="et2-table pn-procs" lang="pt-BR" style={{ minWidth: 1100, fontSize: 12.5 }}>
+            <colgroup><col style={{ width: "10%" }} /><col style={{ width: "10%" }} /><col style={{ width: "10%" }} /><col style={{ width: "10%" }} /><col style={{ width: "11%" }} /><col style={{ width: "9%" }} /><col style={{ width: "7%" }} /><col style={{ width: "9%" }} /><col style={{ width: "9%" }} /><col style={{ width: "7%" }} /><col style={{ width: "8%" }} /></colgroup>
             <thead><tr><th>Processo</th><th>Cliente / importador</th><th>Exportador</th><th>Fornecedor</th><th>Produto · medidas</th><th>Incoterm</th><th className="num">Quantidade</th><th className="num">Preço · total</th><th>Pagamento</th><th>Fase</th><th><span className="sr-only">Ações</span></th></tr></thead>
             <tbody>
               {processes.map((operation) => (
                 <tr key={operation.id}>
-                  <td style={{ whiteSpace: "nowrap" }}><a className="mono" style={{ fontWeight: 500 }} href={processHref(operation.id)}>{operation.reference}</a>{operation.contractNumber && <span className="et2-sub">PO {operation.contractNumber}</span>}</td>
+                  <td><a className="mono" style={{ fontWeight: 500 }} href={processHref(operation.id)}>{operation.reference}</a>{operation.contractNumber && <span className="et2-sub">PO {operation.contractNumber}</span>}</td>
                   <td>{operation.client || "—"}</td>
                   <td>{operation.exporterName || "—"}</td>
                   <td>{operation.supplierName || "—"}</td>
                   <td>{operation.product || "—"}{operation.terms?.sizes && <span className="et2-sub">{operation.terms.sizes}</span>}</td>
-                  <td style={{ whiteSpace: "nowrap" }}>{[operation.incoterm, operation.incoterm?.startsWith("F") || operation.incoterm === "EXW" ? operation.portOfLoading : operation.portOfDischarge].filter(Boolean).join(" ") || "—"}</td>
-                  <td className="num mono" style={{ whiteSpace: "nowrap" }}>{operation.quantity ? `${operation.quantity.toLocaleString("pt-BR")} ${operation.quantityUnit}` : "—"}</td>
-                  <td className="num mono" style={{ whiteSpace: "nowrap" }}>
-                    {operation.terms?.unitPrice ? `${operation.currency} ${operation.terms.unitPrice.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}/${operation.quantityUnit}` : operation.terms?.itemCount > 1 ? "vários itens" : "—"}
+                  <td>{[operation.incoterm, operation.incoterm?.startsWith("F") || operation.incoterm === "EXW" ? operation.portOfLoading : operation.portOfDischarge].filter(Boolean).join(" ") || "—"}</td>
+                  <td className="num">{operation.quantity ? `${operation.quantity.toLocaleString("pt-BR")} ${operation.quantityUnit}` : "—"}</td>
+                  <td className="num">
+                    {operation.terms?.unitPrice ? <>{operation.currency} {operation.terms.unitPrice.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}<span className="et2-sub" style={{ marginTop: 0 }}>por {operation.quantityUnit}</span></> : operation.terms?.itemCount > 1 ? "vários itens" : "—"}
                     <span className="et2-sub">{operation.value ? money(operation.value, operation.currency || "USD") : ""}</span>
                   </td>
-                  <td style={{ minWidth: 180, maxWidth: 240 }}><span title={operation.terms?.paymentTerms || undefined} style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{operation.terms?.paymentTerms || "—"}</span></td>
+                  <td><span title={operation.terms?.paymentTerms || undefined} style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{operation.terms?.paymentTerms || "—"}</span></td>
                   <td style={{ whiteSpace: "nowrap" }}><span className={`et2-badge et2-badge--${operation.phaseIndex === 5 ? "ok" : operation.phaseIndex === 0 ? "todo" : "warn"}`}>{operation.phaseName}</span></td>
-                  <td style={{ whiteSpace: "nowrap" }}><a className="et2-btn et2-btn--sm" href={`/novo-processo?processo=${operation.id}`}>Editar negociação</a></td>
+                  <td><a className="et2-btn et2-btn--sm" style={{ whiteSpace: "normal", textAlign: "center", lineHeight: 1.2, padding: "4px 6px", minHeight: 0, maxWidth: "100%", boxSizing: "border-box" }} href={`/novo-processo?processo=${operation.id}`}>Editar negociação</a></td>
                 </tr>
               ))}
             </tbody>
