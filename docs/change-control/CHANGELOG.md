@@ -753,3 +753,15 @@
 - **Dados/migration:** tabela nova `operation_collaborators` (criada pelo servidor na inicialização, Postgres). Perfil `convidado` adicionado a `APP_ROLES`.
 - **Testes:** tsc (sem erros novos), 98 testes unitários (2 novos da trava), build Railway, Playwright local (convite → link → senha → convidado cai no processo; sem Financeiro/valores/Editar; APIs de outros processos, overview, cadastros e documentos comerciais = 403; snapshot sem valores; remoção corta o acesso).
 - **Status:** em andamento
+
+## 2026-10-16 — Claude — "Concluir etapa" na fase aberta; "Operação concluída" na fase Entregue
+
+- **ID:** CHG-20261016-023
+- **Branch:** `claude/concluir-etapa`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16):** "botão de concluir etapa não está funcionando dentro do fluxo. No fluxo 6 entrega — criar um botão para operação concluída — dessa forma o pedido entra para os arquivos de pedidos concluídos."
+- **Causa:** o botão "Concluir etapa" do topo concluía a próxima etapa da fase *atual do pedido*, não da fase aberta na tela; e a "Aprovação para embarque" é travada pela regra do app antigo (etapas anteriores concluídas) com uma mensagem que não dizia quais faltavam.
+- **O que mudou:** "Concluir etapa" age na fase selecionada. A recusa da aprovação para embarque lista as etapas que faltam. Na fase 6 · Entregue, faixa "Encerrar a operação" com botão "Operação concluída ✓" (conclui a etapa Entregue, marca `supply_chain_notes.completed = {at, by}` e a situação "Concluído"); depois mostra "Operação concluída em … por …" e "Reabrir operação". Lista de Pedidos: filtro "Concluídos (n)", concluídos fora das fases em andamento e das pendências, depois dos ativos (cancelados continuam no fim); selo "Operação concluída". Painel: concluídos no fim da tabela com "Concluída". `PATCH /api/operations` `action: "complete" | "uncomplete"`, auditado.
+- **Testes:** tsc (sem erros novos), build Railway, Playwright local (concluir etapa na fase Embarque; aprovação recusada mostra "Falta concluir: …"; operação concluída → filtro Concluídos (1), fora das fases).
+- **Status:** em andamento

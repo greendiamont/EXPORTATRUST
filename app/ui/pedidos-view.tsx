@@ -8,7 +8,8 @@ export default function PedidosView({ initialPhase }: { initialPhase: number | n
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState("");
   const [phase, setPhase] = useState<number | null>(initialPhase);
-  const [onlyCancelled, setOnlyCancelled] = useState(false);
+  // Arquivos: pedidos cancelados ou com operação concluída (fora das fases em andamento).
+  const [archive, setArchive] = useState<"" | "cancelados" | "concluidos">("");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
 
@@ -33,15 +34,16 @@ export default function PedidosView({ initialPhase }: { initialPhase: number | n
   const rows = useMemo(() => {
     const term = normalize(query.trim());
     return (data?.operations ?? []).filter((operation) =>
-      (onlyCancelled ? operation.cancelled : phase === null || (!operation.cancelled && operation.phaseIndex === phase))
+      (archive === "cancelados" ? operation.cancelled : archive === "concluidos" ? operation.completed && !operation.cancelled : phase === null || (!operation.cancelled && !operation.completed && operation.phaseIndex === phase))
       && (!term || normalize([operation.reference, operation.client, operation.product, operation.supplierName, operation.country].join(" ")).includes(term)))
-      .sort((a, b) => Number(a.cancelled) - Number(b.cancelled));
-  }, [data, phase, query, onlyCancelled]);
+      .sort((a, b) => (Number(a.cancelled) * 2 + Number(a.completed)) - (Number(b.cancelled) * 2 + Number(b.completed)));
+  }, [data, phase, query, archive]);
   const cancelledCount = (data?.operations ?? []).filter((operation) => operation.cancelled).length;
+  const completedCount = (data?.operations ?? []).filter((operation) => operation.completed && !operation.cancelled).length;
 
   function pickPhase(next: number | null) {
     setPhase(next);
-    setOnlyCancelled(false);
+    setArchive("");
     const url = new URL(window.location.href);
     if (next === null) url.searchParams.delete("fase"); else url.searchParams.set("fase", String(next));
     window.history.replaceState(null, "", url);
@@ -56,11 +58,12 @@ export default function PedidosView({ initialPhase }: { initialPhase: number | n
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
         <div className="et2-seg" role="group" aria-label="Filtrar por fase">
-          <button aria-pressed={phase === null && !onlyCancelled} onClick={() => pickPhase(null)}>Todos {data ? `(${data.operations.length})` : ""}</button>
+          <button aria-pressed={phase === null && !archive} onClick={() => pickPhase(null)}>Todos {data ? `(${data.operations.length})` : ""}</button>
           {PHASE_NAMES.map((name, index) => (
-            <button key={name} aria-pressed={phase === index && !onlyCancelled} onClick={() => pickPhase(index)}>{name} {data ? `(${data.phaseCounts[index]?.count ?? 0})` : ""}</button>
+            <button key={name} aria-pressed={phase === index && !archive} onClick={() => pickPhase(index)}>{name} {data ? `(${data.phaseCounts[index]?.count ?? 0})` : ""}</button>
           ))}
-          {cancelledCount > 0 && <button aria-pressed={onlyCancelled} onClick={() => { setOnlyCancelled(true); setPhase(null); }}>Cancelados ({cancelledCount})</button>}
+          {completedCount > 0 && <button aria-pressed={archive === "concluidos"} onClick={() => { setArchive("concluidos"); setPhase(null); }}>Concluídos ({completedCount})</button>}
+          {cancelledCount > 0 && <button aria-pressed={archive === "cancelados"} onClick={() => { setArchive("cancelados"); setPhase(null); }}>Cancelados ({cancelledCount})</button>}
         </div>
         <label style={{ display: "flex" }}>
           <span className="sr-only">Buscar pedidos</span>
@@ -86,6 +89,7 @@ export default function PedidosView({ initialPhase }: { initialPhase: number | n
                     </div>
                     {operation.cancelled
                       ? <span className="et2-badge et2-badge--bad">Cancelado</span>
+                      : operation.completed ? <span className="et2-badge et2-badge--ok">Operação concluída</span>
                       : <span className="et2-sub" style={{ color: "var(--et2-ink-2)" }}>{operation.phaseIndex + 1}/6 · {operation.phaseName}{operation.blocked ? " · bloqueado" : ""}</span>}
                   </td>
                   <td>{operation.next?.what || "—"}{operation.next?.detail && <span className="et2-sub">{operation.next.detail}</span>}{due && <span className="et2-sub" style={{ color: due.tone === "bad" ? "var(--et2-bad)" : due.tone === "warn" ? "var(--et2-warn)" : undefined, fontWeight: due.tone === "todo" ? 400 : 600 }}>{due.label}{operation.next?.who ? ` · ${operation.next.who}` : ""}</span>}</td>
@@ -94,7 +98,7 @@ export default function PedidosView({ initialPhase }: { initialPhase: number | n
                   <td>{operation.eudrRequired
                     ? <span className={`et2-badge et2-badge--${operation.readiness >= 100 ? "ok" : "warn"}`}>{operation.readiness >= 100 ? "Completo" : `Pendente · ${operation.readiness}%`}</span>
                     : <span className="et2-badge et2-badge--todo">N/A</span>}</td>
-                  <td><button className="et2-btn et2-btn--sm pd-cancel-btn" disabled={busyId === operation.id} onClick={() => toggleCancel(operation)} title={operation.cancelled ? "Reabrir este pedido" : "Cancelar este pedido"}>{busyId === operation.id ? "…" : operation.cancelled ? "Reabrir" : "Cancelar"}</button></td>
+                  <td>{!operation.completed && <button className="et2-btn et2-btn--sm pd-cancel-btn" disabled={busyId === operation.id} onClick={() => toggleCancel(operation)} title={operation.cancelled ? "Reabrir este pedido" : "Cancelar este pedido"}>{busyId === operation.id ? "…" : operation.cancelled ? "Reabrir" : "Cancelar"}</button>}</td>
                 </tr>
               );
             })}

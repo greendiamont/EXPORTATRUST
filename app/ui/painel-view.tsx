@@ -24,11 +24,11 @@ export default function PainelView({ userName, userEmail }: { userName: string; 
   const processes = useMemo(() => {
     const query = normalize(search.trim());
     return (data?.operations ?? []).filter((operation) => !query || normalize([operation.reference, operation.contractNumber, operation.client, operation.exporterName, operation.supplierName, operation.product, operation.terms?.sizes].join(" ")).includes(query))
-      .sort((a, b) => Number(a.cancelled) - Number(b.cancelled));
+      .sort((a, b) => (Number(a.cancelled) * 2 + Number(a.completed)) - (Number(b.cancelled) * 2 + Number(b.completed)));
   }, [data, search]);
 
   const departures = useMemo(() => (data?.operations ?? [])
-    .filter((operation) => !operation.cancelled && operation.etd && operation.phaseIndex < 4)
+    .filter((operation) => !operation.cancelled && !operation.completed && operation.etd && operation.phaseIndex < 4)
     .sort((a, b) => a.etd.localeCompare(b.etd))
     .slice(0, 6), [data]);
 
@@ -83,7 +83,7 @@ export default function PainelView({ userName, userEmail }: { userName: string; 
                     <span className="et2-sub">{operation.value ? money(operation.value, operation.currency || "USD") : ""}</span>
                   </td>
                   <td><span title={operation.terms?.paymentTerms || undefined} style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{operation.terms?.paymentTerms || "—"}</span></td>
-                  <td style={{ whiteSpace: "nowrap" }}><span className={`et2-badge et2-badge--${operation.cancelled ? "bad" : operation.phaseIndex === 5 ? "ok" : operation.phaseIndex === 0 ? "todo" : "warn"}`}>{operation.cancelled ? "Cancelado" : operation.phaseName}</span></td>
+                  <td style={{ whiteSpace: "nowrap" }}><span className={`et2-badge et2-badge--${operation.cancelled ? "bad" : operation.completed || operation.phaseIndex === 5 ? "ok" : operation.phaseIndex === 0 ? "todo" : "warn"}`}>{operation.cancelled ? "Cancelado" : operation.completed ? "Concluída" : operation.phaseName}</span></td>
                   <td><a className="et2-btn et2-btn--sm" style={{ whiteSpace: "normal", textAlign: "center", lineHeight: 1.2, padding: "4px 6px", minHeight: 0, maxWidth: "100%", boxSizing: "border-box" }} href={`/novo-processo?processo=${operation.id}`} title="Editar a negociação deste processo">Editar</a></td>
                 </tr>
               ))}

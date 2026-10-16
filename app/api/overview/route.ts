@@ -56,7 +56,7 @@ export async function GET() {
       const openMilestones = milestones.filter((milestone) => !isClosedStatus(milestone.status));
       const openTasks = tasks.filter((task) => task.status !== "Concluído");
 
-      const isCancelled = Boolean(readOrderTerms(operation).cancelled);
+      const isCancelled = Boolean(readOrderTerms(operation).cancelled || readOrderTerms(operation).completed);
       for (const milestone of isCancelled ? [] : openMilestones) {
         if (!milestone.dueDate) continue;
         pending.push({ operationId: operation.id, reference: operation.reference, kind: "etapa", what: milestone.title, detail: milestone.nextAction !== EXPORT_ORDER_MILESTONES.find((item) => item.code === milestone.code)?.description ? milestone.nextAction : "", due: milestone.dueDate, who: milestone.responsibleName, late: milestone.dueDate.slice(0, 10) < now });
@@ -112,14 +112,15 @@ export async function GET() {
         portOfDischarge: operation.portOfDischarge,
         terms: readOrderTerms(operation),
         cancelled: Boolean(readOrderTerms(operation).cancelled),
+        completed: Boolean(readOrderTerms(operation).completed),
       };
     });
 
     pending.sort((a, b) => a.due.localeCompare(b.due));
     const phaseCounts = ORDER_PHASES.map((phase, index) => ({
       name: phase.name,
-      count: rows.filter((row) => !row.cancelled && row.phaseIndex === index).length,
-      blocked: rows.filter((row) => !row.cancelled && row.phaseIndex === index && row.blocked).length,
+      count: rows.filter((row) => !row.cancelled && !row.completed && row.phaseIndex === index).length,
+      blocked: rows.filter((row) => !row.cancelled && !row.completed && row.phaseIndex === index && row.blocked).length,
     }));
     return Response.json({ operations: rows, pending: pending.slice(0, 200), phaseCounts, today: now }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
