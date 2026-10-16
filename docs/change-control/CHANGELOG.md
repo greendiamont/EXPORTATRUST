@@ -610,7 +610,7 @@
 
 - **ID:** CHG-20261016-007
 - **Branch:** `claude/painel-processos-largura`
-- **PR:** a preencher
+- **PR:** #121
 - **Destino:** homologation (produção só após "alteração aprovada" e "pode produzir")
 - **Pedidos de Ivam (conversa, 2026-10-16):** "a questão do tamanho aqui. Ela explodiu na tela. Então ela precisa ficar centralizada" e "Quando eu altero o processo, ele precisa me dar acesso total [...] se eu precisar alterar a referência do pedido, ele também tem que alterar a referência do pedido."
 - **O que mudou:** tabela "Processos · negociação" com larguras de coluna fixas e quebra de linha sem cortar palavras — cabe inteira no quadro (1280–1920 px), mesmas colunas e informações; preço mostra a unidade numa segunda linha. Em "Editar negociação", a referência passa a ser editável: muda a referência do processo e do pedido (mesmo registro), em maiúsculas, recusando referência já usada.
