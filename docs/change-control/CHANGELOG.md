@@ -829,4 +829,4 @@
 - **Pedido de Ivam (conversa, 2026-10-16):** "No dashboard, eu quero, na verdade, o volume por containers, não por pedido, tá? Quero por containers. Ou por metro cúbico."
 - **O que mudou:** "Embarques por mês" deixa de contar pedidos e passa a somar contêineres (padrão) ou m³, com o seletor "Contêineres | m³"; o rodapé do gráfico também. A faixa escura mostra "N contêineres embarcados". Contêineres do pedido = números de contêiner informados no embarque; antes disso, a quantidade quando a unidade é contêiner (`containerCount` em `lib/dashboard.ts`). Pedido sem itens nem volume com quantidade em contêineres/MT não entra mais como m³.
 - **Testes:** tsc (92, sem erros novos), testes (`tests/dashboard.test.mjs` com contêineres), build Railway, Playwright local.
-- **Status:** em andamento
+- **Status:** aprovado por Ivam ("pode produzir") — em produção (PR #155)
