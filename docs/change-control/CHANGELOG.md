@@ -691,3 +691,16 @@
 - **Pendente:** envio real precisa de `RESEND_API_KEY` e `EMAIL_FROM` nas variáveis do Railway (o segredo do app antigo no Cloudflare não pode ser lido de volta). Proposta de convite de colaborador por processo desenhada (`ConvidarColaborador.dc.html`), ainda não implementada.
 - **Testes:** tsc (sem erros novos), 95 testes unitários, build Railway, Playwright local (dados reais importados mostram o set aprovado; processo vazio: anexar 5 documentos pelos cartões, aprovar 4 → "Falta aprovar: Certificado Fitossanitário", aprovar o 5º → botão liberado; envio sem Resend retorna aviso; celular 390 px).
 - **Status:** aguardando aprovação de Ivam
+
+## 2026-10-16 — Claude — Editar processo com vários itens no pedido
+
+- **ID:** CHG-20261016-017
+- **Branch:** `claude/editar-varios-itens`
+- **PR:** ver PR da branch
+- **Destino:** homologation; produção após "pode produzir"
+- **Pedido de Ivam (conversa, 2026-10-16, print do GBU015/26 em produção):** "estou tentando alterar um processo e ele me deu essa mensagem [Este pedido tem vários itens…], preciso que quando altere o processo ele altere em todas as fases do pedido as informações".
+- **Causa:** a edição do processo só alterava medida e preço de pedidos com um item; com vários itens a API recusava e nenhuma alteração era gravada.
+- **O que mudou:** seção 4 da edição mostra "Itens do pedido" quando há vários itens (medida e preço de venda por item, volume e total); ao salvar, os itens do pedido (emissão de documentos), o valor comercial (soma volume × preço) e o Financeiro passam a usar os novos valores; demais campos dos itens são preservados. O preço de venda da margem usa o total dos itens. Valor comercial exibido com no máximo 3 casas.
+- **Dados/migration:** nenhuma.
+- **Testes:** tsc (sem erros novos), 96 testes unitários (1 novo), build Railway, Playwright local (processo com 3 itens: medida do item 1 e preço do item 2 alterados + pagamento → salvo; valor comercial US$ 27.927,24; Financeiro atualizado).
+- **Status:** em andamento

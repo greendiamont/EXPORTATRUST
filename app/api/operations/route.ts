@@ -497,6 +497,7 @@ export async function PATCH(request: Request) {
         if (terms.unitPrice !== undefined) termChanges.unitPrice = numeric(terms.unitPrice);
         if (terms.purchaseUnitPrice !== undefined) termChanges.purchaseUnitPrice = numeric(terms.purchaseUnitPrice);
         if (terms.purchaseCurrency !== undefined) termChanges.purchaseCurrency = String(terms.purchaseCurrency);
+        if (Array.isArray(terms.items)) termChanges.items = (terms.items as Array<Record<string, unknown>>).map((item) => ({ ...(item.size !== undefined ? { size: String(item.size) } : {}), ...(item.unitPrice !== undefined ? { unitPrice: numeric(item.unitPrice) } : {}) }));
         const applied = applyOrderTerms({ ...current, quantity: Number(changes.quantity ?? current.quantity), volumeM3: Number(changes.volumeM3 ?? current.volumeM3) }, termChanges);
         if (applied.error) return Response.json({ error: applied.error }, { status: 400 });
         changes.supplyChainNotes = applied.supplyChainNotes;

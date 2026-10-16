@@ -60,10 +60,13 @@ export function readOrderTerms(source: OrderTermsSource) {
     sizes: [...new Set(effective.map((item) => item.size).filter(Boolean))].join("; "),
     unitPrice: effective.length === 1 ? effective[0].unitPrice : null,
     itemCount: effective.length,
+    /** Itens do pedido de venda (com vários itens, medida e preço são editados item a item). */
+    items: effective,
   };
 }
 
-export type OrderTermsChanges = { paymentTerms?: string; size?: string; unitPrice?: number; notes?: string; purchaseUnitPrice?: number; purchaseCurrency?: string };
+export type OrderItemChange = { size?: string; unitPrice?: number };
+export type OrderTermsChanges = { paymentTerms?: string; size?: string; unitPrice?: number; notes?: string; purchaseUnitPrice?: number; purchaseCurrency?: string; items?: OrderItemChange[] };
 
 /**
  * Aplica mudanças nos termos. Medida e preço só mudam quando o pedido tem um único item
@@ -86,6 +89,21 @@ export function applyOrderTerms(source: OrderTermsSource, changes: OrderTermsCha
     }
   }
   let commercialValue: number | undefined;
+  // Vários itens: medida e preço de cada item (mesma ordem do pedido); o valor comercial passa a
+  // ser a soma volume × preço, como na emissão de documentos. Demais campos do item são mantidos.
+  if (changes.items) {
+    const raw = json && Array.isArray(json.orderItems) ? json.orderItems as Array<Record<string, unknown>> : [];
+    const base = raw.length ? raw : [fallbackItem(source) as unknown as Record<string, unknown>];
+    if (changes.items.length !== base.length) return { supplyChainNotes: source.supplyChainNotes ?? "", error: "Os itens do pedido mudaram enquanto você editava. Abra o processo de novo." };
+    const updated = base.map((item, index) => {
+      const change = changes.items![index];
+      const unitPrice = change.unitPrice !== undefined && Number.isFinite(change.unitPrice) ? change.unitPrice : Number(item.unitPrice) || 0;
+      return { ...item, size: change.size !== undefined ? change.size.trim() : String(item.size ?? ""), unitPrice } as Record<string, unknown>;
+    });
+    next.orderItems = updated;
+    commercialValue = Math.round(updated.reduce((sum, item) => sum + (Number(item.volume) || 0) * (Number(item.unitPrice) || 0), 0) * 100) / 100;
+    return { supplyChainNotes: JSON.stringify(next), commercialValue };
+  }
   if (changes.size !== undefined || changes.unitPrice !== undefined) {
     const list = items(json);
     if (list.length > 1) return { supplyChainNotes: source.supplyChainNotes ?? "", error: "Este pedido tem vários itens: altere medidas e preços na emissão de documentos (fase Pedido)." };
