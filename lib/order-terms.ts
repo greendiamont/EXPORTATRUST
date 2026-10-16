@@ -4,6 +4,9 @@
 // como já faz a emissão de documentos — nada é perdido.
 // O preço indicativo de compra (antes do pedido de compra ser emitido) fica em `purchasePrice`
 // ({ unitPrice, currency }) no mesmo JSON; serve para a margem estimada do processo.
+// Se o pedido de compra já foi emitido com um único item, o preço de compra editado no processo
+// atualiza também esse item (como o preço de venda atualiza o pedido de venda), para o processo
+// e o Financeiro do pedido mostrarem a mesma conta.
 
 export type OrderTermsSource = {
   supplyChainNotes: string | null;
@@ -44,9 +47,12 @@ export function readOrderTerms(source: OrderTermsSource) {
   const effective = list.length ? list : [fallbackItem(source)];
   const purchase = json && json.purchasePrice && typeof json.purchasePrice === "object" ? json.purchasePrice as Record<string, unknown> : {};
   const supplierOrder = json && json.supplierOrder && typeof json.supplierOrder === "object" ? json.supplierOrder as Record<string, unknown> : null;
+  const supplierItems = supplierOrder && Array.isArray(supplierOrder.items) ? supplierOrder.items as Array<Record<string, unknown>> : [];
+  const singleSupplierPrice = supplierItems.length === 1 ? Number(supplierItems[0].unitPrice) || 0 : 0;
   return {
-    purchaseUnitPrice: Number(purchase.unitPrice) || 0,
-    purchaseCurrency: String(purchase.currency ?? "") || "BRL",
+    purchaseUnitPrice: Number(purchase.unitPrice) || singleSupplierPrice,
+    purchaseCurrency: String(purchase.currency ?? "") || (singleSupplierPrice ? String(supplierOrder?.currency ?? "") : "") || "BRL",
+    supplierItemCount: supplierItems.length,
     /** Pedido de compra emitido (com itens) na fase Pedido: substitui o preço indicativo de compra. */
     hasSupplierOrder: Boolean(supplierOrder && Array.isArray(supplierOrder.items) && supplierOrder.items.length),
     paymentTerms: json ? String(json.paymentTerms ?? "") : "",
@@ -74,6 +80,10 @@ export function applyOrderTerms(source: OrderTermsSource, changes: OrderTermsCha
     const unitPrice = changes.purchaseUnitPrice !== undefined && Number.isFinite(changes.purchaseUnitPrice) ? Math.max(0, changes.purchaseUnitPrice) : Number(previous.unitPrice) || 0;
     const currency = (changes.purchaseCurrency ?? String(previous.currency ?? "BRL")).trim().toUpperCase().slice(0, 3) || "BRL";
     next.purchasePrice = { unitPrice, currency };
+    const supplierOrder = next.supplierOrder && typeof next.supplierOrder === "object" ? next.supplierOrder as Record<string, unknown> : null;
+    if (supplierOrder && Array.isArray(supplierOrder.items) && supplierOrder.items.length === 1) {
+      next.supplierOrder = { ...supplierOrder, currency, items: [{ ...(supplierOrder.items[0] as Record<string, unknown>), unitPrice }] };
+    }
   }
   let commercialValue: number | undefined;
   if (changes.size !== undefined || changes.unitPrice !== undefined) {

@@ -653,4 +653,18 @@
 - **Correções junto:** (1) a emissão do pedido (`order-commercial`) passa a preservar as demais chaves do JSON do pedido (ex.: `purchasePrice`); (2) na edição do processo, campos numéricos (quantidade, volume, pesos, valor) eram lidos no padrão brasileiro — "203.212" virava 203 mil; agora são lidos como número do navegador.
 - **Dados/migration:** nenhuma. Preço indicativo de compra em `operations.supply_chain_notes` (`purchasePrice: {unitPrice, currency}`), lido/gravado por `lib/order-terms.ts`.
 - **Testes:** tsc (sem erros novos), 94 testes unitários (3 novos), build Railway, Playwright local (210 m³ × US$ 230 / R$ 750, câmbio 5,40 → margem 39,6%, US$ 19.133,33 no formulário e no Financeiro; preço de compra mantido ao reabrir).
-- **Status:** em andamento
+- **Railway:** homologation deploy cfa7c6b0 SUCCESS; produção (PR #127) deploy 60e773ae SUCCESS.
+- **Status:** concluído — em produção
+
+## 2026-10-16 — Claude — Margem por m³ e preço de compra amarrado ao pedido de compra
+
+- **ID:** CHG-20261016-013
+- **Branch:** `claude/margem-por-m3`
+- **PR:** #129
+- **Destino:** homologation (produção só após "alteração aprovada" e "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16, com print do GBU061/26):** "alterei algumas coisas nos custos logísticos mas ele não alterou a conta/margem — trazer para ele fazer um cálculo por m3 também — margem estimada por m3 e total do processo em R$/US$".
+- **Causa:** processos importados já têm pedido de compra emitido; o Financeiro usava os valores desse pedido e ignorava o preço de compra digitado no processo, então a conta do pedido não mudava.
+- **O que mudou:** (1) preço de compra do processo atualiza também o pedido de compra emitido com um item (moeda e preço), como o preço de venda já atualiza o pedido de venda; ao abrir o processo, o preço de compra vem do pedido de compra quando não há indicativo; com vários itens, aviso de que o Financeiro usa o pedido emitido. (2) Linha "Margem por m³" (ou pela unidade do processo) no quadro da margem, em US$ e R$; o card Financeiro mostra a margem total e por m³. Protótipo `PrecosMargem.dc.html` atualizado com a linha.
+- **Dados/migration:** nenhuma.
+- **Testes:** tsc (sem erros novos), 95 testes unitários (1 novo), build Railway, Playwright local (processo com pedido de compra emitido: 203,212 m³, venda US$ 230, compra US$ 160, câmbio 5 → 26,7%, US$ 12.501,84, US$ 61,52/m³ no formulário e no Financeiro).
+- **Status:** aguardando aprovação de Ivam

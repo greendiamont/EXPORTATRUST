@@ -296,3 +296,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 ### 2026-10-16 — Claude — Preço de compra e margem
 - **Branch:** `claude/preco-compra-venda`; CHG-20261016-011; aprovado por Ivam ("alteração aprovada PODE SUBIR PRA PRODUÇÃO").
 - **Para outros agentes:** margem = `lib/margin.ts` (`estimateMargin`), usada no Novo processo e no Financeiro do pedido — não duplicar a conta. Preço indicativo de compra fica em `supply_chain_notes.purchasePrice` (via `lib/order-terms.ts`); a emissão do pedido preserva chaves extras desse JSON.
+
+### 2026-10-16 — Claude — Margem por m³
+- **Branch:** `claude/margem-por-m3`; CHG-20261016-013.
+- **Para outros agentes:** `applyOrderTerms` com `purchaseUnitPrice` também atualiza `supplierOrder.items[0]` quando o pedido de compra tem um item; `readOrderTerms` devolve `supplierItemCount`.
