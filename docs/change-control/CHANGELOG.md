@@ -786,4 +786,12 @@
 - **Pedido de Ivam (conversa, 2026-10-16):** "pode incluir esse botão excluir tarefa [...] tem algumas tarefas aí que não precisa [...] colocar esses botões em todas elas".
 - **O que mudou:** cada linha da tabela da fase ganha "×". Tarefa: excluída de vez (confirmação; ação `operation-task-delete`, auditada, também liberada ao convidado). Etapa padrão do fluxo: marcada "Não se aplica" (status Suspenso, não trava a fase) com "↺" para restaurar — as 14 etapas não são apagadas para não quebrar o andamento das fases.
 - **Testes:** tsc (sem erros novos), build Railway, Playwright local (equipe e convidado excluem tarefa e marcam etapa "Não se aplica"; restaurar volta para Pendente).
-- **Status:** aprovado por Ivam ("pode produzir")
+- **Status:** aprovado por Ivam ("pode produzir") — em produção (PR #147, junto com #145)
+
+## 2026-10-16 — Claude — Endereço de produção "exportatrust" e e-mail automático
+
+- **ID:** CHG-20261016-027
+- **Destino:** configuração Railway (sem código)
+- **Pedidos de Ivam (conversa, 2026-10-16):** chave do Resend entregue na conversa ("faz tudo por aí"); "o nome do que vem no link do aplicativo [...] poderia ser só exporta trust".
+- **O que mudou:** produção em https://exportatrust.up.railway.app (domínio Railway renomeado; o anterior parou de responder; sessões precisam de novo login). Homologação mantém o endereço (o login com Google de lá depende dele). `RESEND_API_KEY` e `EMAIL_FROM=ExportaTrust <operacoes@greendiamont.com>` configurados em produção e homologação (domínio greendiamont.com verificado no Resend via DNS da Namecheap).
+- **Status:** concluído

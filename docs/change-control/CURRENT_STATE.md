@@ -21,7 +21,7 @@ Layouts aprovados por Ivam estão travados: ver `docs/change-control/LAYOUT_PROT
 - Serviço app: `web-api`
 - APP_ENV: `production`
 - Branch: `main` (autodeploy). Primeiro deploy em 2026-10-16 (deploy `9f22f759`, commit `aea61b6`, PR #108), autorizado por Ivam ("Pode produzir").
-- URL: https://web-api-production-e342.up.railway.app
+- URL: https://exportatrust.up.railway.app
 - Bucket: `documents-production` (sjc), referenciado nas variáveis `STORAGE_S3_*`.
 - Login: cadastro por CNPJ + senha individual (segredos próprios de produção, diferentes da homologação). Login Google não configurado em produção.
 - Carga inicial concluída em 2026-10-16 (autorizada por Ivam) na empresa #2 Hub Das Americas: 10 fornecedores, 10 clientes, 4 produtos, 19 processos, 451 arquivos (155.513.309 bytes), 400 documentos e 2 documentos de floresta ligados; 1 arquivo ausente no pacote (048-2026 CERTIFICADO FITOSSANITARIO.pdf). Variáveis de importação esvaziadas e `EXPORTATRUST_IMPORT_IN_PRODUCTION=0` (trava ativa).
@@ -134,3 +134,5 @@ Arquivos obrigatórios de coordenação:
 - Mudanças diretas em produção bloqueadas por política.
 
 - Colaboradores convidados por processo (2026-10-16): perfil `convidado` só acessa os processos em `operation_collaborators` (trava em `server/railway/collaborators.mjs` → `guestGate` e em `lib/security.ts` → `assertOperationAccess`); sem dados financeiros. Toda rota nova usada pela tela do pedido precisa ser liberada explicitamente para convidados.
+
+- Produção: endereço do app passou a ser https://exportatrust.up.railway.app (renomeado em 2026-10-16 a pedido de Ivam; o antigo web-api-production-e342.up.railway.app deixou de responder). E-mail automático (Resend, remetente `operacoes@greendiamont.com`, domínio verificado) configurado em produção e homologação via `RESEND_API_KEY`/`EMAIL_FROM`.
