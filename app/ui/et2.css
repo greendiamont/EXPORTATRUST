@@ -415,3 +415,5 @@ a.et2-btn--primary, a.et2-btn--ok { color: #fff; }
 .pd-done--ok { border-color: #a7f3d0; background: #ecfdf5; }
 .pd-btn--ok { background: #047857; border-color: #047857; color: #fff; font-weight: 600; }
 .pd-btn--ok:hover { background: #065f46 !important; }
+.pd-row-del { border: 0; background: transparent; color: #9ca3af; font-size: 16px; line-height: 1; cursor: pointer; padding: 4px 6px; border-radius: 4px; }
+.pd-row-del:hover { color: #b91c1c; background: #fef2f2; }
