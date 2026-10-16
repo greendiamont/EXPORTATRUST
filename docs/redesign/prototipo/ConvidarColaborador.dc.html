@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Convidar colaborador · ExportaTrust</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F4F6}
+a{color:#1D4ED8}
+</style>
+</helmet>
+<div style="min-height: 100vh; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #111827; background: #F3F4F6; font-size: 14px">
+  <main style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+    <div style="flex-basis: 100%; font-size: 13px; color: #6B7280">Pedido GBU061/26 · coluna da direita · proposta: convidar colaborador para este processo</div>
+
+    <section aria-labelledby="ativ" style="flex: 0 1 380px; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+      <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB"><h2 id="ativ" style="margin: 0; font-size: 16px; font-weight: 600">Atividade da equipe</h2></div>
+      <div style="padding: 12px 20px; border-bottom: 1px solid #E5E7EB">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <span style="font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.4px">Participantes · {{peopleCount}}</span>
+          <button onClick="{{openInvite}}" style="min-height: 30px; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">+ Convidar</button>
+        </div>
+        <sc-for list="{{people}}" as="p" hint-placeholder-count="4">
+          <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px">
+            <span style="{{p.avatarStyle}}">{{p.initials}}</span>
+            <div style="flex: 1; min-width: 0"><b>{{p.name}}</b><div style="font-size: 12px; color: #6B7280">{{p.role}}</div></div>
+            <span style="{{p.badgeStyle}}">{{p.status}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding: 10px 20px; display: flex; gap: 10px; font-size: 13px"><span style="width: 28px; height: 28px; border-radius: 14px; background: #DBEAFE; color: #1E40AF; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex: none">IV</span><div><b>Ivam</b> convidou <b>Carla (despachante)</b> para este processo<div style="font-size: 12px; color: #6B7280; margin-top: 2px">há 5 min</div></div></div>
+      <div style="padding: 10px 20px; border-top: 1px solid #F0F1F3; display: flex; gap: 10px; font-size: 13px"><span style="width: 28px; height: 28px; border-radius: 14px; background: #FDE68A; color: #92400E; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex: none">MR</span><div><b>Marcos</b> anexou DRAFT BL HMM.pdf<div style="font-size: 12px; color: #6B7280; margin-top: 2px">ontem</div></div></div>
+      <div style="padding: 12px 20px; border-top: 1px solid #E5E7EB">
+        <input placeholder="Comentar no pedido… use @ para mencionar" style="width: 100%; min-height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; font-size: 13px">
+      </div>
+    </section>
+
+    <sc-if value="{{showInvite}}" hint-placeholder-val="{{ true }}">
+      <section aria-labelledby="conv" style="flex: 1 1 520px; max-width: 640px; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; box-shadow: 0 10px 30px rgba(15,27,45,0.12)">
+        <div style="padding: 16px 20px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center">
+          <div>
+            <h2 id="conv" style="margin: 0; font-size: 16px; font-weight: 600">Convidar colaborador</h2>
+            <div style="font-size: 13px; color: #6B7280; margin-top: 2px">A pessoa recebe um e-mail, cria a senha e entra só neste processo.</div>
+          </div>
+          <button onClick="{{closeInvite}}" aria-label="Fechar" style="border: 0; background: transparent; font-size: 18px; color: #6B7280; cursor: pointer">×</button>
+        </div>
+        <div style="padding: 16px 20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151">E-mail *<input value="carla@despachosul.com.br" style="min-height: 38px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit"></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151">Nome<input value="Carla Souza" style="min-height: 38px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit"></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151">Função no processo
+            <select style="min-height: 38px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; background: #FFFFFF; padding: 0 8px"><option>Despachante</option><option>Agente de carga</option><option>Fornecedor</option><option>Cliente / importador</option><option>Outro</option></select>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151">Acesso
+            <input value="Só este processo" readonly style="min-height: 38px; box-sizing: border-box; padding: 0 10px; border: 1px solid #E5E7EB; border-radius: 6px; font: inherit; background: #F9FAFB; color: #4B5563">
+          </label>
+          <label style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151">Mensagem (opcional)
+            <textarea rows="3" style="box-sizing: border-box; padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; resize: vertical">Carla, segue o acesso ao processo GBU061/26 para acompanharmos o despacho e os documentos.</textarea>
+          </label>
+          <div style="grid-column: 1 / -1; padding: 10px 12px; background: #F9FAFB; border: 1px solid #F0F1F3; border-radius: 6px; font-size: 13px; color: #374151">
+            <b>O que a Carla poderá fazer:</b> ver as fases, etapas e documentos deste processo, comentar, ser mencionada com @ e anexar arquivos.<br>
+            <b>Não verá:</b> outros processos, Painel, Cadastros, valores de compra, financeiro e margem.
+          </div>
+        </div>
+        <div style="padding: 14px 20px; border-top: 1px solid #E5E7EB; display: flex; justify-content: flex-end; gap: 8px">
+          <button onClick="{{closeInvite}}" style="min-height: 38px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; cursor: pointer">Cancelar</button>
+          <button onClick="{{sendInvite}}" style="min-height: 38px; padding: 0 16px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; font-weight: 500; cursor: pointer">Enviar convite por e-mail</button>
+        </div>
+      </section>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { open: true, sent: false }; }
+  renderVals() {
+    const person = (name, role, status, bg, fg) => ({ name, role, status, initials: name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase(),
+      avatarStyle: 'width: 28px; height: 28px; border-radius: 14px; background: ' + bg + '; color: ' + fg + '; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex: none',
+      badgeStyle: 'font-size: 11px; padding: 2px 8px; border-radius: 10px; ' + (status === 'Convite enviado' ? 'background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A' : 'background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0') });
+    const people = [person('Ivam', 'Equipe · responsável', 'Ativo', '#DBEAFE', '#1E40AF'), person('Marcos Rauber', 'Fornecedor · só este processo', 'Ativo', '#FDE68A', '#92400E')];
+    if (this.state.sent) people.push(person('Carla Souza', 'Despachante · só este processo', 'Convite enviado', '#E0E7FF', '#3730A3'));
+    return { people, peopleCount: String(people.length), showInvite: this.state.open,
+      openInvite: () => this.setState({ open: true }), closeInvite: () => this.setState({ open: false }),
+      sendInvite: () => this.setState({ open: false, sent: true }) };
+  }
+}
+</script>
+</body>
+</html>
