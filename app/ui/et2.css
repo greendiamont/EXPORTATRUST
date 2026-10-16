@@ -409,3 +409,9 @@ a.et2-btn--primary, a.et2-btn--ok { color: #fff; }
 .cb-wide { grid-column: 1 / -1; }
 .cb-info { padding: 10px 12px; background: #f9fafb; border: 1px solid #f0f1f3; border-radius: 6px; font-size: 13px; color: #374151; line-height: 1.5; }
 .cb-dialog-foot { padding: 14px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Fase Entregue: operação concluída */
+.pd-done { padding: 14px 20px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; border-color: #fde68a; background: #fffbeb; }
+.pd-done--ok { border-color: #a7f3d0; background: #ecfdf5; }
+.pd-btn--ok { background: #047857; border-color: #047857; color: #fff; font-weight: 600; }
+.pd-btn--ok:hover { background: #065f46 !important; }

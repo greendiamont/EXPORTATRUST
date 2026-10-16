@@ -261,7 +261,8 @@ export default function PedidoView({ operationId }: { operationId: number }) {
   const phaseTasks = data.tasks.filter((task) => phaseOfTask(task) === selected).sort((a, b) => a.sequence - b.sequence);
   const phaseDocs = docs.filter((doc) => documentPhaseIndex(doc.category, doc.fileName) === selected);
   const otherDocs = docs.filter((doc) => documentPhaseIndex(doc.category, doc.fileName) === null);
-  const openStep = milestones.find((milestone) => phaseIndexOfCode(milestone.code) === current && !isClosedStatus(milestone.status));
+  // "Concluir etapa" age na fase que está aberta na tela (antes usava sempre a fase atual do pedido).
+  const openStep = milestones.find((milestone) => phaseIndexOfCode(milestone.code) === selected && !isClosedStatus(milestone.status));
   const meFollowing = Boolean(activity?.followers?.some((follower) => follower.email === activity.me));
   // Colaborador convidado: só acompanha o processo (sem valores, emissão nem ações internas).
   const guest = Boolean(data.viewer?.guest);
@@ -403,6 +404,21 @@ export default function PedidoView({ operationId }: { operationId: number }) {
               onEditing={onEditing} baseRef={baseRef} versionRef={versionRef} onSaved={onFormSaved}
               onReset={(next) => { setForm(next); baseRef.current = next; dirtyRef.current = false; setDirty(false); }}
               onPreview={setPreview} onError={setError} />
+          )}
+
+          {selected === 5 && !guest && (
+            <section className={`pd-card pd-done${terms.completed ? " pd-done--ok" : ""}`} aria-label="Operação concluída">
+              <div>
+                <b>{terms.completed ? "Operação concluída" : "Encerrar a operação"}</b>
+                <div className="pd-sub">{terms.completed
+                  ? `Concluída em ${formatDate(terms.completed.at)} por ${terms.completed.by}. O pedido está em “Concluídos” na lista de Pedidos.`
+                  : "Quando a entrega estiver confirmada, conclua a operação: o pedido sai das fases em andamento e vai para “Concluídos”."}</div>
+              </div>
+              <button className={terms.completed ? "pd-btn" : "pd-btn pd-btn--ok"} disabled={busy}
+                onClick={() => { const done = !terms.completed; if (window.confirm(done ? `Concluir a operação ${operation.reference}? Ela vai para “Concluídos” na lista de Pedidos.` : `Reabrir a operação ${operation.reference}?`)) run(() => api("/api/operations", { method: "PATCH", body: JSON.stringify({ id: operationId, action: done ? "complete" : "uncomplete" }) })); }}>
+                {terms.completed ? "Reabrir operação" : "Operação concluída ✓"}
+              </button>
+            </section>
           )}
 
           <section className="pd-card pd-card--scroll" aria-labelledby="etapas">

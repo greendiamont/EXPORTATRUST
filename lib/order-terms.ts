@@ -60,6 +60,8 @@ export function readOrderTerms(source: OrderTermsSource) {
     sizes: [...new Set(effective.map((item) => item.size).filter(Boolean))].join("; "),
     unitPrice: effective.length === 1 ? effective[0].unitPrice : null,
     itemCount: effective.length,
+    /** Operação concluída (botão na fase Entregue): vai para "Concluídos" nas listas; null se em andamento. */
+    completed: json && json.completed && typeof json.completed === "object" ? json.completed as { at: string; by: string } : null,
     /** Pedido cancelado (fica no fim das listas, em vermelho); null se ativo. */
     cancelled: json && json.cancelled && typeof json.cancelled === "object" ? json.cancelled as { at: string; by: string; previousStatus: string } : null,
     /** Como ganhamos no processo: margem (compra e venda) ou comissão (% sobre o valor do pedido). */
@@ -143,4 +145,13 @@ export function setOrderCancelled(source: { supplyChainNotes: string | null; sta
   if (cancel) next.cancelled = { at, by, previousStatus: previous ? String(previous.previousStatus ?? "") : source.status };
   else delete next.cancelled;
   return { supplyChainNotes: JSON.stringify(next), status: cancel ? "Cancelado" : String(previous?.previousStatus || "Em andamento") };
+}
+
+/** Marca ou desfaz "operação concluída" no JSON do pedido. */
+export function setOrderCompleted(source: { supplyChainNotes: string | null; status: string }, done: boolean, by: string, at = new Date().toISOString()) {
+  const { json, text } = parse({ supplyChainNotes: source.supplyChainNotes } as OrderTermsSource);
+  const next: Record<string, unknown> = json ? { ...json } : (text ? { orderNotes: text } : {});
+  if (done) next.completed = { at, by };
+  else delete next.completed;
+  return { supplyChainNotes: JSON.stringify(next), status: done ? "Concluído" : "Entregue ao cliente" };
 }

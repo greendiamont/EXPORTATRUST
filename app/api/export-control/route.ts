@@ -760,7 +760,8 @@ export async function POST(request: Request) {
             : qualityStatusCurrent === "Reprovado"
               ? "A aprovação foi bloqueada porque a qualidade está reprovada."
               : "Conclua as etapas anteriores. EUDR e checklist documental não bloqueiam destinos fora da União Europeia.";
-          return Response.json({ error }, { status: 409 });
+          const pending = currentControl.milestones.filter((item) => item.sequence < 6 && !["Concluído", "Suspenso"].includes(item.status)).map((item) => item.title);
+          return Response.json({ error: pending.length ? `${error} Falta concluir: ${pending.join(", ")}.` : error }, { status: 409 });
         }
       }
       const completedAt = status === "Concluído" ? now.toISOString() : null;
