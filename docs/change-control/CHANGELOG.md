@@ -776,3 +776,14 @@
 - **O que mudou:** o convidado agora conclui/reabre etapas (inclusive "Concluir etapa"), cria/edita/conclui tarefas, anexa e exclui arquivos nas fases do processo liberado. `POST /api/export-control` aceita do convidado só ações de etapas e tarefas (`milestone`, `operation-task-*`) do processo dele, e a resposta sai sem dados comerciais; `DELETE /api/documents` confere o processo e recusa documentos comerciais. Continua fora para o convidado: emissão do pedido com preços, Shipment Advice, Financeiro/margem/comissão, valor de venda, documentos comerciais, editar processo, configurações e envio ao cliente.
 - **Testes:** tsc (sem erros novos), 98 testes unitários, build Railway, Playwright local como convidado (concluir etapa 1→2 de 4; criar tarefa; anexar e excluir arquivo; `order-commercial`/`settings` = 403; outro processo = 403; respostas sem valores).
 - **Status:** em andamento
+
+## 2026-10-16 — Claude — Excluir tarefa / etapa "Não se aplica"
+
+- **ID:** CHG-20261016-026
+- **Branch:** `claude/excluir-tarefa`
+- **PR:** ver PR da branch
+- **Destino:** homologation e produção ("pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-16):** "pode incluir esse botão excluir tarefa [...] tem algumas tarefas aí que não precisa [...] colocar esses botões em todas elas".
+- **O que mudou:** cada linha da tabela da fase ganha "×". Tarefa: excluída de vez (confirmação; ação `operation-task-delete`, auditada, também liberada ao convidado). Etapa padrão do fluxo: marcada "Não se aplica" (status Suspenso, não trava a fase) com "↺" para restaurar — as 14 etapas não são apagadas para não quebrar o andamento das fases.
+- **Testes:** tsc (sem erros novos), build Railway, Playwright local (equipe e convidado excluem tarefa e marcam etapa "Não se aplica"; restaurar volta para Pendente).
+- **Status:** aprovado por Ivam ("pode produzir")

@@ -58,6 +58,7 @@ const LABELS: Record<string, string> = {
   OPERATION_TASK_CREATED: "criou a tarefa",
   OPERATION_TASK_UPDATED: "editou uma tarefa",
   OPERATION_TASK_COMPLETION_TOGGLED: "marcou uma tarefa",
+  OPERATION_TASK_DELETED: "excluiu a tarefa",
   OPERATION_UPDATED: "editou os dados do pedido",
   DOCUMENT_UPLOADED: "anexou um arquivo",
   DOCUMENT_DELETED: "excluiu um arquivo",
@@ -67,7 +68,7 @@ const LABELS: Record<string, string> = {
 };
 
 /** Convidado vê só a atividade operacional (nada de dados comerciais do pedido). */
-const GUEST_ACTIONS = new Set(["EXPORT_MILESTONE_UPDATED", "OPERATION_TASK_CREATED", "OPERATION_TASK_UPDATED", "OPERATION_TASK_COMPLETION_TOGGLED", "DOCUMENT_UPLOADED", "DOCUMENT_DELETED", "OPERATION_FOLLOWED"]);
+const GUEST_ACTIONS = new Set(["EXPORT_MILESTONE_UPDATED", "OPERATION_TASK_CREATED", "OPERATION_TASK_UPDATED", "OPERATION_TASK_COMPLETION_TOGGLED", "OPERATION_TASK_DELETED", "DOCUMENT_UPLOADED", "DOCUMENT_DELETED", "OPERATION_FOLLOWED"]);
 
 async function ownedOperation(operationId: number, organizationId: number) {
   const db = await getDb();
