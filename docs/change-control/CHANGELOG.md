@@ -597,7 +597,7 @@
 
 - **ID:** CHG-20261016-006
 - **Branch:** `claude/painel-processos`
-- **PR:** a preencher
+- **PR:** #119
 - **Destino:** homologation → main
 - **Tipo:** feature / frontend / API (layout aprovado)
 - **Aprovação de Ivam (conversa, 2026-10-16):** "Boa, Claude, é exatamente isso que eu preciso, tá? Pode subir para homologação e produção. Produção, layout aprovado. E alteração".
