@@ -564,7 +564,7 @@
 
 - **ID:** CHG-20261016-005
 - **Branch:** `claude/excluir-documento`
-- **PR:** a preencher
+- **PR:** #117
 - **Destino:** homologation
 - **Tipo:** feature / frontend
 - **Pedido de Ivam (conversa, 2026-10-16):** "O aplicativo tem que ter também uma opção dentro de cada fase para que possa ser eliminado também documentos".
