@@ -6,7 +6,7 @@
 
 - **ID:** CHG-20261014-001
 - **Branch:** `docs/change-control-registry`
-- **PR:** #129
+- **PR:** a preencher
 - **Destino:** main + sincronização com homologation
 - **Tipo:** docs / governança
 - **Arquivos/módulos alterados:** `AGENTS.md`, `CLAUDE.md`, `docs/change-control/*`
@@ -29,7 +29,7 @@
 
 - **ID:** CHG-20261014-002
 - **Branch:** `docs/railway-agent-separation`
-- **PR:** #129
+- **PR:** a preencher
 - **Destino:** main + sincronização com homologation
 - **Tipo:** infra
 - **Arquivos/módulos alterados:** documentação de change control
@@ -52,7 +52,7 @@
 
 - **ID:** CHG-20261014-003
 - **Branch:** `infra/agent-runtime-online`
-- **PR:** #129
+- **PR:** a preencher
 - **Destino:** homologation primeiro
 - **Tipo:** infra
 - **O que mudou:** criado runtime Node mínimo para manter `agent-homologation` e `agent-production` online, com endpoints de saúde/status e trava explícita de execução em produção.
