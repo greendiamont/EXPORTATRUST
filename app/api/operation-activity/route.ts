@@ -60,6 +60,7 @@ const LABELS: Record<string, string> = {
   OPERATION_TASK_COMPLETION_TOGGLED: "marcou uma tarefa",
   OPERATION_UPDATED: "editou os dados do pedido",
   DOCUMENT_UPLOADED: "anexou um arquivo",
+  DOCUMENT_DELETED: "excluiu um arquivo",
   OPERATION_COMMENTED: "comentou",
   ORDER_COMMERCIAL_DETAILS_UPDATED: "editou os documentos do pedido",
   OPERATION_FOLLOWED: "passou a seguir o pedido",
