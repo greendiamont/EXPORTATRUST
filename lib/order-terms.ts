@@ -60,6 +60,8 @@ export function readOrderTerms(source: OrderTermsSource) {
     sizes: [...new Set(effective.map((item) => item.size).filter(Boolean))].join("; "),
     unitPrice: effective.length === 1 ? effective[0].unitPrice : null,
     itemCount: effective.length,
+    /** Pedido cancelado (fica no fim das listas, em vermelho); null se ativo. */
+    cancelled: json && json.cancelled && typeof json.cancelled === "object" ? json.cancelled as { at: string; by: string; previousStatus: string } : null,
     /** Como ganhamos no processo: margem (compra e venda) ou comissão (% sobre o valor do pedido). */
     gainMode: json && json.remuneration && typeof json.remuneration === "object" && (json.remuneration as Record<string, unknown>).mode === "comissao" ? "comissao" : "margem",
     commissionPercent: json && json.remuneration && typeof json.remuneration === "object" ? Number((json.remuneration as Record<string, unknown>).percent) || 0 : 0,
@@ -131,4 +133,14 @@ export function applyOrderTerms(source: OrderTermsSource, changes: OrderTermsCha
     next.orderItems = [item];
   }
   return { supplyChainNotes: JSON.stringify(next), ...(commercialValue !== undefined ? { commercialValue } : {}) };
+}
+
+/** Marca ou desfaz o cancelamento do pedido no JSON do pedido (a situação do processo muda a cada etapa). */
+export function setOrderCancelled(source: { supplyChainNotes: string | null; status: string }, cancel: boolean, by: string, at = new Date().toISOString()) {
+  const { json, text } = parse({ supplyChainNotes: source.supplyChainNotes } as OrderTermsSource);
+  const next: Record<string, unknown> = json ? { ...json } : (text ? { orderNotes: text } : {});
+  const previous = next.cancelled && typeof next.cancelled === "object" ? next.cancelled as Record<string, unknown> : null;
+  if (cancel) next.cancelled = { at, by, previousStatus: previous ? String(previous.previousStatus ?? "") : source.status };
+  else delete next.cancelled;
+  return { supplyChainNotes: JSON.stringify(next), status: cancel ? "Cancelado" : String(previous?.previousStatus || "Em andamento") };
 }
