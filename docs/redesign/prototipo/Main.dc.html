@@ -56,6 +56,52 @@ a{color:#1D4ED8}a:hover{color:#1E3A8A}
       </sc-for>
     </section>
 
+    <section aria-labelledby="procs" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; overflow-x: auto">
+      <div style="padding: 16px 20px; border-bottom: 1px solid #E5E7EB; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center">
+        <div>
+          <h2 id="procs" style="margin: 0; font-size: 16px; font-weight: 600">Processos · negociação</h2>
+          <div style="font-size: 13px; color: #6B7280; margin-top: 2px">O que foi negociado em cada pedido. Clique no processo para abrir o acompanhamento do pedido.</div>
+        </div>
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4B5563">Buscar
+          <input placeholder="Processo, cliente, produto…" style="min-height: 36px; width: 240px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; font-size: 13px">
+        </label>
+      </div>
+      <table style="width: 100%; min-width: 1180px; border-collapse: collapse; font-size: 13px">
+        <thead>
+          <tr style="background: #F9FAFB; text-align: left; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.4px">
+            <th style="padding: 10px 20px; font-weight: 500">Processo</th>
+            <th style="padding: 10px 12px; font-weight: 500">Cliente / importador</th>
+            <th style="padding: 10px 12px; font-weight: 500">Exportador</th>
+            <th style="padding: 10px 12px; font-weight: 500">Fornecedor</th>
+            <th style="padding: 10px 12px; font-weight: 500">Produto · medidas</th>
+            <th style="padding: 10px 12px; font-weight: 500">Incoterm</th>
+            <th style="padding: 10px 12px; font-weight: 500; text-align: right">Quantidade</th>
+            <th style="padding: 10px 12px; font-weight: 500; text-align: right">Preço · total</th>
+            <th style="padding: 10px 12px; font-weight: 500">Pagamento</th>
+            <th style="padding: 10px 12px; font-weight: 500">Fase</th>
+            <th style="padding: 10px 20px; font-weight: 500"><span style="position: absolute; left: -9999px">Ações</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{processes}}" as="r" hint-placeholder-count="5">
+            <tr style="border-top: 1px solid #F0F1F3">
+              <td style="padding: 12px 20px; white-space: nowrap"><a href="Processo.dc.html" style="font-family: 'IBM Plex Mono', monospace; text-decoration: none; font-weight: 500">{{r.ref}}</a><div style="font-size: 12px; color: #6B7280; margin-top: 2px">{{r.po}}</div></td>
+              <td style="padding: 12px 12px">{{r.client}}</td>
+              <td style="padding: 12px 12px">{{r.exporter}}</td>
+              <td style="padding: 12px 12px">{{r.supplier}}</td>
+              <td style="padding: 12px 12px">{{r.product}}<div style="font-size: 12px; color: #6B7280; margin-top: 2px">{{r.size}}</div></td>
+              <td style="padding: 12px 12px; white-space: nowrap">{{r.incoterm}}</td>
+              <td style="padding: 12px 12px; text-align: right; white-space: nowrap; font-family: 'IBM Plex Mono', monospace">{{r.qty}}</td>
+              <td style="padding: 12px 12px; text-align: right; white-space: nowrap; font-family: 'IBM Plex Mono', monospace">{{r.price}}<div style="font-size: 12px; color: #6B7280; margin-top: 2px">{{r.total}}</div></td>
+              <td style="padding: 12px 12px">{{r.payment}}</td>
+              <td style="padding: 12px 12px; white-space: nowrap"><span style="{{r.phaseStyle}}">{{r.phase}}</span></td>
+              <td style="padding: 12px 20px; white-space: nowrap"><a href="NovoProcesso.dc.html" style="min-height: 32px; display: inline-flex; align-items: center; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; color: #111827; text-decoration: none">Editar negociação</a></td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </section>
+
     <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
       <section aria-labelledby="pend" style="flex: 999 1 600px; min-width: 0; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; overflow-x: auto">
         <div style="padding: 16px 20px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center">
@@ -105,7 +151,7 @@ a{color:#1D4ED8}a:hover{color:#1E3A8A}
   </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1400}}'>
 class Component extends DCLogic {
   renderVals() {
     const P = [['Pedido', '[N]', ''], ['Produção', '[N]', ''], ['Embarque', '[N]', '1 bloqueado'], ['Documentos', '[N]', ''], ['Trânsito', '[N]', ''], ['Entregue', '[N]', 'últimos 30 dias']];
@@ -132,7 +178,15 @@ class Component extends DCLogic {
       { ref: '[REF]', route: '[POL] → [POD]', etd: '[DATA]' },
       { ref: '[REF]', route: '[POL] → [POD]', etd: '[DATA]' },
     ];
-    return { phases, tasks, departures };
+    const badge = (bg, fg) => 'display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; background: ' + bg + '; color: ' + fg;
+    const processes = [
+      { ref: 'GBU002/26', po: 'PO [CLIENTE]', client: '[CLIENTE]', exporter: '[TRADING]', supplier: '[FORNECEDOR]', product: 'Wood pellets ENplus A1', size: '6 mm', incoterm: 'FOB Itajaí', qty: '[N] MT', price: 'USD [P]/MT', total: 'USD [T]', payment: '30% adiantado · 70% contra BL', phase: 'Embarque', phaseStyle: badge('#FFFBEB', '#92400E') },
+      { ref: '[REF]', po: 'PO [CLIENTE]', client: '[CLIENTE]', exporter: 'O próprio fornecedor', supplier: '[FORNECEDOR]', product: 'Madeira serrada pinus', size: '[ESP] × [LARG] × [COMP] mm', incoterm: 'CIF [POD]', qty: '[N] m³', price: 'USD [P]/m³', total: 'USD [T]', payment: '[CONDIÇÃO]', phase: 'Produção', phaseStyle: badge('#FFFBEB', '#92400E') },
+      { ref: '[REF]', po: 'PO [CLIENTE]', client: '[CLIENTE]', exporter: '[TRADING]', supplier: '[FORNECEDOR]', product: '[PRODUTO]', size: '[MEDIDAS]', incoterm: 'FOB [POL]', qty: '[N]', price: 'USD [P]', total: 'USD [T]', payment: '[CONDIÇÃO]', phase: 'Pedido', phaseStyle: badge('#F3F4F6', '#4B5563') },
+      { ref: '[REF]', po: 'PO [CLIENTE]', client: '[CLIENTE]', exporter: '[TRADING]', supplier: '[FORNECEDOR]', product: '[PRODUTO]', size: '[MEDIDAS]', incoterm: 'CFR [POD]', qty: '[N]', price: 'USD [P]', total: 'USD [T]', payment: '[CONDIÇÃO]', phase: 'Trânsito', phaseStyle: badge('#FFFBEB', '#92400E') },
+      { ref: '[REF]', po: 'PO [CLIENTE]', client: '[CLIENTE]', exporter: '[TRADING]', supplier: '[FORNECEDOR]', product: '[PRODUTO]', size: '[MEDIDAS]', incoterm: 'FOB [POL]', qty: '[N]', price: 'USD [P]', total: 'USD [T]', payment: '[CONDIÇÃO]', phase: 'Entregue', phaseStyle: badge('#ECFDF5', '#047857') },
+    ];
+    return { phases, tasks, departures, processes };
   }
 }
 </script>

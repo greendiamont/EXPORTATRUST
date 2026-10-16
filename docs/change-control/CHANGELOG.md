@@ -592,3 +592,16 @@
 - **Conflitos/coordenação com outros agentes:** regra vale para todos os agentes a partir deste registro.
 - **Status:** em andamento
 - **Atualização (2026-10-16):** Ivam escolheu a trava automática e definiu que toda alteração é enviada a ele na conversa e só vale com "alteração aprovada" (produção com "pode produzir"). Protocolo, `CLAUDE.md` e `AGENTS.md` atualizados.
+
+## 2026-10-16 — Claude — Painel: Processos · negociação e Editar negociação
+
+- **ID:** CHG-20261016-006
+- **Branch:** `claude/painel-processos`
+- **PR:** #119
+- **Destino:** homologation → main
+- **Tipo:** feature / frontend / API (layout aprovado)
+- **Aprovação de Ivam (conversa, 2026-10-16):** "Boa, Claude, é exatamente isso que eu preciso, tá? Pode subir para homologação e produção. Produção, layout aprovado. E alteração".
+- **O que mudou:** Painel ganhou a seção "Processos · negociação" (protótipo `docs/redesign/prototipo/Main.dc.html` atualizado e aprovado): processo/PO, cliente, exportador, fornecedor, produto · medidas, incoterm, quantidade, preço · total, pagamento, fase, busca; clicar no processo abre o pedido; "Editar negociação" abre o formulário do Novo processo preenchido (`/novo-processo?processo=<id>`), que grava só os campos alterados (PATCH com detecção de conflito). Seção 4 ganhou "Medidas / especificação", "Preço unitário" e "Condição de pagamento" (também na criação). Termos ficam no JSON do pedido (`lib/order-terms.ts`), preservando texto livre antigo; com vários itens, medida/preço são alterados na emissão de documentos. `/api/overview` devolve exportador, incoterm, portos, PO e termos.
+- **Dados/migração:** nenhuma migração; nada apagado.
+- **Testes:** eslint, tsc (sem erros novos), 87 testes unitários (3 novos), build Railway, Playwright local (21 processos no Painel, busca, edição de pagamento/medida/incoterm, abrir pedido).
+- **Status:** em andamento

@@ -284,3 +284,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 ### 2026-10-15 — Claude — Protocolo de layout aprovado
 - **Branch:** `claude/protocolo-layout` → `homologation`; CHG-20261015-022.
 - **Para outros agentes (OBRIGATÓRIO):** leia `docs/change-control/LAYOUT_PROTOCOL.md`. Layout aprovado não muda, não é sobrescrito nem recriado; só muda quando Ivam pedir. PR que toca arquivos de layout é reprovado sem a etiqueta `layout-autorizado-ivam`, que o agente só coloca quando Ivam autorizou na conversa (registrando a frase dele). Ivam não faz nada manual: "layout aprovado" na conversa = travar.
+
+### 2026-10-16 — Claude — Painel: Processos · negociação
+- **Branch:** `claude/painel-processos`; CHG-20261016-006; layout aprovado por Ivam.
+- **Para outros agentes:** termos negociados (pagamento, medidas, preço) ficam no JSON do pedido em `operations.supply_chain_notes`; leia e grave só por `lib/order-terms.ts` (preserva texto livre antigo). Edição do processo: `/novo-processo?processo=<id>` + `PATCH /api/operations` com `fields.terms`.

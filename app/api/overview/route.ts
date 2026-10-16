@@ -4,6 +4,7 @@ import { exportMilestones, operationTasks, operations } from "../../../db/schema
 import { EXPORT_ORDER_MILESTONES, isEudrRequired } from "../../../lib/export-control";
 import { ORDER_PHASES, currentPhaseIndex, isClosedStatus, phaseIndexOfCode } from "../../../lib/order-phases";
 import { requireSecurityContext } from "../../../lib/security";
+import { readOrderTerms } from "../../../lib/order-terms";
 
 // Visão consolidada para o Painel e a lista de Pedidos da interface nova:
 // fase atual de cada pedido, próximo passo e pendências com prazo.
@@ -103,6 +104,12 @@ export async function GET() {
         eudrRequired: isEudrRequired(operation.destinationCountry, operation.hsCode, operation.product),
         readiness: operation.readiness,
         createdAt: operation.createdAt,
+        contractNumber: operation.contractNumber,
+        exporterName: operation.exporterName,
+        incoterm: operation.incoterm,
+        portOfLoading: operation.portOfLoading,
+        portOfDischarge: operation.portOfDischarge,
+        terms: readOrderTerms(operation),
       };
     });
 
