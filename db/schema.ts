@@ -751,7 +751,7 @@ export const gmailOauthConfigs = sqliteTable("gmail_oauth_configs", {
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
-// Emitentes salvos do Financeiro (quem emite e recebe a comissão: pessoa física ou empresa).
+// Emitentes e pagadores salvos do Financeiro (emitente: pessoa física ou empresa que recebe a comissão).
 export const financeIssuers = sqliteTable("finance_issuers", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   organizationId: integer("organization_id").notNull(),
@@ -759,6 +759,10 @@ export const financeIssuers = sqliteTable("finance_issuers", {
   taxId: text("tax_id").notNull().default(""),
   city: text("city").notNull().default(""),
   bank: text("bank").notNull().default(""),
+  /** "issuer" (emitente) ou "payer" (quem paga, salvo para as próximas invoices). */
+  kind: text("kind").notNull().default("issuer"),
+  /** Todos os campos do emitente/pagador (endereço, contato, dados bancários). */
+  detailsJson: text("details_json").notNull().default("{}"),
   createdBy: text("created_by").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
