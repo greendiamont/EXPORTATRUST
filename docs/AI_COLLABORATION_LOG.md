@@ -320,3 +320,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 ### 2026-10-17 — Claude — Invoice do Financeiro no modelo de Ivam
 - **Branch:** `claude/financeiro-invoice-modelo`; CHG-20261017-032.
 - **Para outros agentes:** documentos de `supply_chain_notes.finance.documents` podem cobrir vários processos (`references`, `share` = parte do processo). `finance_issuers` guarda emitentes e pagadores (`kind`) com os campos completos em `details_json` (migração 0034).
+
+### 2026-10-17 — Claude — EUDR fase 1
+- **Branch:** `claude/eudr-fase1`; CHG-20261017-034.
+- **Para outros agentes:** o JSON do pedido ganhou a chave `eudr` (origens, documentos da cadeia, rendimento, envio) — preserve-a. `rural_properties.eudr_json` guarda tipo de origem, produtor, espécie, documentos com validade e verificações. Regras e listas de documentos só em `lib/eudr.ts`. `/api/eudr` não é liberada a convidados.
