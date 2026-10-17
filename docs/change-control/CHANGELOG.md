@@ -867,3 +867,18 @@
 - **O que mudou:** o documento da comissão (`app/api/finance/document`) usa o mesmo visual dos documentos emitidos no pedido (Sales Order, Purchase Invoice, Packing List): A4, faixa verde com o nome do emitente, caixas ISSUER / BILL TO, tabela de dados (número, data, moeda, referências), DETAILS, TOTAL DUE, BANK DETAILS em destaque, NOTES e assinatura. O conteúdo do modelo da invoice 001/2026 continua. Uma invoice por processo segue como padrão; vários processos na mesma invoice continua opcional.
 - **Testes:** tsc (92, sem erros novos), build Railway, comparação visual com a Purchase Invoice do pedido (Playwright local).
 - **Status:** aprovado por Ivam ("Pode subir para produção")
+
+## 2026-10-17 — Claude — EUDR fase 1: rastreabilidade na tela nova
+
+- **ID:** CHG-20261017-034
+- **Branch:** `claude/eudr-fase1`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-17):** refinar a EUDR com as normas atuais e controlar a rastreabilidade da floresta ao cliente; madeira de reflorestamento e nativa; fornecedores com floresta própria que também compram de produtores rurais; pellets e embarque para a Alemanha. Protótipo "4b · EUDR rastreabilidade" (`docs/redesign/prototipo/EUDRRastreio.dc.html`) aprovado: "Alteração aprovada".
+- **O que mudou:** nova tela `/eudr` (menu EUDR passa a abrir a tela nova; a anterior segue em "Versão anterior"). Pedidos para a UE em 5 etapas com semáforo: Origem (florestas/CAR, produtor, espécie e nome científico, colheita, entrada de matéria-prima, NFs), Legalidade (documentos da floresta por tipo — plantio ou nativa — e da cadeia, com situação, validade e anexo), Transformação (balanço de volume da serraria ou de massa da fábrica de pellets), Exportação (dados do pedido + EORI do importador) e Pacote EUDR (lista do Art. 9 / Anexo II, declaração do exportador em inglês para salvar em PDF, GeoJSON no formato da UE com 6 casas decimais, envio ao importador e nº da DDS). Aba Florestas com cadastro pelo CAR (SICAR), ficha com imagem de satélite, verificações (desmatamento pós-31/12/2020, IBAMA com consulta automática, TI/UC, trabalho escravo) e documentos com validade.
+- **Regras (`lib/eudr.ts`, `lib/eudr-declaration.ts`):** listas de documentos propostas (validar com consultor florestal); exportado = m³ (serrado) ou t líquidas (pellets); balanço = entrada × rendimento ≥ exportado. Fase 1: verificações de desmatamento, TI/UC e trabalho escravo registradas pela equipe; automáticas na fase 2.
+- **Banco:** migração aditiva `0035_forest_eudr` (coluna `eudr_json` em `rural_properties`). Dados do pedido em `supply_chain_notes.eudr`; nº da DDS em `operations.eudr_reference` (campo existente). Nenhum dado existente alterado.
+- **Acesso:** só equipe (administrador e analista; auditor lê). Convidado bloqueado pela trava do servidor.
+- **Não muda nesta fase:** trava de embarque (continua como antes), tela antiga de EUDR, envio automático do pacote por e-mail.
+- **Testes:** tsc (92, sem erros novos), `tests/eudr.test.mjs` (6), testes completos, build Railway, Playwright local (vincular florestas, colheita e entrada, ficha com verificação e documento anexado, documentos da cadeia, rendimento, DDS, declaração e GeoJSON; celular sem rolagem lateral).
+- **Status:** em andamento

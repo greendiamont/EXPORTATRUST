@@ -8,8 +8,8 @@ const NAV: Array<{ key: ShellSection; label: string; href: string }> = [
   { key: "painel", label: "Painel", href: "/" },
   { key: "pedidos", label: "Pedidos", href: "/pedidos" },
   { key: "cadastros", label: "Cadastros", href: "/cadastros" },
-  // EUDR e Relatórios ainda usam as telas atuais (etapas seguintes do redesenho).
-  { key: "eudr", label: "EUDR", href: "/classico" },
+  // EUDR na tela nova (protótipo "4b", 2026-10-17); Relatórios ainda usa a tela atual.
+  { key: "eudr", label: "EUDR", href: "/eudr" },
   { key: "relatorios", label: "Relatórios", href: "/classico?module=Relat%C3%B3rios" },
   // Financeiro por último (pedido de Ivam em 2026-10-17).
   { key: "financeiro", label: "Financeiro", href: "/financeiro" },

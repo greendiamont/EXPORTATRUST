@@ -81,6 +81,7 @@ Layouts aprovados por Ivam estão travados: ver `docs/change-control/LAYOUT_PROT
 - Etapa 1 (branch `claude/redesign-etapa1`): `/` Painel, `/pedidos`, `/novo-processo`, `/cadastros`; o app anterior inteiro fica em `/classico`.
 - Painel (`/`) em formato de dashboard (2026-10-16, protótipo `Dashboard.dc.html`); contas em `lib/dashboard.ts`.
 - Financeiro (`/financeiro`, 2026-10-17): comissões e margens por processo; contas em `lib/finance.ts`; controle em `supply_chain_notes.finance`; emitentes em `finance_issuers` (migração 0033).
+- EUDR (`/eudr`, 2026-10-17): 5 etapas por pedido e florestas; regras em `lib/eudr.ts`; dados da floresta em `rural_properties.eudr_json` (migração 0035) e do pedido em `supply_chain_notes.eudr`; DDS em `operations.eudr_reference`. A tela antiga segue em /classico.
 - Pedido em 6 fases (`lib/order-phases.ts`): Pedido → Produção → Embarque → Documentos → Trânsito → Entregue.
 - Migration `0029` (aditiva): campos novos de cadastro (endereço do fornecedor, notify party/incoterm/moeda do cliente, unidade de venda/embalagem do produto).
 
