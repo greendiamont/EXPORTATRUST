@@ -70,6 +70,7 @@ Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout n
 |---|---|---|
 | 2026-10-14 | Ivam | Aprovou o redesign (protótipos 1 a 6) — `docs/redesign/PLANO_REDESIGN.md` |
 | 2026-10-15 | Ivam | Reafirmou o layout aprovado do Pedido (fases e emissão de documentos) e criou esta regra |
+| 2026-10-17 | Ivam | Autorizou a produção da comissão em reais, idioma pelo pagador, assinatura gravada e linha "Recebido": "PODE PRODUZIR" |
 | 2026-10-17 | Ivam | Aprovou a comissão em reais (PTAX do dia), idioma pelo pagador, assinatura gravada e linha "Recebido" destacada: "ALTERAÇÃO APROVADA" |
 | 2026-10-17 | Ivam | Pediu, no Financeiro, a linha em outra cor quando o processo está "Recebido": "Quando fica recebido [...] a linha fica de uma outra cor, como para a gente destacar que esse, esse processo já, já foi liquidado." |
 | 2026-10-17 | Ivam | Pediu na emissão da comissão: valor em reais pela taxa do dólar do dia, dados e assinatura do emitente (gravada para todas as emissões), folha A4, e idioma pelo pagador (exportador em português, importador em inglês): "tem que ter a opção de transformar em reais, com a taxa do dólar, né? Padrão do dia." · "Poderíamos criar uma assinatura [...] e deixar ela gravada" · "E padrão a folha A4." |
