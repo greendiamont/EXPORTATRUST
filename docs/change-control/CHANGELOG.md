@@ -917,4 +917,16 @@
 - **Automático:** `server/railway/shipment-report-scheduler.mjs` verifica de hora em hora e chama a ação `run-scheduled` (só administrador). Roda só em produção; em homologação só com `SHIPMENT_REPORT_SCHEDULER=1`, para não enviar e-mail a clientes a partir de dados de teste. Ao ligar o automático, o prazo conta a partir de agora.
 - **Banco:** migração aditiva `0036_shipment_report_settings` (tabela nova). Nenhum dado existente alterado.
 - **Testes:** tsc (92, sem erros novos), `tests/shipment-report.test.mjs` (3), testes completos, build Railway, Playwright local (janela, prévia, PDF, envio sem Resend mostra o erro e grava o histórico, envio automático ligado, run-scheduled sem envio fora do prazo).
+- **Status:** aprovado por Ivam ("O SHIPMENT REPORT PR169 PODE PRODUZIR") — em produção (PR #170; migração 0036 aplicada, envio automático ligado)
+
+## 2026-10-17 — Claude — Comissão em reais (PTAX do dia), idioma pelo pagador, assinatura gravada e linha "Recebido" destacada
+
+- **ID:** CHG-20261017-038
+- **Branch:** `claude/comissao-reais`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-17):** "A gente precisa só incluir um valor é, em reais também [...] tem que ter a opção de transformar em reais, com a taxa do dólar, né? Padrão do dia." · "A invoice também tem que ter os meus dados, né? Os dados do emissor. Para assinatura também, tá?" · "E padrão a folha A4." · "Poderíamos criar uma assinatura, é, e deixar ela gravada para que toda vez que for emitir já, já esteja com ela assinada, né?" · "Quando [...] é cobrado [...] do exportador [...] tem que estar em português [...] Quando for do importador, tem que estar [...] INGLES" · "Quando fica recebido [...] a linha fica de uma outra cor [...] para a gente destacar que esse processo já foi liquidado."
+- **O que mudou:** na janela "Emitir comissão": **Moeda** US$ ou R$ (câmbio do dia) — a taxa vem da PTAX de venda do Banco Central (rota nova `/api/exchange-rate`), editável; se o BCB não responder, pede a taxa à mão. Valor em R$ = US$ × câmbio; o documento mostra "Câmbio: US$ 1 = R$ x" e a observação da conversão. **Idioma** automático pelo pagador: exportador/fornecedor/parceiro → português ("FATURA", Emitente, Cobrar de, Total a pagar); importador → inglês ("INVOICE"); pode trocar. **Assinatura do emitente**: desenhada no quadro (dedo ou mouse) ou enviada como imagem; "Gravar assinatura" grava no emitente salvo e toda emissão dele já sai assinada (acima da linha de assinatura, com nome e CPF/CNPJ). Documento em A4 (uma página). Na tabela do Financeiro, processo **Recebido** fica com a linha em verde claro e faixa verde à esquerda.
+- **Dados:** a assinatura fica em `finance_issuers.details_json` (PNG em data URL, até 400 KB); o documento emitido guarda `language` e a cópia do emitente com a assinatura. Sem migração.
+- **Testes:** tsc (92, sem erros novos), 120 testes, build Railway, Playwright local (linha recebida em verde; idioma padrão pelo pagador; PTAX indisponível no sandbox → taxa à mão; assinatura desenhada e gravada no emitente; fatura em português em R$ com câmbio, assinatura e PDF A4 de 1 página).
 - **Status:** em andamento

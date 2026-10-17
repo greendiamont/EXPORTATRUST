@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { addMonths, monthKey, monthLabel, rangeStart, type Range } from "../../lib/dashboard";
 import { api, formatDate, money, processHref } from "./format";
 
@@ -10,6 +10,8 @@ import { api, formatDate, money, processHref } from "./format";
 type Issuer = {
   id?: number; name: string; taxId: string; address: string; city: string; email: string; phone: string;
   beneficiary: string; swift: string; account: string; bankName: string; bankAddress: string; bank: string;
+  /** Assinatura gravada (PNG em data URL): toda invoice deste emitente já sai assinada. */
+  signature: string;
 };
 type Payer = { id?: number; name: string; address: string; taxId: string; registration: string; email: string };
 type FinanceDoc = { id: string; kind: "invoice" | "nfse"; number: string; date: string; payer: string; amount: number; currency: string };
@@ -25,7 +27,7 @@ const RANGES = ["Este ano", "12 meses", "Tudo"];
 const KINDS = ["Todos", "Comissão", "Margem"];
 const STATUS = { a_faturar: { label: "A faturar", tone: "todo" }, faturado: { label: "Faturado", tone: "warn" }, recebido: { label: "Recebido", tone: "ok" } } as const;
 const COLORS = { comissao: "#2a78d6", margem: "#1baf7a" };
-const EMPTY_ISSUER: Issuer = { name: "", taxId: "", address: "", city: "", email: "", phone: "", beneficiary: "", swift: "", account: "", bankName: "", bankAddress: "", bank: "" };
+const EMPTY_ISSUER: Issuer = { name: "", taxId: "", address: "", city: "", email: "", phone: "", beneficiary: "", swift: "", account: "", bankName: "", bankAddress: "", bank: "", signature: "" };
 const EMPTY_PAYER: Payer = { name: "", address: "", taxId: "", registration: "", email: "" };
 
 const usd = (value: number) => money(Math.round(value), "USD");
@@ -169,7 +171,7 @@ export default function FinanceiroView() {
               {rows.map((row) => {
                 const status = STATUS[row.finance.status];
                 return (
-                  <tr key={row.id}>
+                  <tr key={row.id} className={row.finance.status === "recebido" ? "fn-paid" : undefined}>
                     {data?.canWrite && <td><input type="checkbox" aria-label={`Incluir ${row.reference} na mesma invoice`} checked={selected.includes(row.id)} onChange={(event) => setSelected(event.target.checked ? [...selected, row.id] : selected.filter((id) => id !== row.id))} /></td>}
                     <td><a className="mono" style={{ fontWeight: 500 }} href={processHref(row.id)}>{row.reference}</a><span className="et2-sub">ETD {formatDate(row.etd)}</span></td>
                     <td>{row.client || "—"}</td>
@@ -254,31 +256,55 @@ function EmitDialog({ processes, issuers, payers, nextNumbers, payerRoles, today
   const [date, setDate] = useState(today);
   const [due, setDue] = useState("");
   const [rateText, setRateText] = useState("");
+  // Moeda da invoice: US$ ou R$ pela PTAX de venda do dia (Banco Central); a nota fiscal é sempre em R$.
+  const [brl, setBrl] = useState(false);
   const [fx, setFx] = useState(first.rate ? String(first.rate).replace(".", ",") : "");
+  const [fxEdited, setFxEdited] = useState(false);
+  const [ptax, setPtax] = useState<{ rate: number; date: string } | null>(null);
+  const [ptaxError, setPtaxError] = useState("");
+  // Idioma: português quando cobrado de empresa no Brasil (exportador/fornecedor); inglês para o importador.
+  const [lang, setLang] = useState<"pt" | "en">(first.payerRole === "Importador" ? "en" : "pt");
+  const [signNotice, setSignNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const parse = (value: string) => Number(value.replace(/\./g, "").replace(",", ".")) || 0;
   const fxNumber = parse(fx);
+  const inBrl = nf || brl;
+  const pt = nf || lang === "pt";
+  useEffect(() => {
+    if (!inBrl || ptax || ptaxError) return;
+    api<{ rate: number; date: string }>("/api/exchange-rate").then((result) => {
+      setPtax(result);
+      if (!fxEdited) { setFx(result.rate.toFixed(4).replace(".", ",")); setAmountText(""); }
+    }).catch((reason: Error) => setPtaxError(reason.message));
+  }, [inBrl, ptax, ptaxError, fxEdited]);
   const toUsd = (row: Process) => row.currency === "USD" ? row.gain : (row.gainUsd ?? 0);
   // Parte de cada processo: por m³ = volume × valor; senão, o ganho calculado (comissão % ou margem).
   const rate = parse(rateText);
   const shares = processes.map((row) => {
     const usd = perM3 ? row.volume * rate : toUsd(row);
-    return { operationId: row.id, volume: row.volume, amount: Math.round((nf ? usd * (fxNumber || row.rate || 0) : usd) * 100) / 100 };
+    return { operationId: row.id, volume: row.volume, amount: Math.round((inBrl ? usd * (fxNumber || row.rate || 0) : usd) * 100) / 100 };
   });
   const computed = Math.round(shares.reduce((total, share) => total + share.amount, 0) * 100) / 100;
   const [amountText, setAmountText] = useState("");
   const amount = amountText ? parse(amountText) : computed;
-  const currency = nf ? "BRL" : "USD";
+  const currency = inBrl ? "BRL" : "USD";
   const percent = commission && processes.length === 1 ? first.percent : 0;
-  const defaultDescription = nf
-    ? `Serviço de intermediação comercial — embarques ${references.join(", ")}`
+  const refTextPt = references.length > 2 ? references.join(", ") : references.join(" e ");
+  const fxText = (fxNumber || 0).toLocaleString(pt ? "pt-BR" : "en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+  const fxNote = inBrl && fxNumber ? (pt
+    ? ` Convertido em reais pelo câmbio de US$ 1 = R$ ${fxText}${ptax && !fxEdited ? ` (PTAX venda do Banco Central de ${formatDate(ptax.date)})` : ""}.`
+    : ` Converted to BRL at USD 1 = BRL ${fxText}${ptax && !fxEdited ? ` (Central Bank of Brazil PTAX selling rate, ${formatDate(ptax.date)})` : ""}.`) : "";
+  const defaultDescription = pt
+    ? `Serviço de intermediação comercial — embarques ${refTextPt}`
     : commission
       ? `Commercial service fee related to ${first.client || "the"} shipments - references ${refText}`
       : `Commercial service fee related to shipments - references ${refText}`;
   const [description, setDescription] = useState("");
   const finalDescription = description || defaultDescription;
-  const defaultNotes = perM3 && !nf && rate ? `Charge calculated at USD ${rate.toFixed(2)} per m³ over a total shipped volume of ${totalVolume.toLocaleString("en-US", { maximumFractionDigits: 4 })} m³. References: ${refText}.` : "";
+  const defaultNotes = ((perM3 && !nf && rate ? (pt
+    ? `Cobrança calculada a US$ ${rate.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} por m³ sobre o volume total embarcado de ${totalVolume.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} m³. Referências: ${refTextPt}.`
+    : `Charge calculated at USD ${rate.toFixed(2)} per m³ over a total shipped volume of ${totalVolume.toLocaleString("en-US", { maximumFractionDigits: 4 })} m³. References: ${refText}.`) : "") + fxNote).trim();
   const [notes, setNotes] = useState("");
   const finalNotes = notes || defaultNotes;
   // Partes proporcionais ao valor final quando ele é ajustado à mão.
@@ -293,7 +319,7 @@ function EmitDialog({ processes, issuers, payers, nextNumbers, payerRoles, today
       await onEmit({
         kind: nf ? "nfse" : "invoice", number, date, issuer, payerRole, payer: payer.name, payerDetails: payer, amount, currency, shares: scaled,
         basis: perM3 ? "per_m3" : "percent", rate: perM3 ? rate : percent, volume: totalVolume, exchangeRate: fxNumber,
-        description: finalDescription, notes: finalNotes, dueDate: due,
+        description: finalDescription, notes: finalNotes, dueDate: due, language: pt ? "pt" : "en",
       });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Falha ao emitir.");
@@ -301,8 +327,22 @@ function EmitDialog({ processes, issuers, payers, nextNumbers, payerRoles, today
     }
   }
 
+  // Grava a assinatura no emitente salvo: as próximas emissões dele já saem assinadas.
+  async function keepSignature(signature: string) {
+    const next = { ...issuer, signature };
+    setIssuer(next);
+    setSignNotice("");
+    if (!next.name.trim() || !next.taxId.trim()) { setSignNotice("Preencha nome e CPF/CNPJ do emitente e marque \"Salvar este emitente\" para gravar a assinatura."); setRememberIssuer(true); return; }
+    try {
+      await onSave({ action: "save-issuer", issuer: next });
+      setSignNotice(signature ? `Assinatura gravada em ${next.name}. As próximas emissões já saem assinadas.` : "Assinatura removida do emitente.");
+    } catch (reason) {
+      setSignNotice(reason instanceof Error ? reason.message : "Falha ao gravar a assinatura.");
+    }
+  }
+
   const field = (label: string, input: ReactNode, wide = false) => <label className={wide ? "fn-wide" : undefined}>{label}{input}</label>;
-  const issuerInput = (key: Exclude<keyof Issuer, "id">, props: Record<string, unknown> = {}) =>
+  const issuerInput = (key: Exclude<keyof Issuer, "id" | "signature">, props: Record<string, unknown> = {}) =>
     <input className="pd-input" value={issuer[key]} onChange={(event) => setIssuer({ ...issuer, [key]: event.target.value })} {...props} />;
   const payerInput = (key: Exclude<keyof Payer, "id">, props: Record<string, unknown> = {}) =>
     <input className="pd-input" value={payer[key]} onChange={(event) => setPayer({ ...payer, [key]: event.target.value })} {...props} />;
@@ -321,10 +361,23 @@ function EmitDialog({ processes, issuers, payers, nextNumbers, payerRoles, today
           <div className="fn-form">
             <div className="fn-wide fn-row"><b>Documento</b>
               <div className="et2-seg" role="group" aria-label="Documento">
-                <button aria-pressed={!nf} onClick={() => { setNf(false); setAmountText(""); setDescription(""); setNumber(nextNumbers.invoice); }}>Invoice (exterior)</button>
-                <button aria-pressed={nf} onClick={() => { setNf(true); setAmountText(""); setDescription(""); setNumber(nextNumbers.nfse); }}>Nota fiscal (Brasil)</button>
+                <button aria-pressed={!nf} onClick={() => { setNf(false); setAmountText(""); setDescription(""); setNotes(""); setNumber(nextNumbers.invoice); }}>Invoice</button>
+                <button aria-pressed={nf} onClick={() => { setNf(true); setAmountText(""); setDescription(""); setNotes(""); setNumber(nextNumbers.nfse); }}>Nota fiscal (Brasil)</button>
               </div>
             </div>
+            {!nf && <div className="fn-wide fn-row"><b>Idioma</b>
+              <div className="et2-seg" role="group" aria-label="Idioma do documento">
+                <button aria-pressed={lang === "pt"} onClick={() => { setLang("pt"); setDescription(""); setNotes(""); }}>Português</button>
+                <button aria-pressed={lang === "en"} onClick={() => { setLang("en"); setDescription(""); setNotes(""); }}>English</button>
+              </div>
+              <span className="pd-sub">Exportador/fornecedor: português · importador: inglês</span>
+            </div>}
+            {!nf && <div className="fn-wide fn-row"><b>Moeda</b>
+              <div className="et2-seg" role="group" aria-label="Moeda da cobrança">
+                <button aria-pressed={!brl} onClick={() => { setBrl(false); setAmountText(""); setNotes(""); }}>US$ (dólar)</button>
+                <button aria-pressed={brl} onClick={() => { setBrl(true); setAmountText(""); setNotes(""); }}>R$ (reais, câmbio do dia)</button>
+              </div>
+            </div>}
             {field("Número", <input className="pd-input mono" value={number} onChange={(event) => setNumber(event.target.value)} />)}
             {field("Data", <input className="pd-input" type="date" value={date} onChange={(event) => setDate(event.target.value)} />)}
             <div className="fn-wide fn-row"><b>Cobrança</b>
@@ -335,8 +388,11 @@ function EmitDialog({ processes, issuers, payers, nextNumbers, payerRoles, today
             </div>
             {perM3 && field("Valor por m³ (US$)", <input className="pd-input mono" inputMode="decimal" value={rateText} placeholder="ex.: 3,00" onChange={(event) => { setRateText(event.target.value); setAmountText(""); }} />)}
             {perM3 && field("Volume embarcado (m³)", <input className="pd-input mono" readOnly value={totalVolume.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} />)}
-            {nf && field("Câmbio (R$ por US$)", <input className="pd-input mono" inputMode="decimal" value={fx} onChange={(event) => { setFx(event.target.value); setAmountText(""); }} />)}
-            {field(`Valor total (${nf ? "R$" : "US$"})`, <input className="pd-input mono" inputMode="decimal" value={amountText || amount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} onChange={(event) => setAmountText(event.target.value)} />)}
+            {inBrl && field("Câmbio (R$ por US$)", <>
+              <input className="pd-input mono" inputMode="decimal" value={fx} onChange={(event) => { setFx(event.target.value); setFxEdited(true); setAmountText(""); }} />
+              <span className="pd-sub">{ptax ? (fxEdited ? `Taxa informada à mão · PTAX ${formatDate(ptax.date)}: ${ptax.rate.toFixed(4).replace(".", ",")}` : `PTAX venda do Banco Central · ${formatDate(ptax.date)}`) : ptaxError ? "PTAX indisponível agora: informe a taxa do dia." : "Consultando a PTAX do dia…"}</span>
+            </>)}
+            {field(`Valor total (${inBrl ? "R$" : "US$"})`, <input className="pd-input mono" inputMode="decimal" value={amountText || amount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} onChange={(event) => setAmountText(event.target.value)} />)}
             {field("Vencimento (opcional)", <input className="pd-input" type="date" value={due} onChange={(event) => setDue(event.target.value)} />)}
 
             <div className="fn-wide fn-section">Emitente (issuer) · quem recebe</div>
@@ -356,6 +412,8 @@ function EmitDialog({ processes, issuers, payers, nextNumbers, payerRoles, today
             {field("Conta (account number / IBAN)", issuerInput("account"))}
             {field("Banco", issuerInput("bankName"))}
             {field("Endereço do banco", issuerInput("bankAddress"), true)}
+            <div className="fn-wide fn-section">Assinatura do emitente</div>
+            <div className="fn-wide"><SignaturePad value={issuer.signature} onChange={keepSignature} />{signNotice && <div className="pd-sub" role="status" style={{ marginTop: 6 }}>{signNotice}</div>}</div>
             <label className="fn-wide fn-check"><input type="checkbox" checked={rememberIssuer} onChange={(event) => setRememberIssuer(event.target.checked)} /> Salvar este emitente para as próximas</label>
 
             <div className="fn-wide fn-section">Cobrar de (bill to)</div>
@@ -366,6 +424,9 @@ function EmitDialog({ processes, issuers, payers, nextNumbers, payerRoles, today
             {field("Quem paga", <select className="pd-input" value={payerRole} onChange={(event) => {
               const role = event.target.value;
               setPayerRole(role);
+              setLang(role === "Importador" ? "en" : "pt");
+              setDescription("");
+              setNotes("");
               const name = role === "Fornecedor" ? first.supplierName : role === "Exportador" ? first.exporterName : role === "Importador" ? first.client : role === "Parceiro" ? "VLP" : "";
               setPayer({ ...EMPTY_PAYER, ...(payers.find((item) => item.name.toLowerCase() === name.toLowerCase()) ?? { name }) });
             }}>{payerRoles.map((role) => <option key={role}>{role}</option>)}</select>)}
@@ -382,27 +443,99 @@ function EmitDialog({ processes, issuers, payers, nextNumbers, payerRoles, today
             {error && <div className="fn-wide cb-error" role="alert">{error}</div>}
           </div>
           <div className="fn-preview" aria-label="Prévia do documento">
-            <div className="fn-preview-title">{nf ? "NOTA FISCAL · ESPELHO" : "INVOICE"}</div>
-            <div className="fn-preview-meta"><span>{nf ? "Número" : "Invoice No."}</span><b className="mono">{number}</b><span>{nf ? "Data" : "Date"}</span><b>{formatDate(date)}</b><span>{nf ? "Moeda" : "Currency"}</span><b>{currency}</b></div>
+            <div className="fn-preview-title">{nf ? "NOTA FISCAL · ESPELHO" : pt ? "FATURA" : "INVOICE"}</div>
+            <div className="fn-preview-meta"><span>{pt ? "Número" : "Invoice No."}</span><b className="mono">{number}</b><span>{pt ? "Data" : "Date"}</span><b>{formatDate(date)}</b><span>{pt ? "Moeda" : "Currency"}</span><b>{currency}</b></div>
             <div className="fn-preview-parties">
-              <div><span>{nf ? "PRESTADOR" : "ISSUER"}</span><b>{issuer.name || "—"}</b><div>{[issuer.address, issuer.city, issuer.taxId && `${issuer.taxId.replace(/\D/g, "").length === 11 ? "CPF" : "CNPJ"}: ${issuer.taxId}`, issuer.email, issuer.phone].filter(Boolean).join(" · ")}</div></div>
-              <div><span>{nf ? "TOMADOR" : "BILL TO"}</span><b>{payer.name || "—"}</b><div>{[payer.address, payer.taxId, payer.registration, payer.email].filter(Boolean).join(" · ")}</div></div>
+              <div><span>{nf ? "PRESTADOR" : pt ? "EMITENTE" : "ISSUER"}</span><b>{issuer.name || "—"}</b><div>{[issuer.address, issuer.city, issuer.taxId && `${issuer.taxId.replace(/\D/g, "").length === 11 ? "CPF" : "CNPJ"}: ${issuer.taxId}`, issuer.email, issuer.phone].filter(Boolean).join(" · ")}</div></div>
+              <div><span>{nf ? "TOMADOR" : pt ? "COBRAR DE" : "BILL TO"}</span><b>{payer.name || "—"}</b><div>{[payer.address, payer.taxId, payer.registration, payer.email].filter(Boolean).join(" · ")}</div></div>
             </div>
             <table>
-              <thead><tr><th>{nf ? "Descrição" : "Description"}</th><th className="num">m³</th><th className="num">{nf ? "Base" : "Rate"}</th><th className="num">{nf ? "Valor" : "Amount"}</th></tr></thead>
+              <thead><tr><th>{pt ? "Descrição" : "Description"}</th><th className="num">m³</th><th className="num">{pt ? "Base" : "Rate"}</th><th className="num">{pt ? "Valor" : "Amount"}</th></tr></thead>
               <tbody><tr><td>{finalDescription}</td><td className="num mono">{totalVolume ? totalVolume.toLocaleString("pt-BR", { maximumFractionDigits: 4 }) : ""}</td><td className="num mono">{perM3 ? `US$ ${rate.toFixed(2)}` : percent ? pct(percent) : ""}</td><td className="num mono">{fmt(amount)}</td></tr></tbody>
-              <tfoot><tr><td colSpan={3}>{nf ? "Total" : "TOTAL DUE"}</td><td className="num mono">{fmt(amount)}</td></tr></tfoot>
+              <tfoot><tr><td colSpan={3}>{pt ? "TOTAL A PAGAR" : "TOTAL DUE"}</td><td className="num mono">{fmt(amount)}</td></tr></tfoot>
             </table>
             {processes.length > 1 && <div className="pd-sub" style={{ marginTop: 6 }}>Por processo: {scaled.map((share, index) => `${references[index]} ${fmt(share.amount)}`).join(" · ")}</div>}
             {(issuer.beneficiary || issuer.swift || issuer.account) && <div className="pd-sub" style={{ marginTop: 10 }}>{[issuer.beneficiary, issuer.swift && `SWIFT ${issuer.swift}`, issuer.account && `Conta ${issuer.account}`, issuer.bankName].filter(Boolean).join(" · ")}</div>}
             {finalNotes && <div className="pd-sub" style={{ marginTop: 8 }}>{finalNotes}</div>}
+            <div className="fn-preview-sign">{issuer.signature && <img src={issuer.signature} alt="Assinatura" />}<div><b>{(issuer.name || "—").toUpperCase()}</b>{issuer.taxId}</div></div>
           </div>
         </div>
         <div className="cb-dialog-foot">
           <button type="button" className="pd-btn" onClick={onClose}>Cancelar</button>
-          <button type="button" className="pd-btn pd-btn--dark" disabled={busy || !issuer.name.trim() || !issuer.taxId.trim() || !payer.name.trim() || !(amount > 0) || !number.trim()} onClick={emit}>{busy ? "Emitindo…" : nf ? "Salvar espelho da nota" : "Emitir invoice"}</button>
+          <button type="button" className="pd-btn pd-btn--dark" disabled={busy || !issuer.name.trim() || !issuer.taxId.trim() || !payer.name.trim() || !(amount > 0) || !number.trim()} onClick={emit}>{busy ? "Emitindo…" : nf ? "Salvar espelho da nota" : pt ? "Emitir fatura" : "Emitir invoice"}</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Assinatura do emitente: desenhada com o dedo/mouse ou enviada como imagem (PNG/JPEG), reduzida e gravada
+// no cadastro do emitente para sair em todas as emissões.
+function SignaturePad({ value, onChange }: { value: string; onChange: (signature: string) => void | Promise<void> }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const [editing, setEditing] = useState(!value);
+  const [drawn, setDrawn] = useState(false);
+  const [error, setError] = useState("");
+
+  const context = () => {
+    const ctx = canvas.current?.getContext("2d");
+    if (ctx) { ctx.lineWidth = 2.6; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#1b2a44"; }
+    return ctx;
+  };
+  const point = (event: PointerEvent<HTMLCanvasElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    return { x: ((event.clientX - box.left) / box.width) * event.currentTarget.width, y: ((event.clientY - box.top) / box.height) * event.currentTarget.height };
+  };
+  const clear = () => { const ctx = context(); if (ctx && canvas.current) ctx.clearRect(0, 0, canvas.current.width, canvas.current.height); setDrawn(false); };
+
+  function upload(file: File | undefined) {
+    setError("");
+    if (!file) return;
+    if (!/^image\/(png|jpeg)$/.test(file.type)) { setError("Envie uma imagem PNG ou JPG da assinatura."); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const ctx = context();
+        if (!ctx || !canvas.current) return;
+        clear();
+        const scale = Math.min(canvas.current.width / image.width, canvas.current.height / image.height, 1);
+        const width = image.width * scale, height = image.height * scale;
+        ctx.drawImage(image, (canvas.current.width - width) / 2, (canvas.current.height - height) / 2, width, height);
+        setDrawn(true);
+      };
+      image.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  if (value && !editing) {
+    return (
+      <div className="fn-sign">
+        <img src={value} alt="Assinatura gravada" />
+        <div className="fn-sign-actions">
+          <span className="pd-sub">Assinatura gravada · sai em todas as emissões deste emitente.</span>
+          <button type="button" className="pd-btn pd-btn--xs" onClick={() => setEditing(true)}>Refazer</button>
+          <button type="button" className="pd-btn pd-btn--xs" onClick={() => { if (window.confirm("Remover a assinatura gravada?")) void onChange(""); }}>Remover</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="fn-sign">
+      <canvas ref={canvas} width={600} height={170} aria-label="Assine aqui"
+        onPointerDown={(event) => { const ctx = context(); if (!ctx) return; event.currentTarget.setPointerCapture(event.pointerId); drawing.current = true; const p = point(event); ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + 0.1, p.y + 0.1); ctx.stroke(); setDrawn(true); }}
+        onPointerMove={(event) => { if (!drawing.current) return; const ctx = context(); if (!ctx) return; const p = point(event); ctx.lineTo(p.x, p.y); ctx.stroke(); }}
+        onPointerUp={() => { drawing.current = false; }} onPointerLeave={() => { drawing.current = false; }} />
+      <div className="fn-sign-actions">
+        <span className="pd-sub">Assine no quadro (dedo ou mouse) ou envie uma imagem.</span>
+        <label className="pd-btn pd-btn--xs" style={{ cursor: "pointer" }}>Enviar imagem<input type="file" accept="image/png,image/jpeg" hidden onChange={(event) => upload(event.target.files?.[0])} /></label>
+        <button type="button" className="pd-btn pd-btn--xs" onClick={clear}>Limpar</button>
+        {value && <button type="button" className="pd-btn pd-btn--xs" onClick={() => setEditing(false)}>Cancelar</button>}
+        <button type="button" className="pd-btn pd-btn--dark pd-btn--xs" disabled={!drawn} onClick={async () => { const signature = canvas.current?.toDataURL("image/png") ?? ""; await onChange(signature); setEditing(false); }}>Gravar assinatura</button>
+      </div>
+      {error && <div className="cb-error" role="alert">{error}</div>}
     </div>
   );
 }
