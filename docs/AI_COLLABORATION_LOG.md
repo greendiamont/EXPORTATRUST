@@ -316,3 +316,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 ### 2026-10-17 — Claude — Aba Financeiro
 - **Branch:** `claude/financeiro`; CHG-20261017-031.
 - **Para outros agentes:** o JSON do pedido (`supply_chain_notes`) ganhou a chave `finance` (quem paga, situação, documentos emitidos) — preserve-a ao gravar o JSON. Contas de comissão/margem por processo em `lib/finance.ts` (`processGain`). Nova tabela `finance_issuers` (migração 0033). `/api/finance` não é liberada a convidados.
+
+### 2026-10-17 — Claude — Invoice do Financeiro no modelo de Ivam
+- **Branch:** `claude/financeiro-invoice-modelo`; CHG-20261017-032.
+- **Para outros agentes:** documentos de `supply_chain_notes.finance.documents` podem cobrir vários processos (`references`, `share` = parte do processo). `finance_issuers` guarda emitentes e pagadores (`kind`) com os campos completos em `details_json` (migração 0034).

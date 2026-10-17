@@ -843,4 +843,27 @@
 - **Banco:** migração aditiva `0033_finance_issuers` (tabela `finance_issuers`, emitentes salvos). Nenhum dado existente alterado.
 - **Acesso:** só equipe (administrador e analista; auditor só lê). Convidado continua bloqueado pela trava do servidor.
 - **Testes:** tsc (92, sem erros novos), `tests/finance.test.mjs` (4), 108 testes, build Railway, Playwright local (emitir invoice com emitente salvo, espelho de nota da VLP, marcar recebido, celular sem rolagem lateral).
-- **Status:** em andamento
+- **Status:** aprovado por Ivam ("E pode seguir para homologação e produção. Produção aprovada.") — em produção (PR #158)
+
+## 2026-10-17 — Claude — Financeiro: invoice no modelo de Ivam (por m³ e vários pedidos)
+
+- **ID:** CHG-20261017-032
+- **Branch:** `claude/financeiro-invoice-modelo`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-17):** (Ivam enviou na conversa a imagem da invoice de comissão que já usa, nº 001/2026: Issuer / Bill to, Volume (m³) × Rate, Total due, Bank details, Notes e assinatura; cobrança de USD 3,00 por m³ sobre dois pedidos)
+- **O que mudou:** a invoice gerada segue o modelo enviado (INVOICE, Invoice No./Date/Currency, ISSUER e BILL TO, Description × Volume (m³) × Rate × Amount, TOTAL DUE, BANK DETAILS, NOTES, bloco de assinatura e rodapé "Invoice issued by an individual (Brazil)" quando o emitente tem CPF). Cobrança por US$/m³ ou % do pedido / margem; uma invoice para vários processos (caixas de seleção na tabela), com a parte de cada processo registrada nele. Numeração "001/2026" (editável, sem repetir; espelho de nota "NFS-001/2026"). Emitente com endereço, e-mail, telefone e dados bancários (beneficiário, SWIFT, conta, banco, endereço do banco); pagador com endereço, VAT, registro (KVK) e e-mail — ambos podem ser salvos. A assinatura digital (gov.br) é feita sobre o PDF salvo.
+- **Banco:** migração aditiva `0034_finance_parties` (colunas `kind` e `details_json` em `finance_issuers`). Nenhum dado existente alterado. Os dados pessoais do modelo não foram gravados no código.
+- **Testes:** tsc (92, sem erros novos), testes de numeração, build Railway, Playwright local (invoice para 2 processos a US$ 3,00/m³ com emitente e pagador salvos; próximo número sugerido).
+- **Status:** aprovado por Ivam ("Pode subir para produção")
+
+## 2026-10-17 — Claude — Invoice de comissão no padrão dos documentos do pedido
+
+- **ID:** CHG-20261017-033
+- **Branch:** `claude/financeiro-padrao-documentos`
+- **PR:** ver PR da branch
+- **Destino:** homologation e produção (autorizada na mesma mensagem)
+- **Pedido de Ivam (conversa, 2026-10-17):** "Esse é um modelo de uma invoice de comissão que eu tenho, mas você pode pegar também o modelo do layout como se fosse seguindo o padrão da emissão de pedidos ou emissão de invoice [...] para ficar dentro de um padrão, todos os documentos dentro de um padrão." / "Para a parte do financeiro, questão de emissão, de comissão, tudo ok, tá? Pode subir para produção."
+- **O que mudou:** o documento da comissão (`app/api/finance/document`) usa o mesmo visual dos documentos emitidos no pedido (Sales Order, Purchase Invoice, Packing List): A4, faixa verde com o nome do emitente, caixas ISSUER / BILL TO, tabela de dados (número, data, moeda, referências), DETAILS, TOTAL DUE, BANK DETAILS em destaque, NOTES e assinatura. O conteúdo do modelo da invoice 001/2026 continua. Uma invoice por processo segue como padrão; vários processos na mesma invoice continua opcional.
+- **Testes:** tsc (92, sem erros novos), build Railway, comparação visual com a Purchase Invoice do pedido (Playwright local).
+- **Status:** aprovado por Ivam ("Pode subir para produção")

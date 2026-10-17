@@ -9,7 +9,15 @@ import { logisticsByCurrency, parseLogisticsCosts } from "./logistics-costs";
 import { readOrderTerms } from "./order-terms";
 
 export type FinanceStatus = "a_faturar" | "faturado" | "recebido";
-export type FinanceIssuer = { name: string; taxId: string; city: string; bank: string };
+/** Emitente (quem recebe a comissão) no modelo de invoice de Ivam: endereço, contato e dados bancários. */
+export type FinanceIssuer = {
+  name: string; taxId: string; address: string; city: string; email: string; phone: string;
+  beneficiary: string; swift: string; account: string; bankName: string; bankAddress: string;
+  /** Dados bancários em texto livre (documentos antigos); usado quando os campos acima estão vazios. */
+  bank: string;
+};
+/** Quem paga: nome, endereço, VAT/CNPJ, registro (ex.: KVK) e e-mail. */
+export type FinancePayer = { name: string; address: string; taxId: string; registration: string; email: string };
 export type FinanceDocument = {
   id: string;
   kind: "invoice" | "nfse";
@@ -18,7 +26,16 @@ export type FinanceDocument = {
   issuer: FinanceIssuer;
   payer: string;
   payerRole: string;
+  payerDetails?: FinancePayer;
   description: string;
+  /** Base da cobrança: % do pedido ou valor por m³ (como na invoice 001/2026). */
+  basis?: "percent" | "per_m3";
+  rate?: number;
+  volume?: number;
+  /** Processos cobertos pela mesma invoice (ex.: PO0639 e PO0657) e a parte deste processo. */
+  references?: string[];
+  share?: number;
+  notes?: string;
   amount: number;
   currency: string;
   exchangeRate: number;
@@ -123,15 +140,33 @@ export function processGain(source: Source) {
   };
 }
 
-/** Próximo número de documento da organização: CI-2026-001 (invoice) ou NFS-2026-001 (espelho da nota). */
+/** Sequência do ano em um número de documento: "001/2026" (modelo de Ivam), "NFS-001/2026" ou o antigo "CI-2026-001". */
+function sequenceOf(number: string, year: string) {
+  const current = /^(?:NFS-)?(\d+)\/(\d{4})$/.exec(number);
+  if (current) return current[2] === year ? Number(current[1]) : 0;
+  const legacy = /^(?:CI|NFS)-(\d{4})-(\d+)$/.exec(number);
+  return legacy && legacy[1] === year ? Number(legacy[2]) : 0;
+}
+
+/** Próximo número: invoices "001/2026" e espelhos de nota "NFS-001/2026", em sequências separadas. */
 export function nextDocumentNumber(kind: FinanceDocument["kind"], existing: string[], year: string) {
-  const prefix = `${kind === "invoice" ? "CI" : "NFS"}-${year}-`;
-  const last = existing.filter((number) => number.startsWith(prefix)).map((number) => Number(number.slice(prefix.length)) || 0);
-  return `${prefix}${String(Math.max(0, ...last) + 1).padStart(3, "0")}`;
+  const mine = existing.filter((number) => kind === "nfse" ? number.startsWith("NFS") : !number.startsWith("NFS"));
+  const next = Math.max(0, ...mine.map((number) => sequenceOf(number, year))) + 1;
+  return `${kind === "nfse" ? "NFS-" : ""}${String(next).padStart(3, "0")}/${year}`;
 }
 
 export function cleanIssuer(input: unknown): FinanceIssuer {
   const value = input && typeof input === "object" ? input as Record<string, unknown> : {};
   const field = (key: string, max = 300) => text(value[key]).trim().slice(0, max);
-  return { name: field("name", 160), taxId: field("taxId", 40), city: field("city", 120), bank: field("bank", 500) };
+  return {
+    name: field("name", 160), taxId: field("taxId", 40), address: field("address"), city: field("city", 120), email: field("email", 160), phone: field("phone", 60),
+    beneficiary: field("beneficiary", 160), swift: field("swift", 40), account: field("account", 80), bankName: field("bankName", 160), bankAddress: field("bankAddress"),
+    bank: field("bank", 500),
+  };
+}
+
+export function cleanPayer(input: unknown): FinancePayer {
+  const value = input && typeof input === "object" ? input as Record<string, unknown> : {};
+  const field = (key: string, max = 300) => text(value[key]).trim().slice(0, max);
+  return { name: field("name", 200), address: field("address", 400), taxId: field("taxId", 80), registration: field("registration", 120), email: field("email", 160) };
 }
