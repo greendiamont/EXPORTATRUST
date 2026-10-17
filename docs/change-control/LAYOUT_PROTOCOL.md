@@ -49,6 +49,7 @@ O workflow `.github/workflows/layout-guard.yml` reprova todo PR que altere arqui
 | 1 · Painel | `docs/redesign/prototipo/Main.dc.html` (com "Processos · negociação", aprovado em 2026-10-16) | `app/ui/painel-view.tsx` | Aprovado — travado |
 | 1b · Painel dashboard (substitui o topo do Painel; "Processos · negociação" fica recolhido no fim) | `docs/redesign/prototipo/Dashboard.dc.html` (aprovado em 2026-10-16) | `app/ui/painel-view.tsx` | Aprovado — travado |
 | 7 · Financeiro (aba nova, última do menu) | `docs/redesign/prototipo/Financeiro.dc.html` (aceito para teste em 2026-10-17) | `app/ui/financeiro-view.tsx`, `app/ui/shell.tsx` | Aprovado — travado |
+| 4b · EUDR rastreabilidade (substitui a implementação do "4 · EUDR") | `docs/redesign/prototipo/EUDRRastreio.dc.html` (aprovado em 2026-10-17) | `app/ui/eudr-view.tsx`, `app/ui/shell.tsx` (link EUDR) | Aprovado — em homologação |
 | 2 · Pedidos (lista) | `docs/redesign/prototipo/Processos.dc.html` | `app/ui/pedidos-view.tsx` | Aprovado — travado |
 | 3 · Pedido (todas as fases, emissão de documentos na fase Pedido) | `docs/redesign/prototipo/Processo.dc.html` | `app/ui/pedido-view.tsx` (PR #103) | Aprovado — travado; implementação aguardando conferência de Ivam em homologação |
 | 4 · EUDR | `docs/redesign/prototipo/EUDR.dc.html` | ainda não implementada | Aprovado — implementar exatamente como o protótipo |
@@ -69,6 +70,7 @@ Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout n
 | 2026-10-15 | Ivam | Reafirmou o layout aprovado do Pedido (fases e emissão de documentos) e criou esta regra |
 | 2026-10-17 | Ivam | Pediu a invoice de comissão no padrão dos documentos do pedido e autorizou produção: "Esse é um modelo de uma invoice de comissão que eu tenho, mas você pode pegar também o modelo do layout como se fosse seguindo o padrão da emissão de pedidos ou emissão de invoice [...] para ficar dentro de um padrão, todos os documentos dentro de um padrão." / "Para a parte do financeiro, questão de emissão, de comissão, tudo ok, tá? Pode subir para produção." |
 | 2026-10-17 | Ivam | Enviou o modelo da invoice de comissão (001/2026) para o documento do Financeiro seguir (Ivam enviou na conversa a imagem da invoice de comissão que já usa, nº 001/2026: Issuer / Bill to, Volume (m³) × Rate, Total due, Bank details, Notes e assinatura; cobrança de USD 3,00 por m³ sobre dois pedidos) |
+| 2026-10-17 | Ivam | Aprovou o protótipo "4b · EUDR rastreabilidade" (plantio e nativa, pellets): "Alteração aprovada" |
 | 2026-10-17 | Ivam | Aprovou a aba Financeiro para produção: "E pode seguir para homologação e produção. Produção aprovada." |
 | 2026-10-17 | Ivam | Aceitou para teste a aba Financeiro (quadro "7"), por último no menu: "Tá ok, vamos testar isso. Eu só quero que você coloque pro final, não coloque entre pedido e cadastro. Coloque por último, depois de cadastro, tá?" |
 | 2026-10-16 | Ivam | Aprovou para produção "Embarques por mês" em contêineres ou m³: "pode produzir" |

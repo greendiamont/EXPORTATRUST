@@ -44,6 +44,8 @@ export const ruralProperties = sqliteTable("rural_properties", {
   risk: text("risk").notNull().default("atenção"),
   geometryJson: text("geometry_json").notNull(),
   sourceFile: text("source_file").notNull().default(""),
+  /** Dados EUDR da floresta (tipo de origem, produtor, espécie, documentos com validade, verificações): lib/eudr.ts. */
+  eudrJson: text("eudr_json").notNull().default("{}"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 

@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>EUDR rastreabilidade · ExportaTrust</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F4F6}
+a{color:#1D4ED8;text-decoration:none}
+</style>
+</helmet>
+<div style="min-height: 100vh; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #111827; background: #F3F4F6; font-size: 14px">
+  <header style="background: #0F1B2D; color: #FFFFFF">
+    <div style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 0 24px; min-height: 56px; display: flex; align-items: center; gap: 28px">
+      <div style="font-weight: 600; font-size: 15px">✓ ExportaTrust</div>
+      <nav style="display: flex; gap: 4px; flex: 1">
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Painel</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Pedidos</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Cadastros</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #FFFFFF; font-weight: 500; box-shadow: inset 0 -3px 0 #5FD3A6">EUDR</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Relatórios</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Financeiro</a>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 28px 24px 48px; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px">
+      <div>
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600">EUDR · Rastreabilidade</h1>
+        <p style="margin: 4px 0 0; color: #4B5563">Da floresta ao importador · Regulamento (UE) 2023/1115, alterado pelo 2025/2650 · vale a partir de 30/12/2026</p>
+      </div>
+      <div style="display: inline-flex; border: 1px solid #D1D5DB; border-radius: 6px; overflow: hidden; background: #FFFFFF">
+        <sc-for list="{{views}}" as="v" hint-placeholder-count="2"><button onClick="{{v.pick}}" style="{{v.style}}">{{v.label}}</button></sc-for>
+      </div>
+    </div>
+
+    <sc-if value="{{viewOrders}}" hint-placeholder-val="{{ true }}">
+    <div style="display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start">
+      <aside aria-labelledby="procs" style="flex: 1 1 260px; min-width: 0; max-width: 320px; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+        <div style="padding: 14px 16px; border-bottom: 1px solid #E5E7EB"><h2 id="procs" style="margin: 0; font-size: 15px; font-weight: 600">Pedidos para a UE</h2><div style="font-size: 12px; color: #6B7280; margin-top: 2px">EUDR obrigatória: destino UE + madeira (cap. 44)</div></div>
+        <sc-for list="{{procs}}" as="pr" hint-placeholder-count="4">
+          <button onClick="{{pr.pick}}" style="{{pr.style}}">
+            <span style="display: flex; justify-content: space-between; gap: 8px; width: 100%"><span style="font-family: 'IBM Plex Mono', monospace; font-weight: 500">{{pr.ref}}</span><span style="{{pr.badgeStyle}}">{{pr.readiness}}</span></span>
+            <span style="font-size: 12px; color: #6B7280">{{pr.desc}}</span>
+          </button>
+        </sc-for>
+      </aside>
+
+      <div style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+        <section aria-label="Etapas" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 14px 20px">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap">
+            <h2 style="margin: 0; font-size: 16px; font-weight: 600">{{procRef}} · {{procName}}</h2>
+            <span style="font-size: 13px; color: #6B7280">5 etapas · serrado, pellets e nativa · o pedido só libera o embarque com tudo verde</span>
+          </div>
+          <ol style="margin: 14px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px">
+            <sc-for list="{{steps}}" as="s" hint-placeholder-count="5">
+              <li><button onClick="{{s.pick}}" style="{{s.style}}"><span style="font-size: 12px; color: #6B7280">{{s.num}}</span><span style="font-weight: 600">{{s.name}}</span><span style="{{s.countStyle}}">{{s.count}}</span></button></li>
+            </sc-for>
+          </ol>
+        </section>
+
+        <sc-if value="{{stepOrigin}}" hint-placeholder-val="{{ true }}">
+          <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+            <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap">
+              <div><h3 style="margin: 0; font-size: 15px; font-weight: 600">1 · Origem — de quais florestas saiu a madeira</h3><div style="font-size: 13px; color: #6B7280">Floresta própria do fornecedor ou de produtores de tora de quem ele compra. Cada floresta é cadastrada uma vez e reaproveitada.</div></div>
+              <button style="min-height: 34px; padding: 0 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">+ Vincular floresta</button>
+            </div>
+            <div style="padding: 12px 20px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
+              <sc-for list="{{originStats}}" as="o" hint-placeholder-count="4"><div style="{{o.style}}"><div style="font-size: 12px; color: #6B7280">{{o.label}}</div><div style="font-size: 18px; font-weight: 600; margin-top: 3px">{{o.value}}</div></div></sc-for>
+            </div>
+            <div style="overflow-x: auto">
+              <table style="width: 100%; min-width: 980px; border-collapse: collapse; font-size: 13px">
+                <thead><tr style="background: #F9FAFB; text-align: left; color: #6B7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px"><th style="padding: 8px 20px; font-weight: 500">Floresta (CAR)</th><th style="padding: 8px 10px; font-weight: 500">Produtor</th><th style="padding: 8px 10px; font-weight: 500">Tipo · espécie</th><th style="padding: 8px 10px; font-weight: 500">Colheita</th><th style="padding: 8px 10px; font-weight: 500; text-align: right">m³ toras</th><th style="padding: 8px 10px; font-weight: 500">Geolocalização</th><th style="padding: 8px 10px; font-weight: 500">Verificações</th><th style="padding: 8px 20px; font-weight: 500"></th></tr></thead>
+                <tbody>
+                  <sc-for list="{{forests}}" as="f" hint-placeholder-count="3">
+                    <tr style="border-top: 1px solid #F0F1F3; vertical-align: top">
+                      <td style="padding: 10px 20px"><b>{{f.name}}</b><div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #6B7280">{{f.car}}</div></td>
+                      <td style="padding: 10px">{{f.producer}}<div style="font-size: 12px; color: #6B7280">{{f.relation}}</div></td>
+                      <td style="padding: 10px"><span style="{{f.typeStyle}}">{{f.type}}</span> {{f.species}}<div style="font-size: 12px; color: #6B7280; font-style: italic">{{f.scientific}}</div></td>
+                      <td style="padding: 10px">{{f.harvest}}</td>
+                      <td style="padding: 10px; text-align: right; font-family: 'IBM Plex Mono', monospace">{{f.volume}}</td>
+                      <td style="padding: 10px">{{f.geo}}</td>
+                      <td style="padding: 10px"><span style="{{f.checkStyle}}">{{f.check}}</span><div style="font-size: 12px; color: #6B7280; margin-top: 3px">{{f.checkSub}}</div></td>
+                      <td style="padding: 10px 20px; text-align: right"><button onClick="{{f.open}}" style="min-height: 30px; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 12.5px; cursor: pointer">Ficha</button></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{stepLegal}}" hint-placeholder-val="{{ false }}">
+          <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+            <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB"><h3 style="margin: 0; font-size: 15px; font-weight: 600">2 · Legalidade — documentos exigidos</h3><div style="font-size: 13px; color: #6B7280">A lista muda pelo tipo de origem: plantio (pinus, eucalipto) ou nativa (manejo florestal). Quando o pedido mistura os dois, valem as duas listas.</div></div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px">
+              <thead><tr style="background: #F9FAFB; text-align: left; color: #6B7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px"><th style="padding: 8px 20px; font-weight: 500">Documento</th><th style="padding: 8px 10px; font-weight: 500">De quem</th><th style="padding: 8px 10px; font-weight: 500">Validade</th><th style="padding: 8px 10px; font-weight: 500">Situação</th><th style="padding: 8px 20px; font-weight: 500"></th></tr></thead>
+              <tbody>
+                <sc-for list="{{legal}}" as="l" hint-placeholder-count="8">
+                  <tr style="border-top: 1px solid #F0F1F3"><td style="padding: 9px 20px">{{l.doc}}</td><td style="padding: 9px 10px; color: #4B5563">{{l.who}}</td><td style="padding: 9px 10px; color: #4B5563">{{l.valid}}</td><td style="padding: 9px 10px"><span style="{{l.style}}">{{l.status}}</span></td><td style="padding: 9px 20px; text-align: right"><button style="min-height: 28px; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 12px; cursor: pointer">{{l.action}}</button></td></tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{stepBalance}}" hint-placeholder-val="{{ false }}">
+          <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 14px 20px; display: flex; flex-direction: column; gap: 14px">
+            <div><h3 style="margin: 0; font-size: 15px; font-weight: 600">{{balanceTitle}}</h3><div style="font-size: 13px; color: #6B7280">{{balanceSub}}</div></div>
+            <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
+              <sc-for list="{{balance}}" as="b" hint-placeholder-count="4"><div style="{{b.style}}"><div style="font-size: 12px; color: #6B7280">{{b.label}}</div><div style="margin-top: 4px; font-size: 18px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">{{b.value}}</div><div style="font-size: 12px; color: #6B7280">{{b.sub}}</div></div></sc-for>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; border: 1px solid #E5E7EB">
+              <thead><tr style="background: #F9FAFB; text-align: left; color: #6B7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px"><th style="padding: 8px 12px; font-weight: 500">Origem</th><th style="padding: 8px 12px; font-weight: 500">NF de entrada</th><th style="padding: 8px 12px; font-weight: 500; text-align: right">{{lotIn}}</th><th style="padding: 8px 12px; font-weight: 500; text-align: right">{{lotOut}}</th><th style="padding: 8px 12px; font-weight: 500">Contêineres / lotes</th></tr></thead>
+              <tbody><sc-for list="{{lots}}" as="x" hint-placeholder-count="3"><tr style="border-top: 1px solid #F0F1F3"><td style="padding: 9px 12px">{{x.origin}}</td><td style="padding: 9px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 12px">{{x.nf}}</td><td style="padding: 9px 12px; text-align: right; font-family: 'IBM Plex Mono', monospace">{{x.logs}}</td><td style="padding: 9px 12px; text-align: right; font-family: 'IBM Plex Mono', monospace">{{x.sawn}}</td><td style="padding: 9px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 12px">{{x.containers}}</td></tr></sc-for></tbody>
+            </table>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{stepExport}}" hint-placeholder-val="{{ false }}">
+          <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+            <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB"><h3 style="margin: 0; font-size: 15px; font-weight: 600">4 · Exportação — produto, quantidade e embarque</h3><div style="font-size: 13px; color: #6B7280">Vem do pedido (itens, packing list, BL). Nada é digitado duas vezes.</div></div>
+            <div style="padding: 14px 20px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; font-size: 13px">
+              <sc-for list="{{exportRows}}" as="r" hint-placeholder-count="9"><div><div style="font-size: 12px; color: #6B7280">{{r.label}}</div><div style="margin-top: 2px">{{r.value}}</div></div></sc-for>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{stepPackage}}" hint-placeholder-val="{{ false }}">
+          <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+            <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB"><h3 style="margin: 0; font-size: 15px; font-weight: 600">5 · Pacote EUDR para o importador</h3><div style="font-size: 13px; color: #6B7280">Quem registra a DDS no sistema da UE é o importador. Nós entregamos tudo o que ele precisa e guardamos o número da DDS no pedido.</div></div>
+            <div style="padding: 14px 20px; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 18px">
+              <div style="border: 1px solid #E5E7EB; border-radius: 8px">
+                <div style="padding: 10px 14px; border-bottom: 1px solid #F0F1F3; font-weight: 600">Informações exigidas na DDS (Art. 9 / Anexo II)</div>
+                <sc-for list="{{annex}}" as="a" hint-placeholder-count="10">
+                  <div style="padding: 8px 14px; border-top: 1px solid #F0F1F3; display: flex; justify-content: space-between; gap: 10px; font-size: 13px"><span>{{a.item}}</span><span style="{{a.style}}">{{a.status}}</span></div>
+                </sc-for>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 12px">
+                <div style="border: 1px solid #E5E7EB; border-radius: 8px; padding: 12px 14px">
+                  <b style="font-size: 13px">O pacote contém</b>
+                  <ul style="margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: #374151; line-height: 1.6">
+                    <li>Declaração de conformidade EUDR do exportador (PDF, inglês)</li>
+                    <li>Arquivo de geolocalização no formato da UE (GeoJSON, 6 casas decimais)</li>
+                    <li>Mapa e verificações de cada floresta</li>
+                    <li>Documentos de legalidade e balanço de volume</li>
+                  </ul>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px">
+                    <button style="min-height: 38px; padding: 0 14px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; font-weight: 500; cursor: pointer">Gerar pacote EUDR</button>
+                    <button style="min-height: 38px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; cursor: pointer">Enviar ao importador</button>
+                  </div>
+                </div>
+                <div style="border: 1px solid #E5E7EB; border-radius: 8px; padding: 12px 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+                  <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151">Nº de referência da DDS<input placeholder="informado pelo importador" style="min-height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit"></label>
+                  <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151">Nº de verificação<input placeholder="opcional" style="min-height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit"></label>
+                  <div style="grid-column: 1 / -1; font-size: 12px; color: #6B7280">Com o número da DDS registrado, a etapa fica verde e o Shipment Advice leva a referência.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </sc-if>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{viewForests}}" hint-placeholder-val="{{ false }}">
+      <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+        <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap">
+          <div><h2 style="margin: 0; font-size: 16px; font-weight: 600">Florestas cadastradas</h2><div style="font-size: 13px; color: #6B7280">Semáforo por floresta: verificações automáticas + documentos com validade. Amarelo = vence em 30 dias.</div></div>
+          <button style="min-height: 36px; padding: 0 14px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; cursor: pointer">+ Floresta (buscar CAR)</button>
+        </div>
+        <div style="overflow-x: auto"><table style="width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px">
+          <thead><tr style="background: #F9FAFB; text-align: left; color: #6B7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px"><th style="padding: 8px 20px; font-weight: 500">Floresta</th><th style="padding: 8px 10px; font-weight: 500">Produtor</th><th style="padding: 8px 10px; font-weight: 500; text-align: right">Área (ha)</th><th style="padding: 8px 10px; font-weight: 500">Verificações</th><th style="padding: 8px 10px; font-weight: 500">Documentos</th><th style="padding: 8px 10px; font-weight: 500">Usada em</th><th style="padding: 8px 20px; font-weight: 500"></th></tr></thead>
+          <tbody><sc-for list="{{forestList}}" as="f" hint-placeholder-count="4"><tr style="border-top: 1px solid #F0F1F3"><td style="padding: 10px 20px"><b>{{f.name}}</b><div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #6B7280">{{f.car}}</div></td><td style="padding: 10px">{{f.producer}}</td><td style="padding: 10px; text-align: right; font-family: 'IBM Plex Mono', monospace">{{f.area}}</td><td style="padding: 10px"><span style="{{f.checkStyle}}">{{f.check}}</span></td><td style="padding: 10px"><span style="{{f.docStyle}}">{{f.docs}}</span></td><td style="padding: 10px; color: #4B5563">{{f.used}}</td><td style="padding: 10px 20px; text-align: right"><button onClick="{{f.open}}" style="min-height: 30px; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 12.5px; cursor: pointer">Ficha</button></td></tr></sc-for></tbody>
+        </table></div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{showCard}}" hint-placeholder-val="{{ true }}">
+      <section aria-label="Ficha da floresta" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; box-shadow: 0 10px 30px rgba(15,27,45,0.12)">
+        <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center; gap: 10px">
+          <div><h2 style="margin: 0; font-size: 16px; font-weight: 600">Ficha da floresta · Fazenda Boa Vista</h2><div style="font-size: 13px; color: #6B7280">CAR SC-4205407-A1B2C3D4… · Produtor: Madeireira Serra Verde (compra de terceiro) · 412,5 ha · pinus</div></div>
+          <button onClick="{{closeCard}}" aria-label="Fechar" style="border: 0; background: transparent; font-size: 18px; color: #6B7280; cursor: pointer">×</button>
+        </div>
+        <div style="padding: 16px 20px; display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 20px">
+          <div>
+            <svg viewBox="0 0 320 220" role="img" aria-label="Contorno da floresta sobre imagem de satélite" style="width: 100%; border-radius: 6px; background: #2f4a2c">
+              <rect x="0" y="0" width="320" height="220" fill="#3b5a36"></rect>
+              <path d="M40 60 L150 30 L270 70 L280 160 L170 195 L60 170 Z" fill="rgba(95,211,166,0.25)" stroke="#5FD3A6" stroke-width="2.5"></path>
+              <path d="M180 90 L215 85 L222 120 L190 125 Z" fill="rgba(208,59,59,0.35)" stroke="#d03b3b" stroke-width="1.5"></path>
+              <text x="12" y="208" fill="#FFFFFF" font-size="11" font-family="IBM Plex Sans">Polígono do CAR · 412,5 ha · 6 casas decimais</text>
+            </svg>
+            <div style="font-size: 12px; color: #6B7280; margin-top: 6px">Em vermelho: área a revisar apontada pela verificação de desmatamento (exemplo).</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <div style="border: 1px solid #E5E7EB; border-radius: 8px">
+              <div style="padding: 8px 12px; border-bottom: 1px solid #F0F1F3; font-weight: 600; font-size: 13px">Verificações automáticas</div>
+              <sc-for list="{{checks}}" as="c" hint-placeholder-count="5"><div style="padding: 7px 12px; border-top: 1px solid #F0F1F3; display: flex; justify-content: space-between; gap: 10px; font-size: 13px"><span>{{c.item}}<span style="display: block; font-size: 11.5px; color: #6B7280">{{c.source}}</span></span><span style="{{c.style}}">{{c.status}}</span></div></sc-for>
+            </div>
+            <div style="border: 1px solid #E5E7EB; border-radius: 8px">
+              <div style="padding: 8px 12px; border-bottom: 1px solid #F0F1F3; font-weight: 600; font-size: 13px">Documentos da floresta</div>
+              <sc-for list="{{forestDocs}}" as="d" hint-placeholder-count="5"><div style="padding: 7px 12px; border-top: 1px solid #F0F1F3; display: flex; justify-content: space-between; gap: 10px; font-size: 13px"><span>{{d.doc}}<span style="display: block; font-size: 11.5px; color: #6B7280">{{d.valid}}</span></span><span style="{{d.style}}">{{d.status}}</span></div></sc-for>
+            </div>
+          </div>
+        </div>
+      </section>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { view: 0, proc: 0, step: 0, card: true }; }
+  renderVals() {
+    const badge = (t) => 'display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; ' + ({ ok: 'background: #ECFDF5; color: #047857', warn: 'background: #FFFBEB; color: #92400E', bad: 'background: #FEF2F2; color: #B91C1C', todo: 'background: #F3F4F6; color: #4B5563' })[t];
+    const seg = (on) => 'min-height: 38px; padding: 0 14px; border: 0; font: inherit; font-size: 13px; cursor: pointer; ' + (on ? 'background: #0F1B2D; color: #FFFFFF' : 'background: #FFFFFF; color: #374151');
+    const views = ['Pedidos', 'Florestas'].map((label, i) => ({ label, pick: () => this.setState({ view: i }), style: seg(this.state.view === i) }));
+    const PROCS = [['PLT-001/26', 'Wood pellets · Alemanha · ETD nov/26', '55%', 'warn'], ['278/26', 'Pinus serrado · Holanda · ETD 23/10', '72%', 'warn'], ['061/26', 'Pinus serrado · Holanda · ETD 24/10', '100%', 'ok'], ['048/26 A', 'Madeira nativa · Itália · ETD 12/11', '40%', 'bad']];
+    const pellets = this.state.proc === 0;
+    const native = this.state.proc === 3;
+    const procs = PROCS.map(([ref, desc, readiness, t], i) => {
+      const on = this.state.proc === i;
+      return { ref, desc, readiness, pick: () => this.setState({ proc: i }), badgeStyle: badge(t),
+        style: 'width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 16px; border: 0; border-top: 1px solid #F0F1F3; font: inherit; color: #111827; text-align: left; cursor: pointer; background: ' + (on ? '#F3F4F6' : '#FFFFFF') + '; box-shadow: ' + (on ? 'inset 3px 0 0 #0F1B2D' : 'none') };
+    });
+    const STEPS = [['Origem', 3, 3], ['Legalidade', 9, 11], ['Transformação', 1, 1], ['Exportação', 4, 5], ['Pacote EUDR', 0, 1]];
+    const steps = STEPS.map(([name, done, total], i) => {
+      const on = this.state.step === i;
+      const full = done === total;
+      return { num: 'Etapa ' + (i + 1), name, count: done + ' de ' + total, pick: () => this.setState({ step: i }),
+        style: 'width: 100%; min-height: 70px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 8px 12px; border-radius: 6px; font: inherit; color: #111827; text-align: left; cursor: pointer; background: ' + (on ? '#F3F4F6' : '#FFFFFF') + '; border: 1px solid ' + (on ? '#0F1B2D' : '#E5E7EB') + '; border-top: 4px solid ' + (full ? '#047857' : done ? '#F59E0B' : '#D1D5DB'),
+        countStyle: 'font-size: 12px; color: ' + (full ? '#047857' : '#6B7280') };
+    });
+    const box = 'border: 1px solid #E5E7EB; border-radius: 8px; padding: 10px 12px';
+    const originStats = [['Florestas', '3'], ['Geolocalização', '3 de 3'], ['Sem desmatamento pós-2020', '2 de 3'], ['Toras declaradas', '640 m³']]
+      .map(([label, value], i) => ({ label, value, style: box + (i === 2 ? '; border-color: #FDE68A; background: #FFFBEB' : '') }));
+    const openCard = () => this.setState({ card: true });
+    const forests = [
+      { type: 'Plantio', name: 'Fazenda Boa Vista', car: 'SC-4205407-A1B2…', producer: 'Madeireira Serra Verde', relation: 'compra de terceiro', species: 'Pinus', scientific: 'Pinus taeda', harvest: 'ago–set/2026', volume: '310', geo: 'Polígono · 412,5 ha', check: 'Revisar', checkStyle: badge('warn'), checkSub: 'alerta de desmatamento em 3,1 ha', open: openCard },
+      { type: 'Plantio', name: 'Sítio Santa Rita', car: 'SC-4215802-C3D4…', producer: 'Serraria Rauber (própria)', relation: 'floresta do fornecedor', species: 'Pinus', scientific: 'Pinus elliottii', harvest: 'set/2026', volume: '210', geo: 'Polígono · 128,0 ha', check: 'OK', checkStyle: badge('ok'), checkSub: 'todas as verificações', open: openCard },
+      { type: 'Plantio', name: 'Lote Cerro Azul', car: 'PR-4105805-E5F6…', producer: 'João Pereira (produtor rural)', relation: 'compra de terceiro', species: 'Pinus', scientific: 'Pinus taeda', harvest: 'jul/2026', volume: '120', geo: 'Ponto · 3,2 ha', check: 'OK', checkStyle: badge('ok'), checkSub: 'área < 4 ha: ponto basta', open: openCard },
+    ].concat(native ? [{ type: 'Nativa', name: 'Fazenda Rio Verde (manejo)', car: 'MT-5107909-J1K2…', producer: 'Madeireira Norte', relation: 'plano de manejo · UPA 3', species: 'Cumaru', scientific: 'Dipteryx odorata', harvest: 'jun–ago/2026', volume: '85', geo: 'Polígono da UPA · 640 ha', check: 'Revisar', checkStyle: badge('warn'), checkSub: 'conferir DOF × volume', open: openCard }] : [])
+      .map((f) => ({ ...f, typeStyle: badge(f.type === 'Nativa' ? 'warn' : 'ok') }));
+    const L = (doc, who, valid, t, action) => ({ doc, who, valid, status: { ok: 'Recebido', warn: 'Vence em 12 dias', bad: 'Vencido', todo: 'Pendente' }[t], style: badge(t), action: action || (t === 'todo' ? 'Anexar' : 'Ver') });
+    const NATIVE = [
+      L('Plano de Manejo Florestal Sustentável (PMFS) aprovado', 'Floresta nativa', 'até 2029', 'ok'),
+      L('Autorização de Exploração (AUTEX) da UPA', 'Floresta nativa', 'safra 2026', 'ok'),
+      L('DOF / Sinaflor — origem e transporte das toras', 'Produtor → serraria', 'por carga', 'warn', 'Ver'),
+      L('Saldo de créditos no Sinaflor × volume vendido', 'Serraria', 'por pedido', 'todo'),
+      L('DOF de exportação (produto final)', 'Exportador', 'por embarque', 'todo'),
+    ];
+    const legal = (native ? NATIVE : []).concat([
+      L('Recibo do CAR (ativo)', 'Cada floresta', 'consulta SICAR', 'ok'),
+      L('Matrícula do imóvel / contrato de arrendamento', 'Cada floresta', '—', 'ok'),
+      L('Declaração / autorização de corte de plantio (órgão estadual)', 'Cada floresta', 'conforme o estado', 'ok'),
+      L('NF de venda das toras (produtor → serraria)', 'Produtores de tora', 'por carga', 'ok'),
+      L('Romaneio / guia de transporte das toras', 'Transportador', 'por carga', 'warn', 'Ver'),
+      L('Licença ambiental de operação da serraria', 'Fornecedor', '30/03/2027', 'ok'),
+      L('CTF / IBAMA da serraria', 'Fornecedor', '15/01/2027', 'ok'),
+      L('Certidão negativa de débitos trabalhistas (CNDT)', 'Fornecedor', '02/12/2026', 'ok'),
+      L('Consulta à lista de trabalho escravo (MTE)', 'Fornecedor e produtores', 'automática', 'ok'),
+      L('Certificação (FSC / PEFC), se houver', 'Fornecedor', '—', 'todo'),
+      L('NF de exportação e BL', 'Exportador', 'por embarque', 'todo'),
+    ]).concat(pellets ? [L('Certificação ENplus / SURE (se exigida pelo cliente)', 'Fábrica de pellets', '—', 'todo'), L('Licença ambiental da fábrica de pellets', 'Fábrica de pellets', '10/05/2027', 'ok')] : []);
+    const balance = (pellets
+      ? [['Matéria-prima recebida', '1.180 t', 'toras, cavaco e serragem · 3 origens'], ['Rendimento da fábrica', '52%', 'base seca, informado pela fábrica'], ['Pellets possíveis', '614 t', 'matéria-prima × rendimento'], ['Exportado neste pedido', '588 t', 'saldo 26 t · OK']]
+      : [['Toras recebidas', '640 m³', '3 florestas'], ['Rendimento da serraria', '48%', 'informado pelo fornecedor'], ['Serrado possível', '307 m³', 'toras × rendimento'], ['Exportado neste pedido', '293 m³', 'saldo 14 m³ · OK']])
+      .map(([label, value, sub], i) => ({ label, value, sub, style: box + (i === 3 ? '; background: #ECFDF5; border-color: #A7F3D0' : '') }));
+    const lots = pellets ? [
+      { origin: 'Fazenda Boa Vista (toras de pinus)', nf: 'NF 1520, 1533', logs: '520 t', sawn: '270 t', containers: 'lote PLT-2026-007' },
+      { origin: 'Serraria Rauber (serragem e cavaco)', nf: 'NF 288, 291, 302', logs: '480 t', sawn: '250 t', containers: 'lotes PLT-2026-007/008' },
+      { origin: 'Lote Cerro Azul (toras)', nf: 'NF 77', logs: '180 t', sawn: '94 t', containers: 'lote PLT-2026-008' },
+    ] : [
+      { origin: 'Fazenda Boa Vista', nf: 'NF 1520, 1533, 1541', logs: '310', sawn: '149', containers: 'TCNU4963236, TEMU8281337' },
+      { origin: 'Sítio Santa Rita', nf: 'NF 288, 291', logs: '210', sawn: '101', containers: 'SEKU4034297, YMMU6064313' },
+      { origin: 'Lote Cerro Azul', nf: 'NF 77', logs: '120', sawn: '58', containers: 'TCNU3917318' },
+    ];
+    const exportRows = (pellets
+      ? [['Produto', 'Wood pellets 6 mm ENplus A1'], ['NCM / HS', '4401.31.00'], ['Espécie (nome científico)', 'Pinus taeda; Pinus elliottii'], ['Quantidade', '588 t líquido · lotes PLT-2026-007/008'], ['País de produção', 'Brasil (risco padrão)'], ['Fornecedor', 'Fábrica de pellets'], ['Cliente / operador UE', 'Importador na Alemanha · EORI DE…'], ['Embarque', 'Big bags / granel · Itajaí → Hamburgo'], ['BL', 'pendente']]
+      : [['Produto', 'Pine sawn timber KD'], ['NCM / HS', '4407.11.00'], ['Espécie (nome científico)', 'Pinus taeda; Pinus elliottii'], ['Quantidade', '293,23 m³ · 152.480 kg líquido'], ['País de produção', 'Brasil (risco padrão)'], ['Fornecedor', 'Serraria Rauber Ltda'], ['Cliente / operador UE', 'DANUBIA WOOD GmbH · EORI DE…'], ['Contêineres', '6 · Itajaí → Rotterdam'], ['BL', 'pendente']])
+      .map(([label, value]) => ({ label, value }));
+    const A = (item, t) => ({ item, status: { ok: 'Pronto', warn: 'Revisar', todo: 'Pendente' }[t], style: badge(t) });
+    const annex = [A('Descrição, NCM e quantidade (kg e m³)', 'ok'), A('Espécie com nome científico', 'ok'), A('País de produção', 'ok'), A('Geolocalização de todas as áreas (polígono > 4 ha)', 'ok'), A('Data / período da colheita', 'ok'), A('Fornecedor e cliente identificados', 'ok'), A('Sem desmatamento após 31/12/2020', 'warn'), A('Legalidade conforme a lei brasileira', 'warn'), A('Avaliação de risco e mitigação', 'todo'), A('Nº de referência da DDS (importador)', 'todo')];
+    const C = (item, source, t, status) => ({ item, source, status, style: badge(t) });
+    const checks = [
+      C('CAR ativo', 'SICAR', 'ok', 'Ativo'),
+      C('Sem desmatamento após 31/12/2020', 'MapBiomas Alerta / PRODES', 'warn', 'Alerta 3,1 ha'),
+      C('Sem embargo IBAMA (pelo contorno)', 'IBAMA', 'ok', 'Nenhum'),
+      C('Fora de terra indígena e unidade de conservação', 'FUNAI / ICMBio', 'ok', 'Fora'),
+      C('Produtor fora da lista de trabalho escravo', 'MTE', 'ok', 'Fora'),
+    ];
+    const D = (doc, valid, t) => ({ doc, valid, status: { ok: 'OK', warn: 'Vence em 12 dias', todo: 'Pendente' }[t], style: badge(t) });
+    const forestDocs = [D('Recibo do CAR', 'consultado em 17/10/2026', 'ok'), D('Matrícula do imóvel', 'sem validade', 'ok'), D('Autorização de corte (plantio)', 'até 29/10/2026', 'warn'), D('Contrato de compra das toras', 'safra 2026', 'ok'), D('Fotos / laudo da área alertada', 'para justificar o alerta', 'todo')];
+    const forestList = [
+      { name: 'Fazenda Boa Vista', car: 'SC-4205407-A1B2…', producer: 'Madeireira Serra Verde', area: '412,5', check: 'Revisar alerta', checkStyle: badge('warn'), docs: '4 de 5', docStyle: badge('warn'), used: '278/26, 061/26', open: openCard },
+      { name: 'Sítio Santa Rita', car: 'SC-4215802-C3D4…', producer: 'Serraria Rauber', area: '128,0', check: 'OK', checkStyle: badge('ok'), docs: '5 de 5', docStyle: badge('ok'), used: '278/26', open: openCard },
+      { name: 'Lote Cerro Azul', car: 'PR-4105805-E5F6…', producer: 'João Pereira', area: '3,2', check: 'OK', checkStyle: badge('ok'), docs: '5 de 5', docStyle: badge('ok'), used: '278/26, 048/26 A', open: openCard },
+      { name: 'Fazenda Rio Claro', car: 'SC-4209102-G7H8…', producer: 'Serraria Rauber', area: '256,0', check: 'CAR pendente', checkStyle: badge('bad'), docs: '2 de 5', docStyle: badge('bad'), used: '—', open: openCard },
+    ];
+    const step = this.state.step;
+    return {
+      views, viewOrders: this.state.view === 0, viewForests: this.state.view === 1,
+      procs, procRef: PROCS[this.state.proc][0], procName: PROCS[this.state.proc][1], steps,
+      stepOrigin: step === 0, stepLegal: step === 1, stepBalance: step === 2, stepExport: step === 3, stepPackage: step === 4,
+      originStats, forests, legal, balance, lots, exportRows,
+      balanceTitle: pellets ? '3 · Transformação — balanço de massa da fábrica de pellets' : '3 · Transformação — balanço de volume da serraria',
+      balanceSub: pellets ? 'Matéria-prima (toras, cavaco, serragem) que entrou de cada origem × pellets produzidos e exportados. Liga cada origem aos lotes de pellets.' : 'Toras que entraram de cada floresta × madeira serrada que saiu neste pedido. Prova que o volume exportado cabe nas origens declaradas.',
+      lotIn: pellets ? 'Matéria-prima (t)' : 'Toras (m³)', lotOut: pellets ? 'Pellets possíveis (t)' : 'Serrado possível (m³)', annex, checks, forestDocs, forestList,
+      showCard: this.state.card, closeCard: () => this.setState({ card: false }),
+    };
+  }
+}
+</script>
+</body>
+</html>
