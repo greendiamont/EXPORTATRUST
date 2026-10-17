@@ -881,7 +881,7 @@
 - **Acesso:** só equipe (administrador e analista; auditor lê). Convidado bloqueado pela trava do servidor.
 - **Não muda nesta fase:** trava de embarque (continua como antes), tela antiga de EUDR, envio automático do pacote por e-mail.
 - **Testes:** tsc (92, sem erros novos), `tests/eudr.test.mjs` (6), testes completos, build Railway, Playwright local (vincular florestas, colheita e entrada, ficha com verificação e documento anexado, documentos da cadeia, rendimento, DDS, declaração e GeoJSON; celular sem rolagem lateral).
-- **Status:** em andamento
+- **Status:** aprovado por Ivam ("Ok pode produzir!") — em produção (PR #165)
 
 ## 2026-10-17 — Claude — EUDR dentro do pedido (etapa na barra de fases)
 
@@ -892,4 +892,16 @@
 - **Pedido de Ivam (conversa, 2026-10-17):** "Essa aba do EUDR, por exemplo, nós deveríamos fazer com que ela saia de dentro do pedido. [...] dentro do nosso fluxo, lá nas fases, quando for um pedido que tenha para a Europa, ele abre dentro dessa fase uma fase que é a EUDR. Então, ali dentro, quando eu clicar nesse ponto, vai abrir esse processo do EUDR."
 - **O que mudou:** na tela do pedido, quando o pedido é para a UE com produto de madeira (mesma regra do selo EUDR), a barra de fases ganha a etapa **EUDR** entre Produção e Embarque, com o percentual pronto. Clicar nela (ou no selo "EUDR x%" do topo) abre as 5 etapas da EUDR dentro do pedido (mesmo painel da aba EUDR, `EudrOrderPanel`). Clicar em outra fase volta ao conteúdo normal. Pedidos que não são para a UE e convidados não mudam. A aba EUDR do menu continua (todos os pedidos para a UE e o cadastro de florestas).
 - **Testes:** tsc (92, sem erros novos), testes completos, build Railway, Playwright local (etapa aparece só no pedido para a UE; abre o painel; pacote disponível; voltar para Embarque; pedido fora da UE com 6 fases). A rolagem lateral da tela do pedido no celular (596 px) já existia antes desta mudança.
-- **Status:** em andamento
+- **Status:** aprovado por Ivam ("Ok pode produzir!") — em produção (PR #165)
+
+## 2026-10-17 — Claude — Financeiro do pedido (pagamentos do cliente) e Shipment Advice com saldo
+
+- **ID:** CHG-20261017-036
+- **Branch:** `claude/financeiro-pedido`
+- **PR:** ver PR da branch
+- **Destino:** homologation e produção (autorizadas na mesma mensagem)
+- **Pedido de Ivam (conversa, 2026-10-17):** uma fase financeira no pedido para guardar o adiantamento, os SWIFTs e o balance; o Shipment Advice consulta o financeiro, puxa o adiantamento e calcula o saldo no e-mail. Sem câmbio e sem pagamentos ao fornecedor ("deixamos somente o controle do cliente"). Protótipo "3d · Financeiro do pedido" (`docs/redesign/prototipo/FinanceiroPedido.dc.html`) aprovado: "Alteração aprovada pode subir para produção".
+- **O que mudou:** na barra de fases do pedido, etapa **Financeiro** no fim (só equipe), com o saldo. Dentro: valor da invoice, recebido, saldo e próximo vencimento; parcelas montadas pela condição de pagamento (ex.: "30% ADV 70% …" → Adiantamento 30% e Saldo 70%), editáveis; "Registrar recebimento" com data, valor, observação e SWIFT anexado; "Marcar solicitado"; documentos financeiros do pedido. Shipment Advice: o e-mail usa o total, os recebimentos registrados (data e referência) e o saldo com vencimento; sem recebimento, cobra o total. Ao enviar, as parcelas em aberto passam a "Solicitado" e o pedido ganha a tarefa "Confirmar SWIFT do saldo".
+- **Regras (`lib/order-payments.ts`):** total = itens do pedido de venda (ou valor comercial); situação por parcela (a solicitar, solicitado, recebido em parte, recebido). Dados em `supply_chain_notes.payments`. Arquivos na categoria "Financeiro · pagamentos" (fase Pedido, que o convidado não vê). Sem mudança de banco.
+- **Testes:** tsc (92, sem erros novos), `tests/order-payments.test.mjs` (3), 117 testes, build Railway, Playwright local (parcelas 30/70, vencimentos, recebimento com SWIFT, saldo na barra e no e-mail do Shipment Advice).
+- **Status:** aprovado por Ivam ("Alteração aprovada pode subir para produção")

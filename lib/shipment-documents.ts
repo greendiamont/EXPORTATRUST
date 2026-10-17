@@ -106,6 +106,9 @@ export const SHIPMENT_SET_CATEGORY = "Export Control · Set documental";
 /** Tipos aceitos ao anexar um arquivo direto num cartão do Shipment Advice. */
 export const SHIPMENT_DOCUMENT_TYPES: string[] = SHIPMENT_ADVICE_CHECKLIST.flatMap((item) => [...item.types]);
 
+/** Financeiro do pedido (lib/order-payments.ts): recebimentos registrados e condição de pagamento. */
+export type OrderPaymentsForAdvice = { total: number; received: number; receipts: Array<{ date: string; amount: number; note: string }>; paymentTerms: string; balanceDueDate: string };
+
 export type ShipmentInvoiceFinancials = {
   invoiceNumber?: string;
   currency?: string;
@@ -160,6 +163,7 @@ export function buildShipmentAdvice(
   documents: Array<{ id: number; fileName: string; category?: string; documentType: string; shipmentSetStatus: string; clientShareStatus?: string }>,
   customer: { name: string; email: string },
   invoiceFinancials: ShipmentInvoiceFinancials = {},
+  orderPayments?: OrderPaymentsForAdvice,
 ) {
   const candidates = documents.filter(isShipmentSetDocument).map((document) => ({ ...document, documentType: resolvedShipmentDocumentType(document) }));
   const included = candidates.filter((document) => document.shipmentSetStatus === "Incluído" && document.clientShareStatus === "Aprovado");
@@ -176,9 +180,12 @@ export function buildShipmentAdvice(
     ? [...new Set(included.map((document) => document.documentType))].join(", ")
     : "BL, Invoice, Packing List, CO and Phyto copy";
   const currency = invoiceFinancials.currency || operation.currency || "USD";
-  const total = Number(invoiceFinancials.totalInvoice || 0);
-  const advance = invoiceFinancials.amountPaid ?? (total > 0 ? total * 0.3 : 0);
-  const balance = invoiceFinancials.balanceDue ?? (total > 0 ? Math.max(0, total - advance) : 0);
+  // Com o Financeiro do pedido: total da invoice (ou do pedido), menos o que foi recebido (SWIFTs registrados).
+  // Sem ele, a conta antiga (30% de adiantamento estimado).
+  const total = Number(invoiceFinancials.totalInvoice || orderPayments?.total || 0);
+  const advance = orderPayments ? (orderPayments.received || invoiceFinancials.amountPaid || 0) : invoiceFinancials.amountPaid ?? (total > 0 ? total * 0.3 : 0);
+  const balance = orderPayments ? Math.max(0, total - advance) : invoiceFinancials.balanceDue ?? (total > 0 ? Math.max(0, total - advance) : 0);
+  const shortDate = (value: string) => /^\d{4}-\d{2}-\d{2}/.test(value) ? `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)}` : value;
   const money = (value: number) => value > 0 ? `${currency} ${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `${currency} TBC`;
   const etd = operation.shipmentDate ? new Date(operation.shipmentDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }) : "TBC";
   const greeting = customer.name ? `Dear ${customer.name}` : "Dear customer";
@@ -215,13 +222,20 @@ Please note that any changes or corrections after this date will incur additiona
 
 Please kindly provide the payment of this invoice, and send us the swift copy.
 
-PAYMENT TERM: 30% ADV 70% TT AGAINST COPY OF DOCUMENTS.
+${orderPayments ? `PAYMENT TERM: ${(orderPayments.paymentTerms || "AS PER CONTRACT").toUpperCase()}
+
+TOTAL INVOICE     = ${money(total)}
+${orderPayments.receipts.length
+  ? orderPayments.receipts.map((receipt) => `\nRECEIVED ${shortDate(receipt.date)}${receipt.note ? ` (${receipt.note})` : ""} = ${currency} ${receipt.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`).join("\n")
+  : "\nADVANCE RECEIVED  = NONE"}
+
+TOTAL TO BE PAID  = ${money(balance)}${orderPayments.balanceDueDate ? ` - DUE ${shortDate(orderPayments.balanceDueDate)}` : ""}` : `PAYMENT TERM: 30% ADV 70% TT AGAINST COPY OF DOCUMENTS.
 
 TOTAL INVOICE     = ${money(total)}
 
 30% ADV           = ${money(advance)}
 
-TOTAL TO BE PAID  = ${money(balance)}
+TOTAL TO BE PAID  = ${money(balance)}`}
 
 COMMERCIAL INVOICE: ${invoice}
 

@@ -13,6 +13,8 @@ type AdviceSnapshot = {
   generated: { recipient: string; subject: string; body: string; included: Array<{ id: number; fileName: string }> };
   complete: boolean;
   advice: { status: string; sentAt: string | null; recipient: string } | null;
+  /** Financeiro do pedido (lib/order-payments.ts): o e-mail usa estes valores. */
+  payments?: { total: number; received: number; balance: number; receipts: Array<{ date: string; amount: number }> };
 };
 
 const approvedDoc = (doc: SetDoc) => doc.shipmentSetStatus === "Incluído" && doc.clientShareStatus === "Aprovado";
@@ -149,6 +151,13 @@ export function ShipmentAdviceCard({ operationId, onView, onChanged, onError }: 
 
       <div className="sa-mail">
         <div className="sa-mail-preview">
+          {data.payments && (
+            <div className={`sa-pay ${data.payments.received > 0 ? "sa-pay--ok" : ""}`}>
+              {data.payments.received > 0
+                ? <>✓ Recebido registrado no Financeiro do pedido: <b>{data.payments.received.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</b> ({data.payments.receipts.length} SWIFT). Saldo no e-mail: <b>{data.payments.balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</b>.</>
+                : <>Nenhum adiantamento registrado no Financeiro do pedido: o e-mail cobra o total da invoice.</>}
+            </div>
+          )}
           <div className="sa-label">Prévia do e-mail</div>
           <label className="sa-to">Para:
             <input className="pd-input" type="email" placeholder="e-mail do cliente" value={recipient} onChange={(event) => setRecipient(event.target.value)}
