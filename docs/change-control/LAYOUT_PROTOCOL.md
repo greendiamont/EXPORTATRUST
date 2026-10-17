@@ -48,6 +48,7 @@ O workflow `.github/workflows/layout-guard.yml` reprova todo PR que altere arqui
 |---|---|---|---|
 | 1 · Painel | `docs/redesign/prototipo/Main.dc.html` (com "Processos · negociação", aprovado em 2026-10-16) | `app/ui/painel-view.tsx` | Aprovado — travado |
 | 1b · Painel dashboard (substitui o topo do Painel; "Processos · negociação" fica recolhido no fim) | `docs/redesign/prototipo/Dashboard.dc.html` (aprovado em 2026-10-16) | `app/ui/painel-view.tsx` | Aprovado — travado |
+| 7 · Financeiro (aba nova, última do menu) | `docs/redesign/prototipo/Financeiro.dc.html` (aceito para teste em 2026-10-17) | `app/ui/financeiro-view.tsx`, `app/ui/shell.tsx` | Em homologação |
 | 2 · Pedidos (lista) | `docs/redesign/prototipo/Processos.dc.html` | `app/ui/pedidos-view.tsx` | Aprovado — travado |
 | 3 · Pedido (todas as fases, emissão de documentos na fase Pedido) | `docs/redesign/prototipo/Processo.dc.html` | `app/ui/pedido-view.tsx` (PR #103) | Aprovado — travado; implementação aguardando conferência de Ivam em homologação |
 | 4 · EUDR | `docs/redesign/prototipo/EUDR.dc.html` | ainda não implementada | Aprovado — implementar exatamente como o protótipo |
@@ -66,6 +67,8 @@ Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout n
 |---|---|---|
 | 2026-10-14 | Ivam | Aprovou o redesign (protótipos 1 a 6) — `docs/redesign/PLANO_REDESIGN.md` |
 | 2026-10-15 | Ivam | Reafirmou o layout aprovado do Pedido (fases e emissão de documentos) e criou esta regra |
+| 2026-10-17 | Ivam | Aceitou para teste a aba Financeiro (quadro "7"), por último no menu: "Tá ok, vamos testar isso. Eu só quero que você coloque pro final, não coloque entre pedido e cadastro. Coloque por último, depois de cadastro, tá?" |
+| 2026-10-16 | Ivam | Aprovou para produção "Embarques por mês" em contêineres ou m³: "pode produzir" |
 | 2026-10-16 | Ivam | Pediu "Embarques por mês" em contêineres ou m³ (seletor no gráfico): "No dashboard, eu quero, na verdade, o volume por containers, não por pedido, tá? Quero por containers. Ou por metro cúbico." |
 | 2026-10-16 | Ivam | Aprovou para produção o Painel em formato de dashboard ("1b"): "pode produzir" |
 | 2026-10-16 | Ivam | Aprovou o Painel em formato de dashboard (quadro "1b · Painel dashboard": exportado em US$/R$, m³, preço médio, volume e valor mês a mês/ano a ano, embarques por mês): "alteração aprovada" |

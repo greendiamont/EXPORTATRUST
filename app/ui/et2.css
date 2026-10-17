@@ -494,3 +494,28 @@ a.db-tile:hover { text-decoration: none; background: #fafafa; }
 .db-procs[open] > summary { border-bottom: 1px solid var(--et2-line); }
 @media (max-width: 1000px) { .db-grid { grid-template-columns: minmax(0, 1fr); } .db-panels { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 600px) { .db-hero-value { font-size: 24px; } .db-stack-plot { gap: 4px; } .db-up { grid-template-columns: 52px minmax(0, 1fr); } .db-up > .et2-badge { grid-column: 2; justify-self: start; } }
+
+/* Financeiro (protótipo "7 · Financeiro", 2026-10-17) — reaproveita os blocos db-* do Painel */
+.fn-plot { margin-top: 18px; height: 200px; display: flex; align-items: flex-end; gap: 10px; border-bottom: 1px solid #d1d5db; padding: 0 4px; background-image: linear-gradient(var(--et2-line-2) 1px, transparent 1px); background-size: 100% 50px; margin-bottom: 26px; }
+.fn-avg { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--et2-line-2); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.fn-avg > div { display: flex; flex-direction: column; gap: 2px; }
+.fn-avg b { font-size: 20px; font-weight: 600; }
+.fn-docs { display: flex; flex-wrap: wrap; gap: 6px; }
+.fn-status { min-height: 32px; padding: 0 6px; font-size: 13px; width: auto; }
+.fn-total td { font-weight: 600; background: #f9fafb; border-top: 2px solid var(--et2-line); }
+.fn-dialog { max-width: 1040px; width: calc(100vw - 32px); }
+.fn-emit { padding: 16px 20px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 20px; max-height: calc(100vh - 220px); overflow: auto; }
+.fn-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-content: start; }
+.fn-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--et2-ink-2); }
+.fn-wide { grid-column: 1 / -1; }
+.fn-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.fn-section { font-size: 12px; color: var(--et2-muted); text-transform: uppercase; letter-spacing: .4px; margin-top: 4px; }
+.fn-form .fn-check { flex-direction: row; align-items: center; gap: 8px; }
+.fn-preview { border: 1px solid var(--et2-line); border-radius: 6px; padding: 18px 20px; font-size: 12.5px; line-height: 1.5; align-self: start; }
+.fn-preview-top { display: flex; justify-content: space-between; gap: 12px; }
+.fn-preview-to { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--et2-line-2); }
+.fn-preview table { width: 100%; margin-top: 12px; border-collapse: collapse; }
+.fn-preview td { padding: 8px 0; border-bottom: 1px solid var(--et2-line-2); vertical-align: top; }
+.fn-preview td.num { text-align: right; white-space: nowrap; padding-left: 12px; }
+.fn-preview tfoot td { font-weight: 600; border-bottom: 0; }
+@media (max-width: 800px) { .fn-emit { grid-template-columns: minmax(0, 1fr); max-height: none; } .fn-form { grid-template-columns: minmax(0, 1fr); } }

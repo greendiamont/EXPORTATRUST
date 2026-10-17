@@ -829,4 +829,18 @@
 - **Pedido de Ivam (conversa, 2026-10-16):** "No dashboard, eu quero, na verdade, o volume por containers, não por pedido, tá? Quero por containers. Ou por metro cúbico."
 - **O que mudou:** "Embarques por mês" deixa de contar pedidos e passa a somar contêineres (padrão) ou m³, com o seletor "Contêineres | m³"; o rodapé do gráfico também. A faixa escura mostra "N contêineres embarcados". Contêineres do pedido = números de contêiner informados no embarque; antes disso, a quantidade quando a unidade é contêiner (`containerCount` em `lib/dashboard.ts`). Pedido sem itens nem volume com quantidade em contêineres/MT não entra mais como m³.
 - **Testes:** tsc (92, sem erros novos), testes (`tests/dashboard.test.mjs` com contêineres), build Railway, Playwright local.
+- **Status:** aprovado por Ivam ("pode produzir") — em produção (PR #155)
+
+## 2026-10-17 — Claude — Aba Financeiro (comissões e margens)
+
+- **ID:** CHG-20261017-031
+- **Branch:** `claude/financeiro`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-17):** "Ô Claude, eu quero fazer uma aba que se chama financeiro [...] o que for comissionado [...] um botão para emitir a comissão, emitir invoice da comissão [...] vai ser um painel do financeiro, da margem [...] dividir ele por processo [...] no final, com uma soma, um gráfico, tipo um dashboard". Respostas: comissão às vezes paga pelo importador, geralmente exportador/fornecedor; nos processos por margem com a VLP (parceira), a margem é cobrada da VLP como comissão; emitente em branco (pessoa física ou empresa de comissões), não Green Diamont. Protótipo "7 · Financeiro" (`docs/redesign/prototipo/Financeiro.dc.html`) aceito para teste: "Tá ok, vamos testar isso. Eu só quero que você coloque pro final, não coloque entre pedido e cadastro. Coloque por último, depois de cadastro, tá?"
+- **O que mudou:** nova aba "Financeiro" (`/financeiro`, última do menu) com totais (ganho previsto, comissões, margens VLP, a receber), "Ganho por mês" (comissão x margem), "Situação do faturamento" (a faturar / faturado / recebido, margem e comissão médias) e tabela por processo com soma. Botão "Emitir comissão" / "Emitir comissão VLP": invoice (exterior, US$) ou espelho de nota fiscal de serviço (Brasil, R$); emitente preenchido na hora ou escolhido entre os emitentes salvos; quem paga (fornecedor, exportador, importador, parceiro, outro). Documento numerado (CI-AAAA-NNN / NFS-AAAA-NNN) abre em página para imprimir/salvar PDF. Situação editável por processo.
+- **Contas (`lib/finance.ts`):** comissão = valor do pedido × %; margem = venda − compra − logística (mesma conta do Financeiro do pedido, `lib/margin.ts`). Controle de faturamento em `supply_chain_notes.finance` (JSON do pedido, preservado pelas outras edições).
+- **Banco:** migração aditiva `0033_finance_issuers` (tabela `finance_issuers`, emitentes salvos). Nenhum dado existente alterado.
+- **Acesso:** só equipe (administrador e analista; auditor só lê). Convidado continua bloqueado pela trava do servidor.
+- **Testes:** tsc (92, sem erros novos), `tests/finance.test.mjs` (4), 108 testes, build Railway, Playwright local (emitir invoice com emitente salvo, espelho de nota da VLP, marcar recebido, celular sem rolagem lateral).
 - **Status:** em andamento

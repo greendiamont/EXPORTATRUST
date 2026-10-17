@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import "./et2.css";
 
-export type ShellSection = "painel" | "pedidos" | "cadastros" | "eudr" | "relatorios";
+export type ShellSection = "painel" | "pedidos" | "cadastros" | "eudr" | "relatorios" | "financeiro";
 
 const NAV: Array<{ key: ShellSection; label: string; href: string }> = [
   { key: "painel", label: "Painel", href: "/" },
@@ -11,6 +11,8 @@ const NAV: Array<{ key: ShellSection; label: string; href: string }> = [
   // EUDR e Relatórios ainda usam as telas atuais (etapas seguintes do redesenho).
   { key: "eudr", label: "EUDR", href: "/classico" },
   { key: "relatorios", label: "Relatórios", href: "/classico?module=Relat%C3%B3rios" },
+  // Financeiro por último (pedido de Ivam em 2026-10-17).
+  { key: "financeiro", label: "Financeiro", href: "/financeiro" },
 ];
 
 function initials(name: string) {

@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Financeiro · ExportaTrust</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F4F6}
+a{color:#1D4ED8;text-decoration:none}
+.bar:hover{opacity:.85}
+.row:hover{background:#FAFAFA}
+</style>
+</helmet>
+<div style="min-height: 100vh; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #111827; background: #F3F4F6; font-size: 14px">
+  <header style="background: #0F1B2D; color: #FFFFFF">
+    <div style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 0 24px; min-height: 56px; display: flex; align-items: center; gap: 28px">
+      <div style="font-weight: 600; font-size: 15px">✓ ExportaTrust</div>
+      <nav style="display: flex; gap: 4px; flex: 1">
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Painel</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Pedidos</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Cadastros</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">EUDR</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Relatórios</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #FFFFFF; font-weight: 500; box-shadow: inset 0 -3px 0 #5FD3A6">Financeiro</a>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px">
+      <div>
+        <h1 style="margin: 0; font-size: 26px; font-weight: 600">Financeiro</h1>
+        <div style="color: #4B5563; margin-top: 4px">Comissões e margens de cada processo · o que faturar e o que receber</div>
+      </div>
+      <div style="display: inline-flex; border: 1px solid #D1D5DB; border-radius: 6px; overflow: hidden; background: #FFFFFF">
+        <sc-for list="{{ranges}}" as="r" hint-placeholder-count="3"><button onClick="{{r.pick}}" style="{{r.style}}">{{r.label}}</button></sc-for>
+      </div>
+    </div>
+
+    <section aria-label="Resumo" style="background: #0F1B2D; color: #FFFFFF; border-radius: 8px; padding: 18px 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; align-items: center">
+      <sc-for list="{{hero}}" as="h" hint-placeholder-count="4">
+        <div>
+          <div style="font-size: 12px; color: #C3CBD8; text-transform: uppercase; letter-spacing: .4px">{{h.label}}</div>
+          <div style="font-size: 30px; font-weight: 600; margin-top: 4px; font-family: 'IBM Plex Mono', monospace">{{h.value}}</div>
+          <div style="font-size: 13px; color: #C3CBD8">{{h.sub}}</div>
+        </div>
+      </sc-for>
+    </section>
+
+    <div style="display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px">
+      <section aria-labelledby="mes" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px 20px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap">
+          <div>
+            <h2 id="mes" style="margin: 0; font-size: 16px; font-weight: 600">Ganho por mês</h2>
+            <div style="font-size: 13px; color: #6B7280">Comissões e margens pela data de embarque · US$ mil</div>
+          </div>
+          <div style="display: flex; gap: 14px; font-size: 13px; color: #374151">
+            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #2a78d6; margin-right: 6px"></span>Comissão</span>
+            <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #1baf7a; margin-right: 6px"></span>Margem</span>
+          </div>
+        </div>
+        <div style="margin-top: 18px; height: 200px; display: flex; align-items: flex-end; gap: 10px; border-bottom: 1px solid #D1D5DB; padding: 0 4px; background-image: linear-gradient(#F0F1F3 1px, transparent 1px); background-size: 100% 50px">
+          <sc-for list="{{months}}" as="m" hint-placeholder-count="8">
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; position: relative" title="{{m.tip}}">
+              <span style="font-size: 12px; color: #374151; margin-bottom: 4px; font-family: 'IBM Plex Mono', monospace">{{m.total}}</span>
+              <div class="bar" style="{{m.marginBar}}"></div>
+              <div class="bar" style="{{m.commissionBar}}"></div>
+              <span style="position: absolute; bottom: -22px; font-size: 12px; color: {{m.labelColor}}">{{m.name}}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top: 30px; font-size: 13px; color: #4B5563">{{monthFoot}}</div>
+      </section>
+
+      <section aria-labelledby="sit" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px 20px">
+        <h2 id="sit" style="margin: 0; font-size: 16px; font-weight: 600">Situação do faturamento</h2>
+        <div style="font-size: 13px; color: #6B7280">Ganho dos processos por etapa · US$</div>
+        <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 12px">
+          <sc-for list="{{stages}}" as="s" hint-placeholder-count="3">
+            <div style="display: grid; grid-template-columns: 120px 1fr 76px; align-items: center; gap: 10px; font-size: 13px" title="{{s.tip}}">
+              <span>{{s.name}}</span>
+              <span style="height: 18px; background: #F3F4F6; border-radius: 4px; overflow: hidden"><span style="{{s.bar}}"></span></span>
+              <span style="font-family: 'IBM Plex Mono', monospace; text-align: right">{{s.value}}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid #F0F1F3; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+          <div><div style="font-size: 12px; color: #6B7280">Margem média</div><div style="font-size: 20px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">11,8%</div><div style="font-size: 12px; color: #6B7280">US$ 27/m³</div></div>
+          <div><div style="font-size: 12px; color: #6B7280">Comissão média</div><div style="font-size: 20px; font-weight: 600; font-family: 'IBM Plex Mono', monospace">2,8%</div><div style="font-size: 12px; color: #6B7280">US$ 6/m³</div></div>
+        </div>
+      </section>
+    </div>
+
+    <section aria-labelledby="proc" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+      <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap">
+        <div>
+          <h2 id="proc" style="margin: 0; font-size: 16px; font-weight: 600">Por processo</h2>
+          <div style="font-size: 13px; color: #6B7280">Comissão: cobrada do fornecedor, exportador ou importador. Margem (parceria VLP): a margem é cobrada da VLP como comissão.</div>
+        </div>
+        <div style="display: inline-flex; border: 1px solid #D1D5DB; border-radius: 6px; overflow: hidden">
+          <sc-for list="{{kinds}}" as="k" hint-placeholder-count="3"><button onClick="{{k.pick}}" style="{{k.style}}">{{k.label}}</button></sc-for>
+        </div>
+      </div>
+      <div style="overflow-x: auto">
+        <table style="width: 100%; min-width: 1100px; border-collapse: collapse; font-size: 13px">
+          <thead>
+            <tr style="text-align: left; color: #6B7280; font-size: 12px; text-transform: uppercase; letter-spacing: .3px">
+              <th style="padding: 10px 20px; font-weight: 500">Processo</th>
+              <th style="padding: 10px 8px; font-weight: 500">Cliente</th>
+              <th style="padding: 10px 8px; font-weight: 500">Tipo</th>
+              <th style="padding: 10px 8px; font-weight: 500; text-align: right">Valor do pedido</th>
+              <th style="padding: 10px 8px; font-weight: 500; text-align: right">Ganho US$</th>
+              <th style="padding: 10px 8px; font-weight: 500; text-align: right">Ganho R$</th>
+              <th style="padding: 10px 8px; font-weight: 500">Situação</th>
+              <th style="padding: 10px 20px; font-weight: 500">Documentos</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="p" hint-placeholder-count="6">
+              <tr class="row" style="border-top: 1px solid #F0F1F3; vertical-align: top">
+                <td style="padding: 12px 20px"><a style="font-family: 'IBM Plex Mono', monospace; font-weight: 500">{{p.ref}}</a><div style="font-size: 12px; color: #6B7280">ETD {{p.etd}}</div></td>
+                <td style="padding: 12px 8px">{{p.client}}</td>
+                <td style="padding: 12px 8px"><span style="{{p.kindStyle}}">{{p.kind}}</span><div style="font-size: 12px; color: #6B7280; margin-top: 3px">{{p.kindSub}}</div></td>
+                <td style="padding: 12px 8px; text-align: right; font-family: 'IBM Plex Mono', monospace">{{p.sale}}</td>
+                <td style="padding: 12px 8px; text-align: right; font-family: 'IBM Plex Mono', monospace; font-weight: 600">{{p.gain}}<div style="font-size: 12px; color: #6B7280; font-weight: 400">{{p.gainSub}}</div></td>
+                <td style="padding: 12px 8px; text-align: right; font-family: 'IBM Plex Mono', monospace">{{p.gainBrl}}</td>
+                <td style="padding: 12px 8px"><span style="{{p.statusStyle}}">{{p.status}}</span><div style="font-size: 12px; color: #6B7280; margin-top: 3px">{{p.statusSub}}</div></td>
+                <td style="padding: 10px 20px">
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                    <sc-for list="{{p.actions}}" as="a" hint-placeholder-count="2"><button onClick="{{a.open}}" style="{{a.style}}">{{a.label}}</button></sc-for>
+                  </div>
+                </td>
+              </tr>
+            </sc-for>
+          </tbody>
+          <tfoot>
+            <tr style="border-top: 2px solid #E5E7EB; background: #F9FAFB; font-weight: 600">
+              <td style="padding: 12px 20px" colspan="3">Total · {{count}} processos</td>
+              <td style="padding: 12px 8px; text-align: right; font-family: 'IBM Plex Mono', monospace">{{totalSale}}</td>
+              <td style="padding: 12px 8px; text-align: right; font-family: 'IBM Plex Mono', monospace">{{totalGain}}</td>
+              <td style="padding: 12px 8px; text-align: right; font-family: 'IBM Plex Mono', monospace">{{totalGainBrl}}</td>
+              <td style="padding: 12px 20px" colspan="2"><span style="font-weight: 400; color: #4B5563">{{totalSub}}</span></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+
+    <sc-if value="{{showDoc}}" hint-placeholder-val="{{ true }}">
+      <section aria-labelledby="doc" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; box-shadow: 0 10px 30px rgba(15,27,45,0.12)">
+        <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center; gap: 12px">
+          <div>
+            <h2 id="doc" style="margin: 0; font-size: 16px; font-weight: 600">{{doc.title}}</h2>
+            <div style="font-size: 13px; color: #6B7280; margin-top: 2px">{{doc.sub}}</div>
+          </div>
+          <button onClick="{{closeDoc}}" aria-label="Fechar" style="border: 0; background: transparent; font-size: 18px; color: #6B7280; cursor: pointer">×</button>
+        </div>
+        <div style="padding: 16px 20px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 20px">
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-content: start">
+            <div style="grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap">
+              <b style="font-size: 13px">Documento</b>
+              <div style="display: inline-flex; border: 1px solid #D1D5DB; border-radius: 6px; overflow: hidden">
+                <sc-for list="{{docTypes}}" as="t" hint-placeholder-count="2"><button onClick="{{t.pick}}" style="{{t.style}}">{{t.label}}</button></sc-for>
+              </div>
+            </div>
+            <div style="grid-column: 1 / -1; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: .4px; margin-top: 4px">Emitente · quem recebe a comissão</div>
+            <label style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151">Emitente salvo
+              <select onChange="{{pickIssuer}}" style="min-height: 36px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; background: #FFFFFF; padding: 0 8px"><option value="">— preencher abaixo —</option><option value="pf">Pessoa física (CPF)</option><option value="pj">Empresa de comissões (CNPJ)</option></select>
+            </label>
+            <sc-for list="{{issuerFields}}" as="f" hint-placeholder-count="4">
+              <label style="{{f.wrap}}">{{f.label}}<input value="{{f.value}}" placeholder="{{f.placeholder}}" style="min-height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit"></label>
+            </sc-for>
+            <label style="grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151"><input type="checkbox"> Salvar como emitente para as próximas</label>
+            <div style="grid-column: 1 / -1; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: .4px; margin-top: 4px">Cobrar de</div>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151">Quem paga
+              <select style="min-height: 36px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; background: #FFFFFF; padding: 0 8px"><sc-for list="{{doc.payers}}" as="o" hint-placeholder-count="4"><option>{{o}}</option></sc-for></select>
+            </label>
+            <sc-for list="{{doc.fields}}" as="f" hint-placeholder-count="8">
+              <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151">{{f.label}}<input value="{{f.value}}" style="min-height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit"></label>
+            </sc-for>
+            <div style="grid-column: 1 / -1; padding: 10px 12px; background: #F9FAFB; border: 1px solid #F0F1F3; border-radius: 6px; font-size: 13px; color: #374151">{{doc.note}}</div>
+          </div>
+          <div style="border: 1px solid #E5E7EB; border-radius: 6px; padding: 18px 20px; background: #FFFFFF; font-size: 12.5px; line-height: 1.5">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+              <div><b style="font-size: 14px">{{issuerName}}</b><div style="color: #6B7280">{{issuerSub}}</div></div>
+              <div style="text-align: right"><b style="font-size: 15px">{{doc.docName}}</b><div style="font-family: 'IBM Plex Mono', monospace">{{doc.number}}</div><div style="color: #6B7280">{{doc.date}}</div></div>
+            </div>
+            <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #F0F1F3"><span style="color: #6B7280">Para:</span> <b>{{doc.to}}</b><div style="color: #6B7280">{{doc.toSub}}</div></div>
+            <table style="width: 100%; margin-top: 12px; border-collapse: collapse">
+              <thead><tr style="color: #6B7280; text-align: left; border-bottom: 1px solid #E5E7EB"><th style="padding: 6px 0; font-weight: 500">Descrição</th><th style="padding: 6px 0; font-weight: 500; text-align: right">Valor</th></tr></thead>
+              <tbody>
+                <sc-for list="{{doc.lines}}" as="l" hint-placeholder-count="2"><tr style="border-bottom: 1px solid #F0F1F3"><td style="padding: 8px 8px 8px 0">{{l.text}}</td><td style="padding: 8px 0; text-align: right; font-family: 'IBM Plex Mono', monospace">{{l.value}}</td></tr></sc-for>
+              </tbody>
+              <tfoot><tr><td style="padding: 8px 0; font-weight: 600">Total</td><td style="padding: 8px 0; text-align: right; font-family: 'IBM Plex Mono', monospace; font-weight: 600">{{doc.total}}</td></tr></tfoot>
+            </table>
+            <div style="margin-top: 10px; color: #4B5563">{{doc.footer}}</div>
+          </div>
+        </div>
+        <div style="padding: 14px 20px; border-top: 1px solid #E5E7EB; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap">
+          <button onClick="{{closeDoc}}" style="min-height: 38px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; cursor: pointer">Cancelar</button>
+          <button style="min-height: 38px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; cursor: pointer">Baixar PDF</button>
+          <button onClick="{{closeDoc}}" style="min-height: 38px; padding: 0 16px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; font-weight: 500; cursor: pointer">{{doc.confirm}}</button>
+        </div>
+      </section>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1700}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { range: 0, kind: 0, doc: 'commission', docType: 0, issuer: '' }; }
+  renderVals() {
+    const usd = (v) => 'US$ ' + v.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+    const brl = (v) => 'R$ ' + v.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+    const btn = (primary) => 'min-height: 30px; padding: 0 10px; border-radius: 6px; font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; ' + (primary ? 'border: 0; background: #0F1B2D; color: #FFFFFF' : 'border: 1px solid #D1D5DB; background: #FFFFFF; color: #111827');
+    const badge = (tone) => 'display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 4px; font-weight: 600; white-space: nowrap; ' + ({ todo: 'background: #F3F4F6; color: #4B5563', warn: 'background: #FFFBEB; color: #92400E', info: 'background: #EFF6FF; color: #1D4ED8', ok: 'background: #ECFDF5; color: #047857' })[tone];
+    const open = (doc) => () => this.setState({ doc });
+    const data = [
+      { ref: '278/26', payer: 'fornecedor', etd: '23/10/2026', client: 'DANUBIA WOOD', kind: 'c', pct: 3, sale: 73307, gain: 2199, m3: 293, status: ['A faturar', 'todo', 'embarque em 6 dias'] },
+      { ref: '061/26', payer: 'importador', etd: '24/10/2026', client: 'JAF GLOBAL GMBH', kind: 'c', pct: 2.5, sale: 37900, gain: 948, m3: 160, status: ['A faturar', 'todo', 'embarque em 7 dias'] },
+      { ref: 'GBU015/26', payer: 'exportador', etd: '16/10/2026', client: 'TIRUPATI REELS', kind: 'c', pct: 3, sale: 29250, gain: 878, m3: 150, status: ['Invoice emitida', 'info', 'CI-2026-014 · vence 15/11'] },
+      { ref: 'GBU002-26', etd: '27/07/2026', client: 'VIETNAM WOOD', kind: 'm', pct: 13.3, sale: 23250, gain: 3092, m3: 150, status: ['Faturado', 'info', 'NFS-e 112 · vence 30/10'] },
+      { ref: 'PO0657', etd: '27/07/2026', client: 'VIETNAM WOOD', kind: 'm', pct: 11.6, sale: 46739, gain: 5422, m3: 203, status: ['Recebido', 'ok', 'em 02/09/2026'] },
+      { ref: '048/26', etd: '28/08/2026', client: 'SPRUCE WOOD', kind: 'm', pct: 10.6, sale: 20200, gain: 2141, m3: 100, status: ['A faturar', 'todo', 'comissão VLP a emitir'] },
+      { ref: 'GBU003-26', payer: 'fornecedor', etd: '01/09/2026', client: 'DANUBIA WOOD', kind: 'c', pct: 3, sale: 30020, gain: 901, m3: 149, status: ['Recebido', 'ok', 'em 30/09/2026'] },
+    ];
+    const rate = 5.4;
+    const shown = data.filter((p) => this.state.kind === 0 || (this.state.kind === 1 ? p.kind === 'c' : p.kind === 'm'));
+    const rows = shown.map((p) => {
+      const isC = p.kind === 'c';
+      const done = p.status[0] !== 'A faturar';
+      const actions = isC
+        ? [{ label: done ? 'Ver documento' : 'Emitir comissão', open: open('commission'), style: btn(!done) }]
+        : [{ label: done ? 'Ver documento' : 'Emitir comissão VLP', open: open('vlp'), style: btn(!done) }];
+      return { ref: p.ref, etd: p.etd, client: p.client, kind: isC ? 'Comissão' : 'Margem · VLP',
+        kindSub: isC ? p.pct.toLocaleString('pt-BR') + '% sobre o pedido · paga: ' + p.payer : p.pct.toLocaleString('pt-BR') + '% · cobrada da VLP',
+        kindStyle: badge(isC ? 'info' : 'ok').replace('#EFF6FF', '#EFF6FF'),
+        sale: usd(p.sale), gain: usd(p.gain), gainSub: 'US$ ' + Math.round(p.gain / p.m3) + '/m³', gainBrl: brl(p.gain * rate),
+        status: p.status[0], statusStyle: badge(p.status[1]), statusSub: p.status[2], actions };
+    });
+    const sum = (list, f) => list.reduce((s, p) => s + f(p), 0);
+    const gainAll = sum(data, (p) => p.gain);
+    const toInvoice = sum(data.filter((p) => p.status[0] === 'A faturar'), (p) => p.gain);
+    const toReceive = sum(data.filter((p) => p.status[0] !== 'Recebido'), (p) => p.gain);
+    const received = gainAll - toReceive;
+    const hero = [
+      { label: 'Ganho previsto', value: usd(gainAll), sub: brl(gainAll * rate) + ' · ' + data.length + ' processos' },
+      { label: 'Comissões', value: usd(sum(data.filter((p) => p.kind === 'c'), (p) => p.gain)), sub: data.filter((p) => p.kind === 'c').length + ' processos comissionados' },
+      { label: 'Margens (VLP)', value: usd(sum(data.filter((p) => p.kind === 'm'), (p) => p.gain)), sub: data.filter((p) => p.kind === 'm').length + ' processos · cobradas da VLP' },
+      { label: 'A receber', value: usd(toReceive), sub: usd(toInvoice) + ' ainda a faturar' },
+    ];
+    const stagesData = [['A faturar', toInvoice, '#eb6834'], ['Faturado', toReceive - toInvoice, '#2a78d6'], ['Recebido', received, '#0ca30c']];
+    const maxStage = Math.max(...stagesData.map((s) => s[1]));
+    const stages = stagesData.map(([name, v, color]) => ({ name, value: (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil', tip: name + ': ' + usd(v),
+      bar: 'display: block; height: 100%; width: ' + (v / maxStage * 100) + '%; background: ' + color + '; border-radius: 0 4px 4px 0' }));
+    const mData = [['mai', 0.6, 2.1], ['jun', 1.1, 1.4], ['jul', 0.9, 8.5], ['ago', 0.7, 2.1], ['set', 0.9, 0], ['out', 4.0, 0], ['nov', 1.8, 2.6], ['dez', 0, 1.2]];
+    const H = 160 / 10;
+    const months = mData.map(([name, c, m]) => ({ name, total: (c + m).toLocaleString('pt-BR', { maximumFractionDigits: 1 }), tip: name + ': comissão US$ ' + c + ' mil, margem US$ ' + m + ' mil',
+      labelColor: name === 'out' ? '#111827; font-weight: 600' : '#6B7280',
+      commissionBar: 'width: 70%; max-width: 44px; height: ' + (c * H) + 'px; background: #2a78d6; border-radius: ' + (m ? '0' : '4px 4px 0 0') + (c ? '' : '; display: none'),
+      marginBar: 'width: 70%; max-width: 44px; height: ' + (m * H) + 'px; background: #1baf7a; border-radius: 4px 4px 0 0; margin-bottom: ' + (c && m ? '2px' : '0') + (m ? '' : '; display: none') }));
+    const ranges = ['Este ano', '12 meses', 'Tudo'].map((label, i) => ({ label, pick: () => this.setState({ range: i }),
+      style: 'min-height: 38px; padding: 0 12px; border: 0; font: inherit; font-size: 13px; cursor: pointer; ' + (i === this.state.range ? 'background: #0F1B2D; color: #FFFFFF' : 'background: #FFFFFF; color: #374151') }));
+    const kinds = ['Todos', 'Comissão', 'Margem'].map((label, i) => ({ label, pick: () => this.setState({ kind: i }),
+      style: 'min-height: 34px; padding: 0 12px; border: 0; font: inherit; font-size: 13px; cursor: pointer; ' + (i === this.state.kind ? 'background: #0F1B2D; color: #FFFFFF' : 'background: #FFFFFF; color: #374151') }));
+    const isNf = this.state.docType === 1;
+    const docTypes = ['Invoice (exterior)', 'Nota fiscal (Brasil)'].map((label, i) => ({ label, pick: () => this.setState({ docType: i }),
+      style: 'min-height: 32px; padding: 0 10px; border: 0; font: inherit; font-size: 12.5px; cursor: pointer; ' + (i === this.state.docType ? 'background: #0F1B2D; color: #FFFFFF' : 'background: #FFFFFF; color: #374151') }));
+    const issuers = { pf: ['Nome da pessoa física', 'CPF 000.000.000-00', 'Itajaí/SC', 'Banco · agência · conta'], pj: ['Empresa de comissões Ltda', 'CNPJ 00.000.000/0001-00', 'Itajaí/SC', 'Banco · agência · conta'] };
+    const issuer = issuers[this.state.issuer] || ['', '', '', ''];
+    const wide = 'grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151';
+    const half = 'display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151';
+    const issuerFields = [
+      { label: 'Nome / razão social', value: issuer[0], placeholder: 'quem emite e recebe', wrap: wide },
+      { label: 'CPF ou CNPJ', value: issuer[1], placeholder: 'CPF ou CNPJ', wrap: half },
+      { label: 'Cidade / país', value: issuer[2], placeholder: 'cidade', wrap: half },
+      { label: 'Dados bancários para receber', value: issuer[3], placeholder: 'banco, agência, conta / SWIFT, IBAN', wrap: wide },
+    ];
+    const docs = {
+      commission: { title: 'Emitir comissão · 278/26', sub: 'Percentual × valor do pedido. O documento fica salvo no pedido e a situação passa para "Faturado".',
+        payers: ['Fornecedor · LDF Madeiras Ltda', 'Exportador · LDF Madeiras Ltda', 'Importador · DANUBIA WOOD', 'Outro'],
+        to: 'LDF Madeiras Ltda', toSub: 'fornecedor · referência PO 278/26',
+        fields: [{ label: 'Percentual', value: '3%' }, { label: 'Base (valor do pedido)', value: 'US$ 73.307,48' }, { label: 'Moeda', value: isNf ? 'BRL (câmbio 5,40)' : 'USD' }, { label: 'Vencimento', value: '30 dias após o embarque' }],
+        line: 'Comissão de 3% sobre a venda 278/26 — DANUBIA WOOD (293,23 m³, US$ 73.307,48)', usd: 2199.22,
+        note: 'Comissão = valor do pedido × percentual do processo. Até ser emitida, ela acompanha as mudanças do pedido.' },
+      vlp: { title: 'Emitir comissão VLP · 048/26', sub: 'Processo por margem com a VLP: a margem do processo é cobrada da VLP como comissão.',
+        payers: ['Parceiro · VLP', 'Outro'],
+        to: 'VLP', toSub: 'parceiro · referência 048/26 — SPRUCE WOOD',
+        fields: [{ label: 'Margem do processo', value: '10,6%' }, { label: 'Venda − compra − logística', value: 'US$ 2.141,00' }, { label: 'Moeda', value: isNf ? 'BRL (câmbio 5,40)' : 'USD' }, { label: 'Vencimento', value: '30 dias após o embarque' }],
+        line: 'Comissão sobre a operação 048/26 — SPRUCE WOOD (100 m³): venda US$ 20.200,00 − compra − logística', usd: 2141,
+        note: 'O valor vem da margem do processo (Preços e margem + Custos logísticos). Ajuste o valor se combinar diferente com a VLP.' },
+    };
+    const d = docs[this.state.doc] || docs.commission;
+    const value = isNf ? 'R$ ' + (d.usd * rate).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'US$ ' + d.usd.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const doc = { ...d, docName: isNf ? 'NFS-e · ESPELHO' : 'COMMISSION INVOICE', number: isNf ? 'rascunho' : 'CI-2026-015', date: '17/10/2026',
+      lines: [{ text: d.line, value }], total: value,
+      footer: isNf ? 'Nota fiscal de serviço (intermediação). O número é informado depois da autorização na prefeitura; anexe o PDF/XML autorizado ao pedido.' : 'Pagamento por transferência internacional para a conta do emitente.',
+      confirm: isNf ? 'Salvar espelho da nota' : 'Emitir invoice' };
+    return { ranges, kinds, hero, months, stages, rows, count: String(shown.length),
+      totalSale: usd(sum(shown, (p) => p.sale)), totalGain: usd(sum(shown, (p) => p.gain)), totalGainBrl: brl(sum(shown, (p) => p.gain) * rate),
+      totalSub: 'margem média 11,8% · comissão média 2,8% · câmbio de cada processo',
+      monthFoot: 'Outubro: US$ 4,0 mil em comissões a faturar · próximos 30 dias: US$ 3,1 mil (2 processos)',
+      showDoc: Boolean(this.state.doc), doc, docTypes, issuerFields, issuerName: issuer[0] || 'Emitente (preencher)', issuerSub: issuer[0] ? issuer[1] + ' · ' + issuer[2] : 'nome, CPF/CNPJ e dados bancários de quem recebe', pickIssuer: (e) => this.setState({ issuer: e && e.target ? e.target.value : '' }), closeDoc: () => this.setState({ doc: '' }) };
+  }
+}
+</script>
+</body>
+</html>
