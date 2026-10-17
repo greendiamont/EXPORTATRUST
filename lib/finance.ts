@@ -19,7 +19,7 @@ export type FinanceIssuer = {
   signature?: string;
 };
 /** Quem paga: nome, endereço, VAT/CNPJ, registro (ex.: KVK) e e-mail. */
-export type FinancePayer = { name: string; address: string; taxId: string; registration: string; email: string };
+export type FinancePayer = { name: string; address: string; taxId: string; registration: string; email: string; phone?: string; contactName?: string };
 export type FinanceDocument = {
   id: string;
   kind: "invoice" | "nfse";
@@ -173,5 +173,5 @@ export function cleanIssuer(input: unknown): FinanceIssuer {
 export function cleanPayer(input: unknown): FinancePayer {
   const value = input && typeof input === "object" ? input as Record<string, unknown> : {};
   const field = (key: string, max = 300) => text(value[key]).trim().slice(0, max);
-  return { name: field("name", 200), address: field("address", 400), taxId: field("taxId", 80), registration: field("registration", 120), email: field("email", 160) };
+  return { name: field("name", 200), address: field("address", 800), taxId: field("taxId", 80), registration: field("registration", 120), email: field("email", 160), phone: field("phone", 80), contactName: field("contactName", 200) };
 }

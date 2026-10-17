@@ -337,3 +337,10 @@ Este documento é o registro canônico de alterações realizadas por assistente
 - **Branch:** `claude/comissao-reais`; CHG-20261017-038.
 - **Para outros agentes:** `FinanceIssuer.signature` (PNG/JPEG em data URL, validado em `cleanIssuer`) sai no bloco de assinatura do documento. `FinanceDocument.language` ("pt" | "en") escolhe o idioma (nota fiscal sempre "pt"; documentos antigos sem o campo continuam em inglês). Rota nova `/api/exchange-rate` (PTAX de venda do BCB; não liberada a convidados).
 
+### 2026-10-17 — Codex — Cadastro do fornecedor + e-mail da comissão
+- **Branch:** `fix/commission-supplier-details`; CHG-20261017-039; base `homologation` em `561d6931`. Somente homologação, sem autorização nova para produção.
+- **Pedido:** Ivam pediu trazer o cadastro completo do fornecedor ao pagador e, depois, campo de e-mail e ações Emitir fatura / Enviar por e-mail / Cancelar. Frases exatas e escopo da etiqueta de layout no CHANGELOG.
+- **Para outros agentes:** `supplierPayers` no snapshot financeiro é tenant-scoped; `findSupplierPayer` prefere ID e exige nome/alias único. `FinancePayer.phone/contactName` opcionais preservam snapshots antigos. Banco do emitente nunca é substituído pelo banco do pagador.
+- **Envio explícito:** `/api/finance/email`, só admin/analista. Fatura HTML no corpo/anexo pelo renderizador compartilhado `lib/finance-document.ts` (mesmo modelo de impressão A4, não PDF gerado automaticamente). Usa Resend configurado, idempotência e histórico privado em `audit_logs`, entidade `finance_document`; não colocar valores de comissão em `client_notifications`. Não incluir este envio no scheduler do Shipment Report.
+- **Preservação:** dados existentes e documentos emitidos não são regravados; sem migração. Falha de envio não apaga nem reemite fatura. Testes sem envio real; Chromium indisponível para verificação visual local. Ivam deve conferir fornecedor real, destinatário, prévia e recebimento em homologação antes de aprovar.
+

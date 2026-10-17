@@ -1,6 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { ensureBaseTables, getDb } from "../../../db";
-import { financeIssuers, operations } from "../../../db/schema";
+import { financeIssuers, operations, suppliers } from "../../../db/schema";
+import { supplierPayer } from "../../../lib/finance-suppliers";
 import { audit, requireSecurityContext, type SecurityContext } from "../../../lib/security";
 import { PAYER_ROLES, cleanIssuer, cleanPayer, nextDocumentNumber, processGain, readFinance, writeFinance, type FinanceDocument, type FinanceStatus } from "../../../lib/finance";
 import { readOrderTerms } from "../../../lib/order-terms";
@@ -17,9 +18,10 @@ function forbid() {
 
 async function snapshot(context: SecurityContext) {
   const db = await getDb();
-  const [rows, parties] = await Promise.all([
+  const [rows, parties, supplierRows] = await Promise.all([
     db.select().from(operations).where(eq(operations.organizationId, context.organizationId)).orderBy(desc(operations.id)).limit(500),
     db.select().from(financeIssuers).where(eq(financeIssuers.organizationId, context.organizationId)).orderBy(financeIssuers.name),
+    db.select().from(suppliers).where(eq(suppliers.organizationId, context.organizationId)).orderBy(suppliers.legalName),
   ]);
   const processes = rows
     .map((operation) => {
@@ -27,7 +29,7 @@ async function snapshot(context: SecurityContext) {
       const gain = processGain(operation);
       return {
         id: operation.id, reference: operation.reference, client: operation.euImporter, etd: operation.shipmentDate,
-        supplierName: operation.supplierName, exporterName: operation.exporterName,
+        supplierId: operation.supplierId, supplierName: operation.supplierName, exporterName: operation.exporterName,
         cancelled: Boolean(terms.cancelled), completed: Boolean(terms.completed),
         ...gain,
       };
@@ -43,7 +45,7 @@ async function snapshot(context: SecurityContext) {
   const payers = saved.filter((row) => row.kind === "payer");
   const numbers = rows.flatMap((row) => readFinance(row).documents.map((doc) => doc.number));
   const year = new Date().toISOString().slice(0, 4);
-  return { processes, issuers, payers, nextNumbers: { invoice: nextDocumentNumber("invoice", numbers, year), nfse: nextDocumentNumber("nfse", numbers, year) }, payerRoles: PAYER_ROLES, today: new Date().toISOString().slice(0, 10), canWrite: STAFF_WRITE.has(context.role) };
+  return { processes, issuers, payers, supplierPayers: supplierRows.map(supplierPayer), nextNumbers: { invoice: nextDocumentNumber("invoice", numbers, year), nfse: nextDocumentNumber("nfse", numbers, year) }, payerRoles: PAYER_ROLES, today: new Date().toISOString().slice(0, 10), canWrite: STAFF_WRITE.has(context.role) };
 }
 
 export async function GET() {
