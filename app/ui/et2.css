@@ -608,3 +608,15 @@ a.db-tile:hover { text-decoration: none; background: #fafafa; }
 @media (max-width: 800px) { .op-hero, .op-receive { grid-template-columns: repeat(2, minmax(0, 1fr)); } .op-edit-row { grid-template-columns: 1fr 1fr; } }
 .sa-pay { margin-bottom: 10px; padding: 8px 10px; border: 1px solid #fde68a; background: #fffbeb; border-radius: 6px; font-size: 13px; }
 .sa-pay--ok { border-color: #a7f3d0; background: #ecfdf5; }
+
+/* Shipment Report (protótipo "3e", aprovado por Ivam em 2026-10-17) */
+.sr-dialog { max-width: 720px; }
+.sr-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+.sr-box { border: 1px solid var(--et2-line); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+.sr-box > label { display: flex; flex-direction: column; gap: 4px; color: var(--et2-ink-2); }
+.sr-box > label.sr-check { flex-direction: row; align-items: flex-start; gap: 8px; }
+.sr-radios { display: flex; flex-wrap: wrap; gap: 14px; }
+.sr-radios label { display: flex; gap: 6px; align-items: center; }
+.sr-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.sr-status { padding: 8px 10px; border-radius: 6px; background: #f9fafb; border: 1px solid var(--et2-line-2); color: var(--et2-ink-2); }
+.sr-box > label.sr-check input { margin-top: 2px; }

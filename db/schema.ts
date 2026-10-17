@@ -768,3 +768,21 @@ export const financeIssuers = sqliteTable("finance_issuers", {
   createdBy: text("created_by").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+// Shipment Report por cliente (todos os pedidos em aberto num e-mail): envio automático a cada N dias
+// ou quando um pedido muda de fase (lib/shipment-report.ts). client_key = id do cliente ou nome normalizado.
+export const shipmentReportSettings = sqliteTable("shipment_report_settings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  organizationId: integer("organization_id").notNull(),
+  clientKey: text("client_key").notNull(),
+  clientName: text("client_name").notNull().default(""),
+  emails: text("emails").notNull().default(""),
+  auto: integer("auto", { mode: "boolean" }).notNull().default(false),
+  intervalDays: integer("interval_days").notNull().default(10),
+  onPhaseChange: integer("on_phase_change", { mode: "boolean" }).notNull().default(true),
+  includePayments: integer("include_payments", { mode: "boolean" }).notNull().default(true),
+  lastSentAt: text("last_sent_at").notNull().default(""),
+  lastPhasesJson: text("last_phases_json").notNull().default("{}"),
+  updatedBy: text("updated_by").notNull().default(""),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [uniqueIndex("shipment_report_settings_org_client_idx").on(table.organizationId, table.clientKey)]);

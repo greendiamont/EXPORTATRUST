@@ -83,6 +83,7 @@ Layouts aprovados por Ivam estão travados: ver `docs/change-control/LAYOUT_PROT
 - Financeiro (`/financeiro`, 2026-10-17): comissões e margens por processo; contas em `lib/finance.ts`; controle em `supply_chain_notes.finance`; emitentes em `finance_issuers` (migração 0033).
 - EUDR (`/eudr`, 2026-10-17): 5 etapas por pedido e florestas; regras em `lib/eudr.ts`; dados da floresta em `rural_properties.eudr_json` (migração 0035) e do pedido em `supply_chain_notes.eudr`; DDS em `operations.eudr_reference`. A tela antiga segue em /classico.
 - Financeiro do pedido (2026-10-17): etapa no fim da barra de fases; parcelas e recebimentos do cliente em `supply_chain_notes.payments` (`lib/order-payments.ts`, `/api/order-payments`); o Shipment Advice usa o recebido e o saldo.
+- Shipment Report (2026-10-17): botão no pedido e envio automático por cliente (`shipment_report_settings`, migração 0036); montagem em `lib/shipment-report.ts`, PDF em `lib/shipment-report-pdf.ts`, agendador `server/railway/shipment-report-scheduler.mjs` (só produção, salvo `SHIPMENT_REPORT_SCHEDULER=1`).
 - Pedido em 6 fases (`lib/order-phases.ts`): Pedido → Produção → Embarque → Documentos → Trânsito → Entregue.
 - Migration `0029` (aditiva): campos novos de cadastro (endereço do fornecedor, notify party/incoterm/moeda do cliente, unidade de venda/embalagem do produto).
 
