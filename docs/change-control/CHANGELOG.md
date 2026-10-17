@@ -843,4 +843,4 @@
 - **Banco:** migração aditiva `0033_finance_issuers` (tabela `finance_issuers`, emitentes salvos). Nenhum dado existente alterado.
 - **Acesso:** só equipe (administrador e analista; auditor só lê). Convidado continua bloqueado pela trava do servidor.
 - **Testes:** tsc (92, sem erros novos), `tests/finance.test.mjs` (4), 108 testes, build Railway, Playwright local (emitir invoice com emitente salvo, espelho de nota da VLP, marcar recebido, celular sem rolagem lateral).
-- **Status:** em andamento
+- **Status:** aprovado por Ivam ("E pode seguir para homologação e produção. Produção aprovada.") — em produção (PR #158)
