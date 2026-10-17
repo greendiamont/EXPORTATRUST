@@ -530,6 +530,18 @@ a.db-tile:hover { text-decoration: none; background: #fafafa; }
 .fn-preview th.num { text-align: right; }
 .fn-preview td:first-child { padding-left: 0; }
 
+/* Processo liquidado (situação "Recebido"): linha em verde claro, pedido por Ivam em 2026-10-17. */
+.et2-table tr.fn-paid td { background: #ecfdf5; }
+.et2-table tr.fn-paid td:first-child { box-shadow: inset 3px 0 0 #047857; }
+.fn-sign { display: flex; flex-direction: column; gap: 8px; }
+.fn-sign canvas { width: 100%; max-width: 420px; height: 120px; border: 1px dashed var(--et2-line); border-radius: 6px; background: #fff; touch-action: none; cursor: crosshair; }
+.fn-sign img { max-width: 260px; max-height: 80px; object-fit: contain; border: 1px solid var(--et2-line-2); border-radius: 6px; padding: 6px; background: #fff; align-self: flex-start; }
+.fn-sign-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.fn-preview-sign { margin-top: 18px; width: 60%; text-align: center; font-size: 11.5px; color: var(--et2-muted); }
+.fn-preview-sign img { display: block; max-height: 48px; max-width: 180px; margin: 0 auto 2px; }
+.fn-preview-sign div { border-top: 1px solid #80958b; padding-top: 4px; }
+.fn-preview-sign b { display: block; color: var(--et2-ink); }
+
 /* EUDR · rastreabilidade (protótipo "4b", aprovado por Ivam em 2026-10-17) */
 .eu-layout { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
 .eu-list { flex: 1 1 260px; max-width: 320px; min-width: 0; }

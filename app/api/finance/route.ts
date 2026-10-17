@@ -117,6 +117,7 @@ export async function POST(request: Request) {
         description: String(body.description ?? "").trim().slice(0, 1000), basis, rate: Number(body.rate) || 0, volume: Number(body.volume) || 0,
         references: targets.map((target) => target.operation!.reference), notes: String(body.notes ?? "").trim().slice(0, 1000), amount,
         currency: kind === "nfse" ? "BRL" : String(body.currency || "USD").slice(0, 3).toUpperCase(),
+        language: kind === "nfse" || body.language === "pt" ? "pt" : "en",
         exchangeRate: Number(body.exchangeRate) || 0, dueDate: String(body.dueDate ?? "").slice(0, 10), createdAt: new Date().toISOString(), by: context.email,
       };
       for (const { share, operation } of targets) {

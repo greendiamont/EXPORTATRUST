@@ -15,6 +15,8 @@ export type FinanceIssuer = {
   beneficiary: string; swift: string; account: string; bankName: string; bankAddress: string;
   /** Dados bancários em texto livre (documentos antigos); usado quando os campos acima estão vazios. */
   bank: string;
+  /** Imagem da assinatura (PNG/JPEG em data URL), impressa no bloco de assinatura da invoice. */
+  signature?: string;
 };
 /** Quem paga: nome, endereço, VAT/CNPJ, registro (ex.: KVK) e e-mail. */
 export type FinancePayer = { name: string; address: string; taxId: string; registration: string; email: string };
@@ -38,6 +40,8 @@ export type FinanceDocument = {
   notes?: string;
   amount: number;
   currency: string;
+  /** Idioma do documento: português quando cobrado do exportador/fornecedor (Brasil), inglês para o importador. */
+  language?: "pt" | "en";
   exchangeRate: number;
   dueDate: string;
   createdAt: string;
@@ -162,6 +166,7 @@ export function cleanIssuer(input: unknown): FinanceIssuer {
     name: field("name", 160), taxId: field("taxId", 40), address: field("address"), city: field("city", 120), email: field("email", 160), phone: field("phone", 60),
     beneficiary: field("beneficiary", 160), swift: field("swift", 40), account: field("account", 80), bankName: field("bankName", 160), bankAddress: field("bankAddress"),
     bank: field("bank", 500),
+    signature: /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(text(value.signature)) && text(value.signature).length <= 400_000 ? text(value.signature) : "",
   };
 }
 
