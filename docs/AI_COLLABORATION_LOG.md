@@ -328,3 +328,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 ### 2026-10-17 — Claude — Financeiro do pedido
 - **Branch:** `claude/financeiro-pedido`; CHG-20261017-036.
 - **Para outros agentes:** o JSON do pedido ganhou a chave `payments` (parcelas e recebimentos do cliente) — preserve-a. Rota nova `/api/order-payments` (não confundir com `/api/payments`, que é a integração x402). `buildShipmentAdvice` aceita um 5º parâmetro com os recebimentos; sem ele, mantém a conta antiga.
+
+### 2026-10-17 — Claude — Shipment Report
+- **Branch:** `claude/shipment-report`; CHG-20261017-037.
+- **Para outros agentes:** o servidor Railway agora tem um agendador de hora em hora (`shipment-report-scheduler.mjs`), ligado só em produção. O relatório ao cliente nunca deve incluir dados financeiros internos (margem, compra, comissão): ao mexer em `lib/shipment-report.ts`, mantenha isso.

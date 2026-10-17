@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Shipment Report · ExportaTrust</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F4F6}
+a{color:#1D4ED8;text-decoration:none}
+</style>
+</helmet>
+<div style="min-height: 100vh; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #111827; background: #F3F4F6; font-size: 14px">
+  <main style="max-width: 1360px; margin: 0 auto; box-sizing: border-box; padding: 24px; display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 20px; align-items: start">
+    <div style="grid-column: 1 / -1; font-size: 13px; color: #6B7280">Proposta · Shipment Report para o cliente — à esquerda, onde a equipe configura e envia; à direita, o que o cliente recebe (e-mail e página de acompanhamento)</div>
+
+    <div style="display: flex; flex-direction: column; gap: 18px">
+      <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+        <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB"><h2 style="margin: 0; font-size: 16px; font-weight: 600">No pedido · botão "Shipment Report"</h2><div style="font-size: 13px; color: #6B7280">No topo do pedido, no lugar de "Enviar atualização ao cliente".</div></div>
+        <div style="padding: 14px 20px; display: flex; flex-wrap: wrap; gap: 8px">
+          <button style="min-height: 36px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; cursor: pointer">Editar</button>
+          <button style="min-height: 36px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; cursor: pointer">Seguir pedido</button>
+          <button onClick="{{openSend}}" style="min-height: 36px; padding: 0 14px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; font-weight: 500; cursor: pointer">Shipment Report ▾</button>
+        </div>
+        <sc-if value="{{showSend}}" hint-placeholder-val="{{ true }}">
+          <div style="margin: 0 20px 16px; border: 1px solid #E5E7EB; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; font-size: 13px">
+            <label style="display: flex; flex-direction: column; gap: 4px; color: #374151">Para<input value="purchasing@danubiawood.de; logistics@danubiawood.de" style="min-height: 34px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit"></label>
+            <div style="display: flex; flex-wrap: wrap; gap: 14px; color: #374151">
+              <label><input type="radio" checked> Todos os pedidos em aberto do cliente (4)</label>
+              <label><input type="radio"> Só este pedido</label>
+            </div>
+            <label style="display: flex; flex-direction: column; gap: 4px; color: #374151">Mensagem (opcional)<textarea rows="2" style="box-sizing: border-box; padding: 6px 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit">Booking confirmed — vessel MSC Aurora, loading next week.</textarea></label>
+            <div style="display: flex; gap: 8px; justify-content: flex-end"><button style="min-height: 34px; padding: 0 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; cursor: pointer">Ver prévia / PDF</button><button style="min-height: 34px; padding: 0 12px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; cursor: pointer">Enviar agora</button></div>
+          </div>
+        </sc-if>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+        <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB"><h2 style="margin: 0; font-size: 16px; font-weight: 600">Envio automático · por cliente</h2><div style="font-size: 13px; color: #6B7280">Em Cadastros → Clientes (ou no pedido). Um e-mail por cliente com todos os pedidos em aberto.</div></div>
+        <div style="padding: 14px 20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; font-size: 13px">
+          <label style="grid-column: 1 / -1; display: flex; align-items: center; gap: 8px"><input type="checkbox" checked> Enviar Shipment Report automático</label>
+          <label style="display: flex; flex-direction: column; gap: 4px; color: #374151">Frequência<select style="min-height: 34px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; background: #FFFFFF"><option>A cada 10 dias</option><option>A cada 15 dias</option><option>Toda semana</option><option>Só quando muda de fase</option></select></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; color: #374151">Dia / hora<select style="min-height: 34px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; background: #FFFFFF"><option>Segunda · 9h</option></select></label>
+          <label style="grid-column: 1 / -1; display: flex; align-items: center; gap: 8px"><input type="checkbox" checked> Também enviar quando o pedido muda de fase (booking confirmado, embarcou, chegou)</label>
+          <label style="grid-column: 1 / -1; display: flex; align-items: center; gap: 8px"><input type="checkbox" checked> Incluir pagamentos (saldo a pagar e vencimento)</label>
+          <div style="grid-column: 1 / -1; padding: 8px 10px; border: 1px solid #F0F1F3; border-radius: 6px; background: #F9FAFB; color: #374151">Próximo envio: <b>27/10 às 9h</b> (10 dias após o último, 17/10) · ou antes, se algum pedido mudar de fase</div>
+        </div>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 14px 20px; font-size: 13px; color: #374151; line-height: 1.6">
+        <b>O que o cliente NÃO vê:</b> margem, preço de compra, fornecedor (se preferir), comissões, tarefas internas e comentários da equipe. Só a situação do pedido, datas, embarque, documentos e pagamento.
+      </section>
+    </div>
+
+    <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.06)">
+      <div style="padding: 12px 20px; border-bottom: 1px solid #E5E7EB; font-size: 13px; color: #6B7280">E-mail · <b style="color: #111827">Shipment Report · DANUBIA WOOD · 17 Oct 2026</b> · também em PDF anexo</div>
+      <div style="padding: 20px 24px; display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #086c55; padding-bottom: 10px">
+          <div><div style="font-weight: 800; letter-spacing: 2px; color: #086c55">GREEN DIAMONT</div><div style="font-size: 12px; color: #60756c">Shipment report · your open orders</div></div>
+          <div style="text-align: right"><div style="font-size: 20px; font-weight: 700">SHIPMENT REPORT</div><div style="font-size: 12px; color: #60756c">17 October 2026 · 4 orders</div></div>
+        </div>
+        <div style="font-size: 13px">Dear Danubia team, please find below the current status of your orders. <a>Track online (live) →</a></div>
+        <sc-for list="{{orders}}" as="o" hint-placeholder-count="3">
+          <article style="border: 1px solid #DFE9E4; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px">
+            <div style="display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap"><div><b style="font-family: 'IBM Plex Mono', monospace">{{o.ref}}</b> <span style="color: #6B7280">· {{o.product}}</span></div><span style="{{o.badgeStyle}}">{{o.badge}}</span></div>
+            <ol style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px">
+              <sc-for list="{{o.steps}}" as="s" hint-placeholder-count="6"><li style="{{s.style}}">{{s.name}}</li></sc-for>
+            </ol>
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; font-size: 12.5px">
+              <sc-for list="{{o.facts}}" as="f" hint-placeholder-count="6"><div><div style="color: #6B7280; font-size: 11.5px">{{f.label}}</div><div>{{f.value}}</div></div></sc-for>
+            </div>
+            <div style="{{o.noteStyle}}">{{o.note}}</div>
+          </article>
+        </sc-for>
+        <div style="font-size: 12px; color: #6B7280">Payments: balance due USD 51,315.24 (order 278/26) by 07 Nov 2026. Bank details in the invoice. · This report is generated by ExportaTrust.</div>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1250}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { send: true }; }
+  renderVals() {
+    const badge = (t) => 'display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; ' + ({ ok: 'background: #ECFDF5; color: #047857', warn: 'background: #FFFBEB; color: #92400E', info: 'background: #EFF6FF; color: #1D4ED8', todo: 'background: #F3F4F6; color: #4B5563' })[t];
+    const NAMES = ['Order', 'Production', 'Booking', 'Documents', 'In transit', 'Delivered'];
+    const steps = (current) => NAMES.map((name, i) => ({ name, style: 'font-size: 11px; text-align: center; padding: 5px 2px; border-radius: 4px; ' + (i < current ? 'background: #ECFDF5; color: #047857' : i === current ? 'background: #0F1B2D; color: #FFFFFF; font-weight: 600' : 'background: #F3F4F6; color: #6B7280') }));
+    const F = (label, value) => ({ label, value });
+    const orders = [
+      { ref: '278/26', product: 'Pine sawn timber · 6 × 40HC', badge: 'Booking confirmed', badgeStyle: badge('info'), steps: steps(2),
+        facts: [F('Vessel / voyage', 'MSC Aurora · 642W'), F('ETD Itajaí', '23 Oct 2026'), F('ETA Hamburg', '18 Nov 2026'), F('Quality inspection', 'Approved ✓'), F('Documents', 'Draft BL pending'), F('Payment', 'Advance received ✓ · balance USD 51,315.24 due 07 Nov')],
+        note: 'Next step: container stuffing on 20 Oct.', noteStyle: 'font-size: 12.5px; padding: 6px 10px; border-radius: 6px; background: #F9FAFB; color: #374151' },
+      { ref: '061/26', product: 'Wood pellets 6 mm · 588 t', badge: 'In production', badgeStyle: badge('warn'), steps: steps(1),
+        facts: [F('Production', '70% produced'), F('Quality', 'Lab test scheduled 22 Oct'), F('Estimated shipment', 'Nov 2026'), F('Booking', 'Requested'), F('EUDR', 'Due diligence package in preparation'), F('Payment', 'Advance pending — USD 21,000 requested 10 Oct')],
+        note: 'Action needed: advance payment (proforma attached).', noteStyle: 'font-size: 12.5px; padding: 6px 10px; border-radius: 6px; background: #FFFBEB; color: #92400E; font-weight: 600' },
+      { ref: 'GBU015/26', product: 'Pine sawn timber · 3 × 40HC', badge: 'In transit', badgeStyle: badge('ok'), steps: steps(4),
+        facts: [F('Vessel', 'Maersk Lima · 238E'), F('Shipped', '16 Oct 2026 · BL MAEU2384…'), F('ETA', '12 Nov 2026'), F('Tracking', 'At sea · on schedule'), F('Documents', 'Originals sent by courier'), F('Payment', 'Paid in full ✓')],
+        note: 'Containers: TCNU4963236, TEMU8281337, ONEU5488363', noteStyle: 'font-size: 12.5px; padding: 6px 10px; border-radius: 6px; background: #F9FAFB; color: #374151; font-family: IBM Plex Mono, monospace' },
+    ];
+    return { orders, showSend: this.state.send, openSend: () => this.setState({ send: !this.state.send }) };
+  }
+}
+</script>
+</body>
+</html>

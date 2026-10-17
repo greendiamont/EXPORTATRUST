@@ -905,3 +905,16 @@
 - **Regras (`lib/order-payments.ts`):** total = itens do pedido de venda (ou valor comercial); situação por parcela (a solicitar, solicitado, recebido em parte, recebido). Dados em `supply_chain_notes.payments`. Arquivos na categoria "Financeiro · pagamentos" (fase Pedido, que o convidado não vê). Sem mudança de banco.
 - **Testes:** tsc (92, sem erros novos), `tests/order-payments.test.mjs` (3), 117 testes, build Railway, Playwright local (parcelas 30/70, vencimentos, recebimento com SWIFT, saldo na barra e no e-mail do Shipment Advice).
 - **Status:** aprovado por Ivam ("Alteração aprovada pode subir para produção")
+
+## 2026-10-17 — Claude — Shipment Report para o cliente (manual e automático)
+
+- **ID:** CHG-20261017-037
+- **Branch:** `claude/shipment-report`
+- **PR:** ver PR da branch
+- **Destino:** homologation (produção após "pode produzir")
+- **Pedido de Ivam (conversa, 2026-10-17):** "o mais importante para o cliente é ele saber aonde exatamente está o pedido dele [...] um shipment report [...] a cada 10 dias, cada 15 dias, automaticamente [...] em qual fase o pedido dele está, se ele precisa fazer algum pagamento, se o booking foi solicitado, se ele embarcou, se ele está em fase de qualidade". Decisões: um e-mail por cliente com todos os pedidos; a cada 10 dias ou quando muda de fase. Protótipo "3e · Shipment Report" (`docs/redesign/prototipo/ShipmentReport.dc.html`) aprovado: "Alteração aprovada".
+- **O que mudou:** no pedido, o botão "Enviar atualização ao cliente" (abria o e-mail local) virou **"Shipment Report"**: janela com destinatários, todos os pedidos em aberto do cliente (padrão) ou só o pedido, mensagem opcional, prévia, PDF e "Enviar agora"; e o **envio automático do cliente** (a cada 10/15/7 dias ou só quando muda de fase; também ao mudar de fase; incluir pagamentos). E-mail em inglês (HTML + PDF anexo) com, por pedido: barra de fases, booking, navio, ETD/ETA, qualidade, documentos, contêineres, EUDR, pagamento (Financeiro do pedido), ação necessária e próximo passo. Nunca leva margem, compra, comissão ou tarefas internas. Cada envio fica no histórico de notificações de cada pedido.
+- **Automático:** `server/railway/shipment-report-scheduler.mjs` verifica de hora em hora e chama a ação `run-scheduled` (só administrador). Roda só em produção; em homologação só com `SHIPMENT_REPORT_SCHEDULER=1`, para não enviar e-mail a clientes a partir de dados de teste. Ao ligar o automático, o prazo conta a partir de agora.
+- **Banco:** migração aditiva `0036_shipment_report_settings` (tabela nova). Nenhum dado existente alterado.
+- **Testes:** tsc (92, sem erros novos), `tests/shipment-report.test.mjs` (3), testes completos, build Railway, Playwright local (janela, prévia, PDF, envio sem Resend mostra o erro e grava o histórico, envio automático ligado, run-scheduled sem envio fora do prazo).
+- **Status:** em andamento

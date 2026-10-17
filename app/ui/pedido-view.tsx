@@ -11,6 +11,7 @@ import { ShipmentAdviceCard } from "./shipment-advice-card";
 import { CollaboratorsPanel } from "./collaborators-panel";
 import { EudrOrderPanel } from "./eudr-view";
 import { OrderPaymentsPanel, type OrderPayments } from "./order-payments";
+import { ShipmentReportButton } from "./shipment-report-button";
 import { amountsOf, estimateMargin } from "../../lib/margin";
 import { readOrderTerms } from "../../lib/order-terms";
 
@@ -350,11 +351,6 @@ export default function PedidoView({ operationId }: { operationId: number }) {
     run(() => postControl({ action: "operation-task-complete", operationId, taskId: task.id, completed: task.status !== "Concluído" }));
   }
 
-  function mailUpdate() {
-    const lines = phaseInfo.map((item, index) => `${index + 1}. ${item.name}: ${item.total ? `${item.done}/${item.total}` : "—"}${index === current ? " (fase atual)" : ""}`);
-    const body = [`Pedido ${operation.reference}`, `Fase atual: ${ORDER_PHASES[current].name}`, "", ...lines, "", openStep ? `Próximo passo: ${openStep.title}${openStep.nextAction ? ` — ${openStep.nextAction}` : ""}` : ""].join("\n");
-    window.open(`mailto:${encodeURIComponent(data?.settings?.customerEmail ?? "")}?subject=${encodeURIComponent(`Atualização do pedido ${operation.reference}`)}&body=${encodeURIComponent(body)}`, "_self");
-  }
 
   const viewers = [{ email: activity?.me ?? "", name: nameOf(activity?.me ?? "", "Você") }, ...(activity?.viewing ?? [])].filter((person) => person.email);
   const selectedMilestone = target?.kind === "m" ? milestones.find((milestone) => milestone.code === target.code) : undefined;
@@ -387,7 +383,7 @@ export default function PedidoView({ operationId }: { operationId: number }) {
             )}
             {!guest && <Link className="pd-btn" href={`/novo-processo?processo=${operationId}`} title="Editar o processo: referência, empresas, produto, preços e logística">Editar</Link>}
             <button className={`pd-btn${meFollowing ? " pd-btn--on" : ""}`} aria-pressed={meFollowing} disabled={busy} onClick={() => run(() => postActivity({ operationId, action: "follow", follow: !meFollowing }))}>{meFollowing ? "✓ Seguindo" : "Seguir pedido"}</button>
-            {!guest && <button className="pd-btn" onClick={mailUpdate}>Enviar atualização ao cliente</button>}
+            {!guest && <ShipmentReportButton operationId={operationId} onSent={setToast} />}
             <button className="pd-btn pd-btn--dark" disabled={busy || !openStep} title={openStep ? `Concluir “${openStep.title}”` : "Nenhuma etapa aberta"}
               onClick={() => { if (openStep && window.confirm(`Concluir a etapa “${openStep.title}”? O cliente é avisado conforme as configurações do pedido.`)) toggleMilestone(openStep); }}>Concluir etapa</button>
           </div>

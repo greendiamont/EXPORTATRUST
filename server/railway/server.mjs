@@ -382,6 +382,11 @@ server.listen(port, "0.0.0.0", () => {
       .then(({ runStartupEmailImageCleanup }) => runStartupEmailImageCleanup({ pool: bindings.DB.pool, worker, env, ctx }))
       .catch((error) => console.error("[limpeza] falhou:", error));
   }
+  if (bindings.DB) {
+    import("./shipment-report-scheduler.mjs")
+      .then(({ startShipmentReportScheduler }) => startShipmentReportScheduler({ pool: bindings.DB.pool, worker, env, ctx, appEnv }))
+      .catch((error) => console.error("[shipment-report] falhou ao iniciar:", error));
+  }
   if (bindings.DB && process.env.EXPORTATRUST_FILES_IMPORT_URL) {
     import("./startup-import.mjs")
       .then(({ runStartupFileImport }) => runStartupFileImport({ pool: bindings.DB.pool, worker, env, ctx, appEnv, bucket: bindings.BUCKET }))
