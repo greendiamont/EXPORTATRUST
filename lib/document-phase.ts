@@ -4,7 +4,8 @@
 // distribuídas por assunto. Sem correspondência, o documento fica só na lista geral.
 
 const STAGE_PHASE: Array<[RegExp, number]> = [
-  [/pedido confirmado|sales order|purchase order|contrato|cadastro do fornecedor/i, 0],
+  // Financeiro do pedido (SWIFTs, proformas): fase Pedido, que o convidado não vê.
+  [/pedido confirmado|sales order|purchase order|contrato|cadastro do fornecedor|^financeiro/i, 0],
   [/origem|eudr|floresta|planta industrial|legalidade|dof|programa[çc][aã]o|produ[çc][aã]o|qualidade/i, 1],
   [/aprova[çc][aã]o de embarque|booking|estufagem|exporta[çc][aã]o \/ embarque|stage 1[01]/i, 2],
   [/set documental|despacho|porto|documentos comerciais|stage 0?8/i, 3],

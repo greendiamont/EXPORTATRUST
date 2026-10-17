@@ -10,6 +10,7 @@ import { LogisticsCostsEditor, LogisticsCostsSummary } from "./logistics-costs-e
 import { ShipmentAdviceCard } from "./shipment-advice-card";
 import { CollaboratorsPanel } from "./collaborators-panel";
 import { EudrOrderPanel } from "./eudr-view";
+import { OrderPaymentsPanel, type OrderPayments } from "./order-payments";
 import { amountsOf, estimateMargin } from "../../lib/margin";
 import { readOrderTerms } from "../../lib/order-terms";
 
@@ -181,9 +182,15 @@ export default function PedidoView({ operationId }: { operationId: number }) {
   const [error, setError] = useState("");
   const [phase, setPhaseState] = useState<number | null>(null);
   // Pedido para a UE: a EUDR abre como uma etapa da barra de fases (entre Produção e Embarque).
-  const [eudrOpen, setEudrOpen] = useState(false);
+  const [eudrOpen, setEudrOpenState] = useState(false);
   const [eudrReadiness, setEudrReadiness] = useState<number | null>(null);
-  const setPhase = useCallback((index: number | null) => { setPhaseState(index); setEudrOpen(false); }, []);
+  // Financeiro do pedido (só o cliente): etapa no fim da barra de fases, só para a equipe.
+  const [finOpen, setFinOpenState] = useState(false);
+  const [finSummary, setFinSummary] = useState<OrderPayments["summary"] | null>(null);
+  const [finCurrency, setFinCurrency] = useState("USD");
+  const setPhase = useCallback((index: number | null) => { setPhaseState(index); setEudrOpenState(false); setFinOpenState(false); }, []);
+  const setEudrOpen = (open: boolean) => { setEudrOpenState(open); if (open) setFinOpenState(false); };
+  const setFinOpen = (open: boolean) => { setFinOpenState(open); if (open) setEudrOpenState(false); };
   const [activity, setActivity] = useState<Activity | null>(null);
   const [toast, setToast] = useState("");
   const [target, setTarget] = useState<Target | null>(null);
@@ -233,6 +240,13 @@ export default function PedidoView({ operationId }: { operationId: number }) {
       .then((snapshot) => setEudrReadiness(snapshot.orders.find((order) => order.id === operationId)?.readiness ?? null))
       .catch(() => setEudrReadiness(null));
   }, [eudrRequired, operationId]);
+  const staff = Boolean(data && !data.viewer?.guest);
+  useEffect(() => {
+    if (!staff) return;
+    api<OrderPayments>(`/api/order-payments?operationId=${operationId}`)
+      .then((result) => { setFinSummary(result.summary); setFinCurrency(result.currency); })
+      .catch(() => setFinSummary(null));
+  }, [staff, operationId]);
 
   // Presença: avisa quem está no pedido (e em qual documento está editando) e acompanha a equipe.
   useEffect(() => {
@@ -389,19 +403,32 @@ export default function PedidoView({ operationId }: { operationId: number }) {
       </section>
 
       <section className="pd-card pd-phases" aria-label="Fases do pedido">
-        <ol style={eudrRequired ? { gridTemplateColumns: "repeat(7, minmax(0, 1fr))" } : undefined}>
+        <ol style={eudrRequired || staff ? { gridTemplateColumns: `repeat(${6 + (eudrRequired ? 1 : 0) + (staff ? 1 : 0)}, minmax(0, 1fr))` } : undefined}>
           {phaseInfo.map((item, index) => {
             const state = index < current ? "past" : index === current ? "now" : "next";
             const node = (
               <li key={item.key}>
                 <div className={`line${index < current ? " line--done" : ""}`} aria-hidden="true" style={{ left: index === 0 ? "50%" : 0, right: index === 5 ? "50%" : 0 }} />
-                <button aria-pressed={!eudrOpen && index === selected} onClick={() => setPhase(index)}>
+                <button aria-pressed={!eudrOpen && !finOpen && index === selected} onClick={() => setPhase(index)}>
                   <span className={`dot dot--${state}`}>{state === "past" ? "✓" : index + 1}</span>
                   <span className="name">{item.name}</span>
                   <span className="sum">{item.done}/{item.total} · {item.files} arq.</span>
                 </button>
               </li>
             );
+            // Financeiro do pedido no fim da barra (o dinheiro acompanha o pedido inteiro).
+            if (staff && index === 5) {
+              const paid = Boolean(finSummary && finSummary.total > 0 && finSummary.balance === 0);
+              return [node, (
+                <li key="financeiro">
+                  <button aria-pressed={finOpen} onClick={() => setFinOpen(true)} title="Pagamentos do cliente deste pedido">
+                    <span className={`dot dot--fin${paid ? " dot--fin-ok" : finSummary?.nextDue?.late ? " dot--fin-late" : ""}`}>{paid ? "✓" : "$"}</span>
+                    <span className="name">Financeiro</span>
+                    <span className="sum">{!finSummary ? "pagamentos" : paid ? "quitado" : `saldo ${money(finSummary.balance, finCurrency)}`}</span>
+                  </button>
+                </li>
+              )];
+            }
             // Pedido para a UE: etapa EUDR entre Produção e Embarque (o embarque depende da EUDR).
             if (!eudrRequired || index !== 1) return node;
             const ready = (eudrReadiness ?? 0) >= 100;
@@ -422,7 +449,9 @@ export default function PedidoView({ operationId }: { operationId: number }) {
       <div className="pd-cols">
         <div className="pd-main">
           {eudrOpen && <EudrOrderPanel operationId={operationId} onReadiness={setEudrReadiness} />}
-          {!eudrOpen && <>
+          {finOpen && <OrderPaymentsPanel operationId={operationId} onChanged={(result) => { setFinSummary(result.summary); setFinCurrency(result.currency); }}
+            onView={(doc) => setPreview({ title: doc.fileName, src: `/api/documents?documentId=${doc.id}&inline=1`, download: `/api/documents?documentId=${doc.id}` })} />}
+          {!eudrOpen && !finOpen && <>
           {selected === 3 && !guest && (
             <ShipmentAdviceCard operationId={operationId} onChanged={refreshAll} onError={setError}
               onView={(id, fileName) => setPreview({ title: fileName, src: `/api/documents?documentId=${id}&inline=1`, download: `/api/documents?documentId=${id}` })} />

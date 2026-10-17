@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Financeiro do pedido · ExportaTrust</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F4F6}
+a{color:#1D4ED8;text-decoration:none}
+</style>
+</helmet>
+<div style="min-height: 100vh; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #111827; background: #F3F4F6; font-size: 14px">
+  <header style="background: #0F1B2D; color: #FFFFFF">
+    <div style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 0 24px; min-height: 56px; display: flex; align-items: center; gap: 28px">
+      <div style="font-weight: 600; font-size: 15px">✓ ExportaTrust</div>
+      <nav style="display: flex; gap: 4px; flex: 1">
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Painel</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #FFFFFF; font-weight: 500; box-shadow: inset 0 -3px 0 #5FD3A6">Pedidos</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Cadastros</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">EUDR</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Relatórios</a>
+        <a style="min-height: 56px; display: inline-flex; align-items: center; padding: 0 14px; color: #C3CBD8">Financeiro</a>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width: 1320px; margin: 0 auto; box-sizing: border-box; padding: 20px 24px 48px; display: flex; flex-direction: column; gap: 18px">
+    <div style="font-size: 13px; color: #6B7280">Pedidos / 278/26 · proposta: etapa Financeiro dentro do pedido</div>
+
+    <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px 24px">
+      <ol style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px">
+        <sc-for list="{{phases}}" as="p" hint-placeholder-count="8">
+          <li><button onClick="{{p.pick}}" style="{{p.style}}"><span style="{{p.dotStyle}}">{{p.dot}}</span><span style="font-weight: 500">{{p.name}}</span><span style="font-size: 12px; color: #6B7280">{{p.sum}}</span></button></li>
+        </sc-for>
+      </ol>
+    </section>
+
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px">
+      <section aria-label="Balanço" style="background: #0F1B2D; color: #FFFFFF; border-radius: 8px; padding: 18px 24px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px">
+        <sc-for list="{{hero}}" as="h" hint-placeholder-count="4">
+          <div><div style="font-size: 12px; color: #C3CBD8; text-transform: uppercase; letter-spacing: .4px">{{h.label}}</div><div style="font-size: 28px; font-weight: 600; margin-top: 4px; font-family: 'IBM Plex Mono', monospace">{{h.value}}</div><div style="font-size: 13px; color: #C3CBD8">{{h.sub}}</div></div>
+        </sc-for>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+        <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap">
+          <div><h2 style="margin: 0; font-size: 16px; font-weight: 600">A receber do cliente · plano de recebimento</h2><div style="font-size: 13px; color: #6B7280">Montado pela condição do pedido: "30% advance, 70% against copy of BL". Valor total = invoice (US$ 73.307,48). Dá para editar.</div></div>
+          <button style="min-height: 34px; padding: 0 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 13px; cursor: pointer">+ Parcela</button>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px">
+          <thead><tr style="background: #F9FAFB; text-align: left; color: #6B7280; font-size: 11px; text-transform: uppercase; letter-spacing: .4px"><th style="padding: 8px 20px; font-weight: 500">Parcela</th><th style="padding: 8px 10px; font-weight: 500; text-align: right">Valor</th><th style="padding: 8px 10px; font-weight: 500">Vencimento</th><th style="padding: 8px 10px; font-weight: 500">Situação</th><th style="padding: 8px 10px; font-weight: 500">Recebido · SWIFT</th><th style="padding: 8px 20px; font-weight: 500"></th></tr></thead>
+          <tbody>
+            <sc-for list="{{installments}}" as="i" hint-placeholder-count="2">
+              <tr style="border-top: 1px solid #F0F1F3; vertical-align: top">
+                <td style="padding: 12px 20px"><b>{{i.name}}</b><div style="font-size: 12px; color: #6B7280">{{i.rule}}</div></td>
+                <td style="padding: 12px 10px; text-align: right; font-family: 'IBM Plex Mono', monospace">{{i.amount}}</td>
+                <td style="padding: 12px 10px">{{i.due}}</td>
+                <td style="padding: 12px 10px"><span style="{{i.statusStyle}}">{{i.status}}</span><div style="font-size: 12px; color: #6B7280; margin-top: 3px">{{i.statusSub}}</div></td>
+                <td style="padding: 12px 10px">{{i.received}}<div style="font-size: 12px; color: #6B7280">{{i.swift}}</div></td>
+                <td style="padding: 10px 20px; text-align: right; white-space: nowrap"><sc-for list="{{i.actions}}" as="a" hint-placeholder-count="2"><button onClick="{{a.click}}" style="{{a.style}}">{{a.label}}</button> </sc-for></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+        <sc-if value="{{showReceive}}" hint-placeholder-val="{{ true }}">
+          <div style="margin: 0 20px 16px; padding: 14px; border: 1px solid #E5E7EB; border-radius: 8px; background: #F9FAFB; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; align-items: end">
+            <div style="grid-column: 1 / -1; font-weight: 600; font-size: 13px">Registrar recebimento · Saldo</div>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151">Data do crédito<input value="17/10/2026" style="min-height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit"></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151">Valor recebido (US$)<input value="51.315,24" style="min-height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit"></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151">Observação<input placeholder="opcional" style="min-height: 36px; box-sizing: border-box; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit"></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #374151">SWIFT / MT103<span style="min-height: 36px; display: flex; align-items: center; justify-content: center; border: 1px dashed #9CA3AF; border-radius: 6px; color: #4B5563; background: #FFFFFF">Arraste o PDF</span></label>
+            <button onClick="{{closeReceive}}" style="min-height: 36px; border: 0; border-radius: 6px; background: #0F1B2D; color: #FFFFFF; font: inherit; cursor: pointer">Salvar recebimento</button>
+          </div>
+        </sc-if>
+      </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+          <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center"><h2 style="margin: 0; font-size: 16px; font-weight: 600">Documentos financeiros · 3</h2><button style="min-height: 30px; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 12.5px; cursor: pointer">+ Anexar</button></div>
+          <sc-for list="{{finDocs}}" as="d" hint-placeholder-count="4">
+            <div style="padding: 9px 20px; border-top: 1px solid #F0F1F3; display: flex; justify-content: space-between; gap: 10px; font-size: 13px"><span>📄 {{d.name}}</span><span style="color: #6B7280">{{d.kind}}</span></div>
+          </sc-for>
+        </section>
+
+      <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px">
+        <div style="padding: 14px 20px; border-bottom: 1px solid #E5E7EB"><h2 style="margin: 0; font-size: 16px; font-weight: 600">No Shipment Advice (fase Documentos) · o e-mail já sai com o balanço</h2><div style="font-size: 13px; color: #6B7280">Antes de enviar, o app consulta o Financeiro do pedido: puxa o valor da invoice e o adiantamento recebido (com o SWIFT) e calcula o saldo a pagar.</div></div>
+        <div style="padding: 16px 20px; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px">
+          <div style="border: 1px solid #E5E7EB; border-radius: 8px; padding: 14px 16px; font-size: 13px; line-height: 1.6; background: #FAFAFA">
+            <div style="color: #6B7280">Para: purchasing@danubiawood.de · Assunto: <b>Shipment Advice · 278/26 · Balance due USD 51,315.24</b></div>
+            <div style="margin-top: 10px">Dear Sirs,<br>please find attached the shipping documents for order 278/26 (6 × 40'HC, Itajaí → Hamburg, ETD 23/10/2026).</div>
+            <table style="margin-top: 10px; border-collapse: collapse; width: 100%; font-size: 13px; background: #FFFFFF">
+              <tr><td style="padding: 6px 10px; border: 1px solid #E5E7EB">Commercial invoice GD-2026-034</td><td style="padding: 6px 10px; border: 1px solid #E5E7EB; text-align: right; font-family: 'IBM Plex Mono', monospace">USD 73,307.48</td></tr>
+              <tr><td style="padding: 6px 10px; border: 1px solid #E5E7EB">Advance received 12/09/2026 (SWIFT ref. DEUTDEFF 4471…)</td><td style="padding: 6px 10px; border: 1px solid #E5E7EB; text-align: right; font-family: 'IBM Plex Mono', monospace">− USD 21,992.24</td></tr>
+              <tr style="font-weight: 600; background: #FFFBEB"><td style="padding: 6px 10px; border: 1px solid #E5E7EB">Balance due · against copy of BL · by 07/11/2026</td><td style="padding: 6px 10px; border: 1px solid #E5E7EB; text-align: right; font-family: 'IBM Plex Mono', monospace">USD 51,315.24</td></tr>
+            </table>
+            <div style="margin-top: 10px">Bank details: [banco do exportador / SWIFT / IBAN]<br>Original documents will be released upon receipt of the balance.</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px">
+            <div style="padding: 10px 12px; border: 1px solid #A7F3D0; background: #ECFDF5; border-radius: 8px">✓ Adiantamento encontrado no Financeiro: USD 21.992,24 (30%) · SWIFT anexado</div>
+            <div style="padding: 10px 12px; border: 1px solid #FDE68A; background: #FFFBEB; border-radius: 8px">Saldo calculado: USD 51.315,24 · vencimento 07/11/2026 (15 dias após o BL)</div>
+            <div style="padding: 10px 12px; border: 1px solid #E5E7EB; border-radius: 8px">Ao enviar, a parcela "Saldo" passa para <b>Solicitado</b> e o pedido ganha a tarefa "Confirmar SWIFT do saldo".</div>
+            <div style="padding: 10px 12px; border: 1px solid #E5E7EB; border-radius: 8px">Se não houver adiantamento registrado, o e-mail sai com o valor total da invoice.</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1650}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { receive: true }; }
+  renderVals() {
+    const badge = (t) => 'display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; ' + ({ ok: 'background: #ECFDF5; color: #047857', warn: 'background: #FFFBEB; color: #92400E', bad: 'background: #FEF2F2; color: #B91C1C', todo: 'background: #F3F4F6; color: #4B5563', info: 'background: #EFF6FF; color: #1D4ED8' })[t];
+    const btn = (primary) => 'min-height: 30px; padding: 0 10px; border-radius: 6px; font: inherit; font-size: 12.5px; cursor: pointer; ' + (primary ? 'border: 0; background: #0F1B2D; color: #FFFFFF' : 'border: 1px solid #D1D5DB; background: #FFFFFF; color: #111827');
+    const P = [['1', 'Pedido', '11/11', 'past'], ['2', 'Produção', '4/4', 'past'], ['EU', 'EUDR', '100% pronto', 'eu'], ['3', 'Embarque', '5/5', 'past'], ['4', 'Documentos', '2/5', 'now'], ['5', 'Trânsito', '0/3', 'next'], ['6', 'Entregue', '0/1', 'next'], ['$', 'Financeiro', 'saldo US$ 51 mil', 'fin']];
+    const phases = P.map(([dot, name, sum, kind]) => ({ dot: kind === 'past' ? '✓' : dot, name, sum, pick: () => {},
+      style: 'width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px; border: 0; border-radius: 6px; font: inherit; cursor: pointer; background: ' + (kind === 'fin' ? '#F3F4F6' : 'transparent') + '; color: #111827',
+      dotStyle: 'width: 30px; height: 30px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; ' + ({ past: 'background: #047857; color: #FFFFFF', now: 'background: #F59E0B; color: #FFFFFF', next: 'background: #FFFFFF; color: #6B7280; border: 2px solid #D1D5DB', eu: 'background: #047857; color: #FFFFFF', fin: 'background: #FFFBEB; color: #92400E; border: 2px solid #F59E0B' })[kind] }));
+    const hero = [
+      { label: 'Valor da invoice', value: 'US$ 73.307', sub: 'commercial invoice GD-2026-034' },
+      { label: 'Recebido', value: 'US$ 21.992', sub: 'adiantamento 30% · 12/09/2026' },
+      { label: 'Saldo a receber', value: 'US$ 51.315', sub: 'vence 07/11/2026 · contra cópia do BL' },
+      { label: 'Próximo vencimento', value: '07/11', sub: 'saldo 70% · em 21 dias' },
+    ];
+    const installments = [
+      { name: 'Adiantamento · 30%', rule: 'ao confirmar o pedido', amount: 'US$ 21.992,24', due: '15/09/2026', status: 'Recebido', statusStyle: badge('ok'), statusSub: 'solicitado em 05/09 · proforma PF-278', received: 'US$ 21.992,24 em 12/09/2026', swift: 'SWIFT MT103 · DEUTDEFF 4471… (PDF)', actions: [{ label: 'Ver SWIFT', style: btn(false), click: () => {} }] },
+      { name: 'Saldo · 70%', rule: 'contra cópia do BL · 15 dias', amount: 'US$ 51.315,24', due: '07/11/2026', status: 'Solicitado', statusStyle: badge('warn'), statusSub: 'enviado no Shipment Advice em 17/10', received: '—', swift: 'aguardando SWIFT', actions: [{ label: 'Registrar recebimento', style: btn(true), click: () => this.setState({ receive: true }) }] },
+    ];
+    const finDocs = [{ name: 'Proforma PF-278 (pedido de adiantamento).pdf', kind: 'Solicitação' }, { name: 'SWIFT MT103 adiantamento 12-09.pdf', kind: 'SWIFT recebido' }, { name: 'Shipment Advice 278-26 (saldo solicitado).pdf', kind: 'Solicitação' }];
+    return { phases, hero, installments, finDocs, showReceive: this.state.receive, closeReceive: () => this.setState({ receive: false }) };
+  }
+}
+</script>
+</body>
+</html>
