@@ -1,6 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { ensureBaseTables, getDb } from "../../../db";
-import { clientNotifications, exportControlSettings, operationDocuments, operations, shipmentAdvices, suppliers } from "../../../db/schema";
+import { clientNotifications, exportControlSettings, operationDocuments, operationTasks, operations, shipmentAdvices, suppliers } from "../../../db/schema";
+import { paymentSummary, readPayments, saleTotalOf, statusOf, writePayments } from "../../../lib/order-payments";
+import { readOrderTerms } from "../../../lib/order-terms";
 import { buildShipmentAdvice, invoiceFinancialsFromStructured, resolvedShipmentDocumentType, SHIPMENT_SET_CATEGORY, type ShipmentInvoiceFinancials } from "../../../lib/shipment-documents";
 import { analyzeImmutableDocument } from "../../../lib/document-intelligence";
 import { audit, requireSecurityContext } from "../../../lib/security";
@@ -85,13 +87,19 @@ async function snapshot(operationId: number, organizationId: number, refreshInvo
   if (!operation[0]) throw new Error("Processo não encontrado.");
   const invoiceFinancials = await readApprovedInvoiceFinancials(operation[0], documents, refreshInvoice);
   const supplier = operation[0].supplierId ? (await db.select().from(suppliers).where(and(eq(suppliers.id, operation[0].supplierId), eq(suppliers.organizationId, organizationId))).limit(1))[0] : null;
+  // Financeiro do pedido: o e-mail leva os recebimentos registrados (SWIFT) e o saldo calculado.
+  const paymentTerms = readOrderTerms(operation[0]).paymentTerms;
+  const payments = readPayments(operation[0].supplyChainNotes, saleTotalOf(operation[0]), paymentTerms);
+  const summary = paymentSummary(payments, new Date().toISOString().slice(0, 10));
+  const balanceInstallment = [...payments.installments].reverse().find((item) => statusOf(item) !== "recebido");
   const generated = buildShipmentAdvice(
     { ...operation[0], supplierBankDetails: supplier?.bankDetails || "" },
     documents,
     { name: settings[0]?.customerName || operation[0].euImporter, email: settings[0]?.customerEmail || "" },
     invoiceFinancials,
+    { total: summary.total, received: summary.received, receipts: summary.receipts, paymentTerms, balanceDueDate: balanceInstallment?.dueDate ?? "" },
   );
-  return { advice: advice[0] ?? null, documents, generated, invoiceFinancials, complete: generated.checklist.filter((item) => item.required).every((item) => item.present) };
+  return { advice: advice[0] ?? null, documents, generated, invoiceFinancials, payments: summary, complete: generated.checklist.filter((item) => item.required).every((item) => item.present) };
 }
 
 export async function GET(request: Request) {
@@ -146,6 +154,20 @@ export async function POST(request: Request) {
       const sentAdvice = { organizationId: context.organizationId, operationId, status: "Enviado · aprovado por responsável", recipient, subject: current.generated.subject, body: current.generated.body, paymentRequest: "Solicitar pagamento do saldo e comprovante SWIFT / MT103.", documentIdsJson: JSON.stringify(current.generated.included.map((document) => document.id)), checklistJson: JSON.stringify(current.generated.checklist), humanApproved: true, approvedBy: context.email, approvedAt: now, sentAt: now, updatedAt: now };
       await db.insert(shipmentAdvices).values(sentAdvice).onConflictDoUpdate({ target: [shipmentAdvices.organizationId, shipmentAdvices.operationId], set: sentAdvice });
       await audit(context, "SHIPMENT_ADVICE_APPROVED_AND_SENT", "operation", String(operationId), { recipient, documentCount: current.generated.included.length, externalId: delivery.externalId });
+      // Saldo cobrado no e-mail: as parcelas em aberto passam a "Solicitado" e o pedido ganha a tarefa de confirmar o SWIFT.
+      const [fresh] = await db.select().from(operations).where(and(eq(operations.id, operationId), eq(operations.organizationId, context.organizationId))).limit(1);
+      if (fresh) {
+        const payments = readPayments(fresh.supplyChainNotes, saleTotalOf(fresh), readOrderTerms(fresh).paymentTerms);
+        const open = payments.installments.filter((item) => statusOf(item) !== "recebido");
+        if (open.length) {
+          for (const item of open) if (!item.requestedAt) item.requestedAt = now;
+          await db.update(operations).set({ supplyChainNotes: writePayments(fresh.supplyChainNotes, payments) }).where(and(eq(operations.id, operationId), eq(operations.organizationId, context.organizationId)));
+          const tasks = await db.select().from(operationTasks).where(and(eq(operationTasks.operationId, operationId), eq(operationTasks.organizationId, context.organizationId)));
+          if (!tasks.some((task) => task.description === "Confirmar SWIFT do saldo" && task.status !== "Concluído")) {
+            await db.insert(operationTasks).values({ organizationId: context.organizationId, operationId, sequence: Math.max(0, ...tasks.map((task) => task.sequence)) + 1, description: "Confirmar SWIFT do saldo", dueDate: open[open.length - 1].dueDate, note: "Saldo cobrado no Shipment Advice. Registre o recebimento na etapa Financeiro do pedido.", responsibleEmail: fresh.responsibleEmail, responsibleName: fresh.internalResponsible });
+          }
+        }
+      }
       return Response.json({ ...(await snapshot(operationId, context.organizationId)), delivery });
     }
     if (body.action !== "regenerate") return Response.json({ error: "Ação inválida." }, { status: 400 });

@@ -324,3 +324,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 ### 2026-10-17 — Claude — EUDR fase 1
 - **Branch:** `claude/eudr-fase1`; CHG-20261017-034.
 - **Para outros agentes:** o JSON do pedido ganhou a chave `eudr` (origens, documentos da cadeia, rendimento, envio) — preserve-a. `rural_properties.eudr_json` guarda tipo de origem, produtor, espécie, documentos com validade e verificações. Regras e listas de documentos só em `lib/eudr.ts`. `/api/eudr` não é liberada a convidados.
+
+### 2026-10-17 — Claude — Financeiro do pedido
+- **Branch:** `claude/financeiro-pedido`; CHG-20261017-036.
+- **Para outros agentes:** o JSON do pedido ganhou a chave `payments` (parcelas e recebimentos do cliente) — preserve-a. Rota nova `/api/order-payments` (não confundir com `/api/payments`, que é a integração x402). `buildShipmentAdvice` aceita um 5º parâmetro com os recebimentos; sem ele, mantém a conta antiga.
