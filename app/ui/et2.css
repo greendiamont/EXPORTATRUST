@@ -511,7 +511,7 @@ a.db-tile:hover { text-decoration: none; background: #fafafa; }
 .fn-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
 .fn-section { font-size: 12px; color: var(--et2-muted); text-transform: uppercase; letter-spacing: .4px; margin-top: 4px; }
 .fn-form .fn-check { flex-direction: row; align-items: center; gap: 8px; }
-.fn-preview { border: 1px solid var(--et2-line); border-radius: 6px; padding: 18px 20px; font-size: 12.5px; line-height: 1.5; align-self: start; }
+.fn-preview { border: 1px solid var(--et2-line); border-radius: 6px; padding: 18px 20px; font-size: 12.5px; line-height: 1.5; align-self: start; position: sticky; top: 0; background: #fff; }
 .fn-preview-top { display: flex; justify-content: space-between; gap: 12px; }
 .fn-preview-to { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--et2-line-2); }
 .fn-preview table { width: 100%; margin-top: 12px; border-collapse: collapse; }
@@ -519,3 +519,13 @@ a.db-tile:hover { text-decoration: none; background: #fafafa; }
 .fn-preview td.num { text-align: right; white-space: nowrap; padding-left: 12px; }
 .fn-preview tfoot td { font-weight: 600; border-bottom: 0; }
 @media (max-width: 800px) { .fn-emit { grid-template-columns: minmax(0, 1fr); max-height: none; } .fn-form { grid-template-columns: minmax(0, 1fr); } }
+.fn-preview-title { font-size: 26px; font-weight: 700; text-align: right; color: #2d3a45; }
+.fn-preview-meta { display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; justify-items: end; margin-top: 6px; }
+.fn-preview-meta span { color: var(--et2-muted); }
+.fn-preview-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 14px; border: 1px solid var(--et2-line); }
+.fn-preview-parties > div { padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.fn-preview-parties > div + div { border-left: 1px solid var(--et2-line); }
+.fn-preview-parties span { font-size: 11px; color: var(--et2-muted); font-weight: 600; letter-spacing: .4px; }
+.fn-preview th { text-align: left; font-weight: 600; background: #3b4752; color: #fff; padding: 6px 8px; font-size: 11.5px; }
+.fn-preview th.num { text-align: right; }
+.fn-preview td:first-child { padding-left: 0; }

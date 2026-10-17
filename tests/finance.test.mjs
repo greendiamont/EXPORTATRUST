@@ -37,7 +37,14 @@ test("controle do financeiro fica no JSON do pedido sem perder outras chaves", (
 });
 
 test("numeração e emitente", () => {
-  assert.equal(nextDocumentNumber("invoice", ["CI-2026-001", "CI-2026-007", "NFS-2026-002"], "2026"), "CI-2026-008");
-  assert.equal(nextDocumentNumber("nfse", [], "2026"), "NFS-2026-001");
-  assert.deepEqual(cleanIssuer({ name: " Ana ", taxId: "123", extra: 1 }), { name: "Ana", taxId: "123", city: "", bank: "" });
+  // Modelo de Ivam: "001/2026"; continua a sequência das antigas "CI-2026-NNN" e ignora outros anos.
+  assert.equal(nextDocumentNumber("invoice", ["CI-2026-001", "CI-2026-007", "NFS-2026-002"], "2026"), "008/2026");
+  assert.equal(nextDocumentNumber("invoice", ["001/2026", "002/2026", "009/2025"], "2026"), "003/2026");
+  assert.equal(nextDocumentNumber("nfse", ["001/2026", "NFS-001/2026"], "2026"), "NFS-002/2026");
+  assert.equal(nextDocumentNumber("nfse", [], "2027"), "NFS-001/2027");
+  const issuer = cleanIssuer({ name: " Ana ", taxId: "123", swift: "ABCDUS33", extra: 1 });
+  assert.equal(issuer.name, "Ana");
+  assert.equal(issuer.swift, "ABCDUS33");
+  assert.equal(issuer.bank, "");
+  assert.equal("extra" in issuer, false);
 });

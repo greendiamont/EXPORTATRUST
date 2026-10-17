@@ -7,7 +7,11 @@ import { api, formatDate, money, processHref } from "./format";
 // Financeiro (protótipo "7 · Financeiro", pedido por Ivam em 2026-10-17): comissões e margens de cada
 // processo, emissão da comissão (invoice ou espelho de nota) e situação a faturar → faturado → recebido.
 
-type Issuer = { id?: number; name: string; taxId: string; city: string; bank: string };
+type Issuer = {
+  id?: number; name: string; taxId: string; address: string; city: string; email: string; phone: string;
+  beneficiary: string; swift: string; account: string; bankName: string; bankAddress: string; bank: string;
+};
+type Payer = { id?: number; name: string; address: string; taxId: string; registration: string; email: string };
 type FinanceDoc = { id: string; kind: "invoice" | "nfse"; number: string; date: string; payer: string; amount: number; currency: string };
 type Process = {
   id: number; reference: string; client: string; etd: string; supplierName: string; exporterName: string; completed: boolean;
@@ -15,13 +19,14 @@ type Process = {
   gainUsd: number | null; gainBrl: number | null; payerRole: string; payerName: string; ready: boolean;
   finance: { status: "a_faturar" | "faturado" | "recebido"; receivedAt: string; documents: FinanceDoc[] };
 };
-type Snapshot = { processes: Process[]; issuers: Issuer[]; payerRoles: string[]; today: string; canWrite: boolean };
+type Snapshot = { processes: Process[]; issuers: Issuer[]; payers: Payer[]; nextNumbers: { invoice: string; nfse: string }; payerRoles: string[]; today: string; canWrite: boolean };
 
 const RANGES = ["Este ano", "12 meses", "Tudo"];
 const KINDS = ["Todos", "Comissão", "Margem"];
 const STATUS = { a_faturar: { label: "A faturar", tone: "todo" }, faturado: { label: "Faturado", tone: "warn" }, recebido: { label: "Recebido", tone: "ok" } } as const;
 const COLORS = { comissao: "#2a78d6", margem: "#1baf7a" };
-const EMPTY_ISSUER: Issuer = { name: "", taxId: "", city: "", bank: "" };
+const EMPTY_ISSUER: Issuer = { name: "", taxId: "", address: "", city: "", email: "", phone: "", beneficiary: "", swift: "", account: "", bankName: "", bankAddress: "", bank: "" };
+const EMPTY_PAYER: Payer = { name: "", address: "", taxId: "", registration: "", email: "" };
 
 const usd = (value: number) => money(Math.round(value), "USD");
 function compact(value: number) {
@@ -36,7 +41,9 @@ export default function FinanceiroView() {
   const [error, setError] = useState("");
   const [range, setRange] = useState<Range>(0);
   const [kind, setKind] = useState(0);
-  const [emitting, setEmitting] = useState<Process | null>(null);
+  const [emitting, setEmitting] = useState<Process[] | null>(null);
+  // Vários processos na mesma invoice (como a 001/2026: PO0639 e PO0657).
+  const [selected, setSelected] = useState<number[]>([]);
 
   useEffect(() => {
     api<Snapshot>("/api/finance").then(setData).catch((reason: Error) => setError(reason.message));
@@ -148,18 +155,22 @@ export default function FinanceiroView() {
             <h2 id="fn-proc">Por processo</h2>
             <span className="et2-sub" style={{ margin: 0 }}>Comissão: cobrada do fornecedor, exportador ou importador. Margem (parceria VLP): a margem é cobrada da VLP como comissão.</span>
           </div>
-          <div className="et2-seg" role="group" aria-label="Tipo">
-            {KINDS.map((label, index) => <button key={label} aria-pressed={kind === index} onClick={() => setKind(index)}>{label}</button>)}
+          <div className="db-actions">
+            {data?.canWrite && selected.length > 0 && <button className="et2-btn et2-btn--primary" onClick={() => setEmitting(all.filter((row) => selected.includes(row.id)))}>Emitir uma invoice para {selected.length === 1 ? "1 processo" : `${selected.length} processos`}</button>}
+            <div className="et2-seg" role="group" aria-label="Tipo">
+              {KINDS.map((label, index) => <button key={label} aria-pressed={kind === index} onClick={() => setKind(index)}>{label}</button>)}
+            </div>
           </div>
         </div>
         <div className="et2-scroll">
           <table className="et2-table" style={{ minWidth: 1100, fontSize: 13 }}>
-            <thead><tr><th>Processo</th><th>Cliente</th><th>Tipo</th><th className="num">Valor do pedido</th><th className="num">Ganho US$</th><th className="num">Ganho R$</th><th>Situação</th><th>Documentos</th></tr></thead>
+            <thead><tr>{data?.canWrite && <th style={{ width: 36 }}><span className="sr-only">Selecionar</span></th>}<th>Processo</th><th>Cliente</th><th>Tipo</th><th className="num">Valor do pedido</th><th className="num">Ganho US$</th><th className="num">Ganho R$</th><th>Situação</th><th>Documentos</th></tr></thead>
             <tbody>
               {rows.map((row) => {
                 const status = STATUS[row.finance.status];
                 return (
                   <tr key={row.id}>
+                    {data?.canWrite && <td><input type="checkbox" aria-label={`Incluir ${row.reference} na mesma invoice`} checked={selected.includes(row.id)} onChange={(event) => setSelected(event.target.checked ? [...selected, row.id] : selected.filter((id) => id !== row.id))} /></td>}
                     <td><a className="mono" style={{ fontWeight: 500 }} href={processHref(row.id)}>{row.reference}</a><span className="et2-sub">ETD {formatDate(row.etd)}</span></td>
                     <td>{row.client || "—"}</td>
                     <td><span className={`et2-badge et2-badge--${row.mode === "comissao" ? "new" : "ok"}`} style={{ fontSize: 12, padding: "2px 8px" }}>{row.mode === "comissao" ? "Comissão" : "Margem · VLP"}</span>
@@ -178,7 +189,7 @@ export default function FinanceiroView() {
                     <td>
                       <div className="fn-docs">
                         {row.finance.documents.map((doc) => <a key={doc.id} className="et2-btn et2-btn--sm" href={`/api/finance/document?operationId=${row.id}&doc=${doc.id}`} target="_blank" rel="noreferrer" title={`${doc.kind === "nfse" ? "Espelho da nota" : "Invoice"} · ${money(doc.amount, doc.currency)} · ${doc.payer}`}>{doc.number}</a>)}
-                        {data?.canWrite && <button className={`et2-btn et2-btn--sm${row.finance.documents.length ? "" : " et2-btn--primary"}`} onClick={() => setEmitting(row)}>{row.finance.documents.length ? "+ Emitir outro" : row.mode === "comissao" ? "Emitir comissão" : "Emitir comissão VLP"}</button>}
+                        {data?.canWrite && <button className={`et2-btn et2-btn--sm${row.finance.documents.length ? "" : " et2-btn--primary"}`} onClick={() => setEmitting([row])}>{row.finance.documents.length ? "+ Emitir outro" : row.mode === "comissao" ? "Emitir comissão" : "Emitir comissão VLP"}</button>}
                       </div>
                     </td>
                   </tr>
@@ -187,7 +198,7 @@ export default function FinanceiroView() {
             </tbody>
             {rows.length > 0 && (
               <tfoot><tr className="fn-total">
-                <td colSpan={3}>Total · {rows.length} processos</td>
+                <td colSpan={data?.canWrite ? 4 : 3}>Total · {rows.length} processos</td>
                 <td className="num mono">{compact(sum(rows, (row) => row.currency === "USD" ? row.sale : 0))}</td>
                 <td className="num mono">{usd(sum(rows, gainUsd))}</td>
                 <td className="num mono">{money(sum(rows, (row) => row.gainBrl ?? 0), "BRL")}</td>
@@ -202,15 +213,14 @@ export default function FinanceiroView() {
       </section>
 
       {emitting && data && (
-        <EmitDialog process={emitting} issuers={data.issuers} payerRoles={data.payerRoles} today={today}
+        <EmitDialog processes={emitting} issuers={data.issuers} payers={data.payers} nextNumbers={data.nextNumbers} payerRoles={data.payerRoles} today={today}
           onClose={() => setEmitting(null)}
-          onSaveIssuer={(issuer) => post({ action: "save-issuer", issuer })}
+          onSave={(body) => post(body)}
           onEmit={async (body) => {
-            const result = await post({ action: "emit", operationId: emitting.id, ...body });
-            const updated = result.processes.find((row) => row.id === emitting.id);
-            const doc = updated?.finance.documents.at(-1);
-            if (doc) window.open(`/api/finance/document?operationId=${emitting.id}&doc=${doc.id}`, "_blank");
+            const result = await post({ action: "emit", ...body }) as Snapshot & { issued?: { id: string; operationId: number } };
+            if (result.issued) window.open(`/api/finance/document?operationId=${result.issued.operationId}&doc=${result.issued.id}`, "_blank");
             setEmitting(null);
+            setSelected([]);
           }} />
       )}
     </main>
@@ -223,39 +233,68 @@ function addDays(date: string, days: number) {
   return value.toISOString().slice(0, 10);
 }
 
-function EmitDialog({ process, issuers, payerRoles, today, onClose, onSaveIssuer, onEmit }: {
-  process: Process; issuers: Issuer[]; payerRoles: string[]; today: string;
-  onClose: () => void; onSaveIssuer: (issuer: Issuer) => Promise<unknown>; onEmit: (body: Record<string, unknown>) => Promise<void>;
+function EmitDialog({ processes, issuers, payers, nextNumbers, payerRoles, today, onClose, onSave, onEmit }: {
+  processes: Process[]; issuers: Issuer[]; payers: Payer[]; nextNumbers: { invoice: string; nfse: string }; payerRoles: string[]; today: string;
+  onClose: () => void; onSave: (body: Record<string, unknown>) => Promise<unknown>; onEmit: (body: Record<string, unknown>) => Promise<void>;
 }) {
-  const commission = process.mode === "comissao";
+  const first = processes[0];
+  const commission = processes.every((row) => row.mode === "comissao");
+  const references = processes.map((row) => row.reference);
+  const refText = references.length > 2 ? references.join(", ") : references.join(" and ");
+  const totalVolume = Math.round(processes.reduce((total, row) => total + row.volume, 0) * 10000) / 10000;
   const [nf, setNf] = useState(false);
-  const [issuer, setIssuer] = useState<Issuer>(issuers.length === 1 ? issuers[0] : EMPTY_ISSUER);
-  const [remember, setRemember] = useState(false);
-  const [payerRole, setPayerRole] = useState(process.payerRole);
-  const [payer, setPayer] = useState(process.payerName);
-  const [rate, setRate] = useState(process.rate ? String(process.rate).replace(".", ",") : "");
-  const [due, setDue] = useState(addDays(process.etd?.slice(0, 10) || today, 30));
+  const [perM3, setPerM3] = useState(!commission);
+  const [issuer, setIssuer] = useState<Issuer>(issuers.length === 1 ? { ...EMPTY_ISSUER, ...issuers[0] } : EMPTY_ISSUER);
+  const [rememberIssuer, setRememberIssuer] = useState(false);
+  const [payerRole, setPayerRole] = useState(first.payerRole);
+  const savedPayer = payers.find((item) => item.name.toLowerCase() === first.payerName.toLowerCase());
+  const [payer, setPayer] = useState<Payer>(savedPayer ? { ...EMPTY_PAYER, ...savedPayer } : { ...EMPTY_PAYER, name: first.payerName });
+  const [rememberPayer, setRememberPayer] = useState(false);
+  const [number, setNumber] = useState(nextNumbers.invoice);
+  const [date, setDate] = useState(today);
+  const [due, setDue] = useState("");
+  const [rateText, setRateText] = useState("");
+  const [fx, setFx] = useState(first.rate ? String(first.rate).replace(".", ",") : "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const rateNumber = Number(rate.replace(/\./g, "").replace(",", ".")) || 0;
-  const baseAmount = nf ? (process.gainBrl ?? (process.currency === "USD" && rateNumber ? process.gain * rateNumber : 0)) : process.currency === "USD" ? process.gain : (process.gainUsd ?? 0);
-  const [amount, setAmount] = useState("");
-  const value = amount ? Number(amount.replace(/\./g, "").replace(",", ".")) || 0 : Math.round(baseAmount * 100) / 100;
+  const parse = (value: string) => Number(value.replace(/\./g, "").replace(",", ".")) || 0;
+  const fxNumber = parse(fx);
+  const toUsd = (row: Process) => row.currency === "USD" ? row.gain : (row.gainUsd ?? 0);
+  // Parte de cada processo: por m³ = volume × valor; senão, o ganho calculado (comissão % ou margem).
+  const rate = parse(rateText);
+  const shares = processes.map((row) => {
+    const usd = perM3 ? row.volume * rate : toUsd(row);
+    return { operationId: row.id, volume: row.volume, amount: Math.round((nf ? usd * (fxNumber || row.rate || 0) : usd) * 100) / 100 };
+  });
+  const computed = Math.round(shares.reduce((total, share) => total + share.amount, 0) * 100) / 100;
+  const [amountText, setAmountText] = useState("");
+  const amount = amountText ? parse(amountText) : computed;
   const currency = nf ? "BRL" : "USD";
-  const volume = process.volume ? ` (${process.volume.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} m³)` : "";
-  const defaultDescription = commission
-    ? (nf ? `Comissão de ${pct(process.percent)} sobre a venda ${process.reference} — ${process.client}${volume}, ${money(process.sale, process.currency)}`
-          : `Commission of ${process.percent.toLocaleString("en-US")}% on sale ${process.reference} — ${process.client}${volume}, ${process.currency} ${process.sale.toLocaleString("en-US", { minimumFractionDigits: 2 })}`)
-    : (nf ? `Comissão sobre a operação ${process.reference} — ${process.client}${volume}` : `Commission on operation ${process.reference} — ${process.client}${volume}`);
+  const percent = commission && processes.length === 1 ? first.percent : 0;
+  const defaultDescription = nf
+    ? `Serviço de intermediação comercial — embarques ${references.join(", ")}`
+    : commission
+      ? `Commercial service fee related to ${first.client || "the"} shipments - references ${refText}`
+      : `Commercial service fee related to shipments - references ${refText}`;
   const [description, setDescription] = useState("");
   const finalDescription = description || defaultDescription;
+  const defaultNotes = perM3 && !nf && rate ? `Charge calculated at USD ${rate.toFixed(2)} per m³ over a total shipped volume of ${totalVolume.toLocaleString("en-US", { maximumFractionDigits: 4 })} m³. References: ${refText}.` : "";
+  const [notes, setNotes] = useState("");
+  const finalNotes = notes || defaultNotes;
+  // Partes proporcionais ao valor final quando ele é ajustado à mão.
+  const scaled = shares.map((share) => ({ ...share, amount: computed ? Math.round(share.amount * (amount / computed) * 100) / 100 : Math.round((amount / shares.length) * 100) / 100 }));
 
   async function emit() {
     setBusy(true);
     setError("");
     try {
-      if (remember && !issuers.some((item) => item.name === issuer.name && item.taxId === issuer.taxId)) await onSaveIssuer(issuer);
-      await onEmit({ kind: nf ? "nfse" : "invoice", issuer, payerRole, payer, amount: value, currency, exchangeRate: rateNumber, description: finalDescription, dueDate: due });
+      if (rememberIssuer) await onSave({ action: "save-issuer", issuer });
+      if (rememberPayer) await onSave({ action: "save-payer", payer });
+      await onEmit({
+        kind: nf ? "nfse" : "invoice", number, date, issuer, payerRole, payer: payer.name, payerDetails: payer, amount, currency, shares: scaled,
+        basis: perM3 ? "per_m3" : "percent", rate: perM3 ? rate : percent, volume: totalVolume, exchangeRate: fxNumber,
+        description: finalDescription, notes: finalNotes, dueDate: due,
+      });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Falha ao emitir.");
       setBusy(false);
@@ -263,13 +302,18 @@ function EmitDialog({ process, issuers, payerRoles, today, onClose, onSaveIssuer
   }
 
   const field = (label: string, input: ReactNode, wide = false) => <label className={wide ? "fn-wide" : undefined}>{label}{input}</label>;
+  const issuerInput = (key: Exclude<keyof Issuer, "id">, props: Record<string, unknown> = {}) =>
+    <input className="pd-input" value={issuer[key]} onChange={(event) => setIssuer({ ...issuer, [key]: event.target.value })} {...props} />;
+  const payerInput = (key: Exclude<keyof Payer, "id">, props: Record<string, unknown> = {}) =>
+    <input className="pd-input" value={payer[key]} onChange={(event) => setPayer({ ...payer, [key]: event.target.value })} {...props} />;
+  const fmt = (value: number) => money(value, currency);
   return (
     <div className="cb-modal" role="dialog" aria-modal="true" aria-labelledby="fn-emit" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <div className="cb-dialog fn-dialog">
         <div className="cb-dialog-head">
           <div>
-            <h2 id="fn-emit">{commission ? "Emitir comissão" : "Emitir comissão VLP"} · {process.reference}</h2>
-            <div className="pd-sub">{commission ? `${pct(process.percent)} sobre o valor do pedido (${money(process.sale, process.currency)}).` : `Margem do processo (${pct(process.percent)}) cobrada da VLP como comissão. Ajuste o valor se combinarem diferente.`}</div>
+            <h2 id="fn-emit">{commission ? "Emitir comissão" : "Emitir comissão VLP"} · {references.join(", ")}</h2>
+            <div className="pd-sub">{processes.length > 1 ? `Uma invoice para ${processes.length} processos (${totalVolume.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} m³). ` : ""}{perM3 ? "Valor por m³ embarcado." : commission ? `${pct(first.percent)} sobre o valor do pedido.` : "Margem do processo cobrada da VLP como comissão."}</div>
           </div>
           <button type="button" className="cb-remove" aria-label="Fechar" onClick={onClose}>×</button>
         </div>
@@ -277,48 +321,86 @@ function EmitDialog({ process, issuers, payerRoles, today, onClose, onSaveIssuer
           <div className="fn-form">
             <div className="fn-wide fn-row"><b>Documento</b>
               <div className="et2-seg" role="group" aria-label="Documento">
-                <button aria-pressed={!nf} onClick={() => { setNf(false); setAmount(""); setDescription(""); }}>Invoice (exterior)</button>
-                <button aria-pressed={nf} onClick={() => { setNf(true); setAmount(""); setDescription(""); }}>Nota fiscal (Brasil)</button>
+                <button aria-pressed={!nf} onClick={() => { setNf(false); setAmountText(""); setDescription(""); setNumber(nextNumbers.invoice); }}>Invoice (exterior)</button>
+                <button aria-pressed={nf} onClick={() => { setNf(true); setAmountText(""); setDescription(""); setNumber(nextNumbers.nfse); }}>Nota fiscal (Brasil)</button>
               </div>
             </div>
-            <div className="fn-wide fn-section">Emitente · quem recebe a comissão</div>
-            {issuers.length > 0 && field("Emitente salvo", <select className="pd-input" value={issuers.findIndex((item) => item.name === issuer.name && item.taxId === issuer.taxId)} onChange={(event) => setIssuer(issuers[Number(event.target.value)] ?? EMPTY_ISSUER)}>
+            {field("Número", <input className="pd-input mono" value={number} onChange={(event) => setNumber(event.target.value)} />)}
+            {field("Data", <input className="pd-input" type="date" value={date} onChange={(event) => setDate(event.target.value)} />)}
+            <div className="fn-wide fn-row"><b>Cobrança</b>
+              <div className="et2-seg" role="group" aria-label="Base da cobrança">
+                <button aria-pressed={perM3} onClick={() => { setPerM3(true); setAmountText(""); }}>US$ por m³</button>
+                <button aria-pressed={!perM3} onClick={() => { setPerM3(false); setAmountText(""); }}>{commission ? "% do pedido" : "Margem do processo"}</button>
+              </div>
+            </div>
+            {perM3 && field("Valor por m³ (US$)", <input className="pd-input mono" inputMode="decimal" value={rateText} placeholder="ex.: 3,00" onChange={(event) => { setRateText(event.target.value); setAmountText(""); }} />)}
+            {perM3 && field("Volume embarcado (m³)", <input className="pd-input mono" readOnly value={totalVolume.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} />)}
+            {nf && field("Câmbio (R$ por US$)", <input className="pd-input mono" inputMode="decimal" value={fx} onChange={(event) => { setFx(event.target.value); setAmountText(""); }} />)}
+            {field(`Valor total (${nf ? "R$" : "US$"})`, <input className="pd-input mono" inputMode="decimal" value={amountText || amount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} onChange={(event) => setAmountText(event.target.value)} />)}
+            {field("Vencimento (opcional)", <input className="pd-input" type="date" value={due} onChange={(event) => setDue(event.target.value)} />)}
+
+            <div className="fn-wide fn-section">Emitente (issuer) · quem recebe</div>
+            {issuers.length > 0 && field("Emitente salvo", <select className="pd-input" value={issuers.findIndex((item) => item.name === issuer.name && item.taxId === issuer.taxId)} onChange={(event) => setIssuer({ ...EMPTY_ISSUER, ...(issuers[Number(event.target.value)] ?? {}) })}>
               <option value={-1}>— preencher abaixo —</option>
               {issuers.map((item, index) => <option key={item.id ?? index} value={index}>{item.name} · {item.taxId}</option>)}
             </select>, true)}
-            {field("Nome / razão social *", <input className="pd-input" value={issuer.name} onChange={(event) => setIssuer({ ...issuer, name: event.target.value })} placeholder="quem emite e recebe" />, true)}
-            {field("CPF ou CNPJ *", <input className="pd-input" value={issuer.taxId} onChange={(event) => setIssuer({ ...issuer, taxId: event.target.value })} />)}
-            {field("Cidade / país", <input className="pd-input" value={issuer.city} onChange={(event) => setIssuer({ ...issuer, city: event.target.value })} />)}
-            {field("Dados bancários para receber", <textarea className="pd-input" rows={2} value={issuer.bank} onChange={(event) => setIssuer({ ...issuer, bank: event.target.value })} placeholder="banco, agência, conta / SWIFT, IBAN" />, true)}
-            <label className="fn-wide fn-check"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /> Salvar como emitente para as próximas</label>
-            <div className="fn-wide fn-section">Cobrar de</div>
+            {field("Nome / razão social *", issuerInput("name"), true)}
+            {field("CPF ou CNPJ *", issuerInput("taxId"))}
+            {field("Telefone", issuerInput("phone"))}
+            {field("Endereço", issuerInput("address", { placeholder: "rua, número, complemento" }), true)}
+            {field("CEP · cidade · estado · país", issuerInput("city"))}
+            {field("E-mail", issuerInput("email", { type: "email" }))}
+            <div className="fn-wide fn-section">Dados bancários (bank details)</div>
+            {field("Beneficiário", issuerInput("beneficiary"))}
+            {field("SWIFT / BIC", issuerInput("swift"))}
+            {field("Conta (account number / IBAN)", issuerInput("account"))}
+            {field("Banco", issuerInput("bankName"))}
+            {field("Endereço do banco", issuerInput("bankAddress"), true)}
+            <label className="fn-wide fn-check"><input type="checkbox" checked={rememberIssuer} onChange={(event) => setRememberIssuer(event.target.checked)} /> Salvar este emitente para as próximas</label>
+
+            <div className="fn-wide fn-section">Cobrar de (bill to)</div>
+            {payers.length > 0 && field("Pagador salvo", <select className="pd-input" value={payers.findIndex((item) => item.name === payer.name)} onChange={(event) => setPayer({ ...EMPTY_PAYER, ...(payers[Number(event.target.value)] ?? {}) })}>
+              <option value={-1}>— preencher abaixo —</option>
+              {payers.map((item, index) => <option key={item.id ?? index} value={index}>{item.name}</option>)}
+            </select>, true)}
             {field("Quem paga", <select className="pd-input" value={payerRole} onChange={(event) => {
               const role = event.target.value;
               setPayerRole(role);
-              setPayer(role === "Fornecedor" ? process.supplierName : role === "Exportador" ? process.exporterName : role === "Importador" ? process.client : role === "Parceiro" ? "VLP" : "");
+              const name = role === "Fornecedor" ? first.supplierName : role === "Exportador" ? first.exporterName : role === "Importador" ? first.client : role === "Parceiro" ? "VLP" : "";
+              setPayer({ ...EMPTY_PAYER, ...(payers.find((item) => item.name.toLowerCase() === name.toLowerCase()) ?? { name }) });
             }}>{payerRoles.map((role) => <option key={role}>{role}</option>)}</select>)}
-            {field("Nome", <input className="pd-input" value={payer} onChange={(event) => setPayer(event.target.value)} />)}
-            {field(`Valor (${currency === "BRL" ? "R$" : "US$"})`, <input className="pd-input mono" inputMode="decimal" value={amount || value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} onChange={(event) => setAmount(event.target.value)} />)}
-            {nf ? field("Câmbio (R$ por US$)", <input className="pd-input mono" inputMode="decimal" value={rate} onChange={(event) => { setRate(event.target.value); setAmount(""); }} />) : field("Vencimento", <input className="pd-input" type="date" value={due} onChange={(event) => setDue(event.target.value)} />)}
-            {nf && field("Vencimento", <input className="pd-input" type="date" value={due} onChange={(event) => setDue(event.target.value)} />)}
+            {field("Nome *", payerInput("name"))}
+            {field("Endereço", payerInput("address", { placeholder: "rua, CEP, cidade, país" }), true)}
+            {field("VAT / CNPJ", payerInput("taxId", { placeholder: "VAT: NL..." }))}
+            {field("Registro (ex.: KVK)", payerInput("registration", { placeholder: "KVK: ..." }))}
+            {field("E-mail", payerInput("email", { type: "email" }), true)}
+            <label className="fn-wide fn-check"><input type="checkbox" checked={rememberPayer} onChange={(event) => setRememberPayer(event.target.checked)} /> Salvar este pagador para as próximas</label>
+
             {field("Descrição", <textarea className="pd-input" rows={3} value={finalDescription} onChange={(event) => setDescription(event.target.value)} />, true)}
+            {field("Observações (notes)", <textarea className="pd-input" rows={2} value={finalNotes} onChange={(event) => setNotes(event.target.value)} />, true)}
             {nf && <div className="fn-wide cb-info">Espelho para conferência: a nota fiscal de serviço oficial é emitida e autorizada na prefeitura. Depois, anexe o PDF/XML autorizado ao pedido.</div>}
             {error && <div className="fn-wide cb-error" role="alert">{error}</div>}
           </div>
           <div className="fn-preview" aria-label="Prévia do documento">
-            <div className="fn-preview-top">
-              <div><b>{issuer.name || "Emitente (preencher)"}</b><div className="pd-sub">{issuer.name ? [issuer.taxId, issuer.city].filter(Boolean).join(" · ") : "nome, CPF/CNPJ e dados bancários de quem recebe"}</div></div>
-              <div style={{ textAlign: "right" }}><b>{nf ? "NFS-e · ESPELHO" : "COMMISSION INVOICE"}</b><div className="pd-sub">número ao emitir · {formatDate(today)}</div></div>
+            <div className="fn-preview-title">{nf ? "NOTA FISCAL · ESPELHO" : "INVOICE"}</div>
+            <div className="fn-preview-meta"><span>{nf ? "Número" : "Invoice No."}</span><b className="mono">{number}</b><span>{nf ? "Data" : "Date"}</span><b>{formatDate(date)}</b><span>{nf ? "Moeda" : "Currency"}</span><b>{currency}</b></div>
+            <div className="fn-preview-parties">
+              <div><span>{nf ? "PRESTADOR" : "ISSUER"}</span><b>{issuer.name || "—"}</b><div>{[issuer.address, issuer.city, issuer.taxId && `${issuer.taxId.replace(/\D/g, "").length === 11 ? "CPF" : "CNPJ"}: ${issuer.taxId}`, issuer.email, issuer.phone].filter(Boolean).join(" · ")}</div></div>
+              <div><span>{nf ? "TOMADOR" : "BILL TO"}</span><b>{payer.name || "—"}</b><div>{[payer.address, payer.taxId, payer.registration, payer.email].filter(Boolean).join(" · ")}</div></div>
             </div>
-            <div className="fn-preview-to"><span className="pd-sub">{nf ? "Tomador" : "Bill to"}:</span> <b>{payer || "—"}</b> <span className="pd-sub">({payerRole})</span><div className="pd-sub">{process.reference} · {process.client}</div></div>
-            <table><tbody><tr><td>{finalDescription}</td><td className="num mono">{money(value, currency)}</td></tr></tbody>
-              <tfoot><tr><td>Total</td><td className="num mono">{money(value, currency)}</td></tr></tfoot></table>
-            {issuer.bank && <div className="pd-sub" style={{ whiteSpace: "pre-wrap", marginTop: 10 }}>{issuer.bank}</div>}
+            <table>
+              <thead><tr><th>{nf ? "Descrição" : "Description"}</th><th className="num">m³</th><th className="num">{nf ? "Base" : "Rate"}</th><th className="num">{nf ? "Valor" : "Amount"}</th></tr></thead>
+              <tbody><tr><td>{finalDescription}</td><td className="num mono">{totalVolume ? totalVolume.toLocaleString("pt-BR", { maximumFractionDigits: 4 }) : ""}</td><td className="num mono">{perM3 ? `US$ ${rate.toFixed(2)}` : percent ? pct(percent) : ""}</td><td className="num mono">{fmt(amount)}</td></tr></tbody>
+              <tfoot><tr><td colSpan={3}>{nf ? "Total" : "TOTAL DUE"}</td><td className="num mono">{fmt(amount)}</td></tr></tfoot>
+            </table>
+            {processes.length > 1 && <div className="pd-sub" style={{ marginTop: 6 }}>Por processo: {scaled.map((share, index) => `${references[index]} ${fmt(share.amount)}`).join(" · ")}</div>}
+            {(issuer.beneficiary || issuer.swift || issuer.account) && <div className="pd-sub" style={{ marginTop: 10 }}>{[issuer.beneficiary, issuer.swift && `SWIFT ${issuer.swift}`, issuer.account && `Conta ${issuer.account}`, issuer.bankName].filter(Boolean).join(" · ")}</div>}
+            {finalNotes && <div className="pd-sub" style={{ marginTop: 8 }}>{finalNotes}</div>}
           </div>
         </div>
         <div className="cb-dialog-foot">
           <button type="button" className="pd-btn" onClick={onClose}>Cancelar</button>
-          <button type="button" className="pd-btn pd-btn--dark" disabled={busy || !issuer.name.trim() || !issuer.taxId.trim() || !payer.trim() || !(value > 0)} onClick={emit}>{busy ? "Emitindo…" : nf ? "Salvar espelho da nota" : "Emitir invoice"}</button>
+          <button type="button" className="pd-btn pd-btn--dark" disabled={busy || !issuer.name.trim() || !issuer.taxId.trim() || !payer.name.trim() || !(amount > 0) || !number.trim()} onClick={emit}>{busy ? "Emitindo…" : nf ? "Salvar espelho da nota" : "Emitir invoice"}</button>
         </div>
       </div>
     </div>

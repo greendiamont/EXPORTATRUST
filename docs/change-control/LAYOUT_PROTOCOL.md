@@ -67,6 +67,7 @@ Telas fora desta tabela (login, primeiro acesso, `/classico`) não têm layout n
 |---|---|---|
 | 2026-10-14 | Ivam | Aprovou o redesign (protótipos 1 a 6) — `docs/redesign/PLANO_REDESIGN.md` |
 | 2026-10-15 | Ivam | Reafirmou o layout aprovado do Pedido (fases e emissão de documentos) e criou esta regra |
+| 2026-10-17 | Ivam | Enviou o modelo da invoice de comissão (001/2026) para o documento do Financeiro seguir (Ivam enviou na conversa a imagem da invoice de comissão que já usa, nº 001/2026: Issuer / Bill to, Volume (m³) × Rate, Total due, Bank details, Notes e assinatura; cobrança de USD 3,00 por m³ sobre dois pedidos) |
 | 2026-10-17 | Ivam | Aprovou a aba Financeiro para produção: "E pode seguir para homologação e produção. Produção aprovada." |
 | 2026-10-17 | Ivam | Aceitou para teste a aba Financeiro (quadro "7"), por último no menu: "Tá ok, vamos testar isso. Eu só quero que você coloque pro final, não coloque entre pedido e cadastro. Coloque por último, depois de cadastro, tá?" |
 | 2026-10-16 | Ivam | Aprovou para produção "Embarques por mês" em contêineres ou m³: "pode produzir" |
