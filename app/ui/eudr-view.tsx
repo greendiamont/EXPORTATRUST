@@ -6,6 +6,7 @@ import { api, formatDate, processHref } from "./format";
 // EUDR · rastreabilidade (protótipo "4b · EUDR rastreabilidade", aprovado por Ivam em 2026-10-17).
 // Pedidos para a UE em 5 etapas (origem, legalidade, transformação, exportação, pacote) e florestas
 // cadastradas uma vez, com documentos (validade) e verificações. Contas e regras: lib/eudr.ts.
+// As 5 etapas também abrem dentro do pedido (EudrOrderPanel), como uma fase "EUDR" na barra de fases.
 
 type DocStatus = "ok" | "pendente" | "nao_se_aplica";
 type DocRecord = { status: DocStatus; validUntil: string; documentId: number | null; note: string };
@@ -51,23 +52,13 @@ async function upload(url: string, fields: Record<string, string>, file: File) {
   return body.document as { id: number };
 }
 
-export default function EudrView() {
+/** Estado e gravação da EUDR (tela /eudr e etapa EUDR dentro do pedido). */
+function useEudr() {
   const [data, setData] = useState<Snapshot | null>(null);
   const [error, setError] = useState("");
-  const [view, setView] = useState<"pedidos" | "florestas">("pedidos");
-  const [orderId, setOrderId] = useState<number | null>(null);
-  const [step, setStep] = useState(0);
   const [card, setCard] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    api<Snapshot>("/api/eudr").then((snapshot) => {
-      setData(snapshot);
-      const wanted = Number(new URLSearchParams(window.location.search).get("pedido"));
-      setOrderId(snapshot.orders.find((order) => order.id === wanted)?.id ?? snapshot.orders.find((order) => !order.completed)?.id ?? snapshot.orders[0]?.id ?? null);
-    }).catch((reason: Error) => setError(reason.message));
-  }, []);
-
+  const reload = () => api<Snapshot>("/api/eudr").then((snapshot) => { setData(snapshot); return snapshot; });
   async function post(body: Record<string, unknown>) {
     setBusy(true);
     setError("");
@@ -79,12 +70,84 @@ export default function EudrView() {
       setBusy(false);
     }
   }
+  const forestsByCar = useMemo(() => new Map((data?.forests ?? []).map((forest) => [forest.carCode, forest])), [data]);
+  return { data, setData, error, setError, card, setCard, busy, post, reload, forestsByCar, canWrite: Boolean(data?.canWrite), today: data?.today ?? new Date().toISOString().slice(0, 10) };
+}
+type Eudr = ReturnType<typeof useEudr>;
+
+/** As 5 etapas de um pedido (cabeçalho com o semáforo + painel da etapa escolhida). */
+function OrderSteps({ eudr, order, embedded }: { eudr: Eudr; order: Order; embedded?: boolean }) {
+  const [step, setStep] = useState(0);
+  const { data, forestsByCar, canWrite, busy, today } = eudr;
+  if (!data) return null;
+  const saveOrder: SaveOrder = (changes, extra = {}) => eudr.post({ action: "save-order", operationId: order.id, eudr: changes, ...extra });
+  return (
+    <>
+      <section className="et2-card db-card" aria-label="Etapas da EUDR">
+        <div className="db-card-head">
+          {embedded
+            ? <h2>EUDR · rastreabilidade <span className={`et2-badge et2-badge--${order.readiness >= 100 ? "ok" : order.readiness >= 50 ? "warn" : "bad"}`}>{order.readiness}%</span></h2>
+            : <h2><a className="mono" href={processHref(order.id)}>{order.reference}</a> · {order.client || "—"}</h2>}
+          <span className="et2-sub" style={{ margin: 0 }}>{embedded ? <>Pedido para a UE · 5 etapas · <a href={`/eudr?pedido=${order.id}`}>abrir na aba EUDR</a></> : "5 etapas · serrado, pellets e nativa"}</span>
+        </div>
+        <ol className="eu-steps">
+          {order.steps.map((item, index) => (
+            <li key={item.name}><button className={`eu-step eu-step--${tone(item.done, item.total)}`} aria-pressed={step === index} onClick={() => setStep(index)}>
+              <span className="et2-sub" style={{ margin: 0 }}>Etapa {index + 1}</span><b>{item.name}</b><span className="eu-step-count">{Math.min(item.done, item.total)} de {item.total}</span>
+            </button></li>
+          ))}
+        </ol>
+      </section>
+      {step === 0 && <OriginStep order={order} forests={data.forests} forestsByCar={forestsByCar} canWrite={canWrite} busy={busy} onSave={saveOrder} onCard={eudr.setCard} />}
+      {step === 1 && <LegalStep order={order} forestsByCar={forestsByCar} forestDocs={data.forestDocs} today={today} canWrite={canWrite} busy={busy} onSave={saveOrder} onCard={eudr.setCard} onError={eudr.setError} />}
+      {step === 2 && <BalanceStep order={order} forestsByCar={forestsByCar} canWrite={canWrite} busy={busy} onSave={saveOrder} />}
+      {step === 3 && <ExportStep order={order} canWrite={canWrite} busy={busy} onSave={saveOrder} />}
+      {step === 4 && <PackageStep order={order} forestsByCar={forestsByCar} today={today} canWrite={canWrite} busy={busy} onSave={saveOrder} />}
+    </>
+  );
+}
+
+function ForestCardHost({ eudr }: { eudr: Eudr }) {
+  const { data, card, forestsByCar } = eudr;
+  const forest = card ? forestsByCar.get(card) : undefined;
+  if (!data || !card || !forest) return null;
+  return (
+    <ForestCard forest={forest} docs={data.forestDocs[forest.eudr.originType]} checks={data.forestChecks} today={eudr.today} canWrite={eudr.canWrite} busy={eudr.busy}
+      onClose={() => eudr.setCard(null)} onSave={(changes) => eudr.post({ action: "save-forest", carCode: card, eudr: changes })} onIbama={() => eudr.post({ action: "check-ibama", carCode: card })} onError={eudr.setError} />
+  );
+}
+
+/** Etapa EUDR dentro do pedido (fase extra na barra de fases dos pedidos para a UE). */
+export function EudrOrderPanel({ operationId, onReadiness }: { operationId: number; onReadiness?: (readiness: number) => void }) {
+  const eudr = useEudr();
+  useEffect(() => { eudr.reload().catch((reason: Error) => eudr.setError(reason.message)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const order = eudr.data?.orders.find((item) => item.id === operationId) ?? null;
+  useEffect(() => { if (order && onReadiness) onReadiness(order.readiness); }, [order?.readiness]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="eu-embedded">
+      {eudr.error && <div className="et2-alert et2-alert--bad" role="alert">{eudr.error}</div>}
+      {!eudr.data && !eudr.error && <p className="et2-empty">Carregando EUDR…</p>}
+      {eudr.data && !order && <p className="et2-empty">Este pedido não está na lista da EUDR (destino UE + produto de madeira).</p>}
+      {order && <OrderSteps eudr={eudr} order={order} embedded />}
+      <ForestCardHost eudr={eudr} />
+    </div>
+  );
+}
+
+export default function EudrView() {
+  const eudr = useEudr();
+  const [view, setView] = useState<"pedidos" | "florestas">("pedidos");
+  const [orderId, setOrderId] = useState<number | null>(null);
+  const { data, error } = eudr;
+
+  useEffect(() => {
+    eudr.reload().then((snapshot) => {
+      const wanted = Number(new URLSearchParams(window.location.search).get("pedido"));
+      setOrderId(snapshot.orders.find((order) => order.id === wanted)?.id ?? snapshot.orders.find((order) => !order.completed)?.id ?? snapshot.orders[0]?.id ?? null);
+    }).catch((reason: Error) => eudr.setError(reason.message));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const order = data?.orders.find((item) => item.id === orderId) ?? null;
-  const forestsByCar = useMemo(() => new Map((data?.forests ?? []).map((forest) => [forest.carCode, forest])), [data]);
-  const saveOrder = (eudr: Partial<OrderEudr>, extra: Record<string, unknown> = {}) => order && post({ action: "save-order", operationId: order.id, eudr, ...extra });
-  const canWrite = Boolean(data?.canWrite);
-  const today = data?.today ?? new Date().toISOString().slice(0, 10);
 
   return (
     <main className="et2-main">
@@ -105,48 +168,21 @@ export default function EudrView() {
       {data && view === "pedidos" && (
         <div className="eu-layout">
           <aside className="et2-card eu-list" aria-labelledby="eu-pedidos">
-            <div className="eu-list-head"><h2 id="eu-pedidos">Pedidos para a UE</h2><span className="et2-sub" style={{ margin: 0 }}>EUDR obrigatória: destino UE + produto de madeira</span></div>
+            <div className="eu-list-head"><h2 id="eu-pedidos">Pedidos para a UE</h2><span className="et2-sub" style={{ margin: 0 }}>EUDR obrigatória: destino UE + produto de madeira. Também abre dentro de cada pedido.</span></div>
             {data.orders.map((item) => (
-              <button key={item.id} className="eu-list-item" aria-pressed={item.id === orderId} onClick={() => { setOrderId(item.id); setStep(0); }}>
+              <button key={item.id} className="eu-list-item" aria-pressed={item.id === orderId} onClick={() => setOrderId(item.id)}>
                 <span className="eu-row"><span className="mono" style={{ fontWeight: 500 }}>{item.reference}</span><span className={`et2-badge et2-badge--${item.readiness >= 100 ? "ok" : item.readiness >= 50 ? "warn" : "bad"}`}>{item.readiness}%</span></span>
                 <span className="et2-sub" style={{ margin: 0 }}>{[item.product, item.country, item.etd ? `ETD ${formatDate(item.etd)}` : ""].filter(Boolean).join(" · ")}</span>
               </button>
             ))}
             {!data.orders.length && <p className="et2-empty">Nenhum pedido para a UE com produto de madeira.</p>}
           </aside>
-
-          {order && (
-            <div className="eu-main">
-              <section className="et2-card db-card" aria-label="Etapas">
-                <div className="db-card-head">
-                  <h2><a className="mono" href={processHref(order.id)}>{order.reference}</a> · {order.client || "—"}</h2>
-                  <span className="et2-sub" style={{ margin: 0 }}>5 etapas · serrado, pellets e nativa</span>
-                </div>
-                <ol className="eu-steps">
-                  {order.steps.map((item, index) => (
-                    <li key={item.name}><button className={`eu-step eu-step--${tone(item.done, item.total)}`} aria-pressed={step === index} onClick={() => setStep(index)}>
-                      <span className="et2-sub" style={{ margin: 0 }}>Etapa {index + 1}</span><b>{item.name}</b><span className="eu-step-count">{Math.min(item.done, item.total)} de {item.total}</span>
-                    </button></li>
-                  ))}
-                </ol>
-              </section>
-
-              {step === 0 && <OriginStep order={order} forests={data.forests} forestsByCar={forestsByCar} canWrite={canWrite} busy={busy} onSave={saveOrder} onCard={setCard} />}
-              {step === 1 && <LegalStep order={order} forestsByCar={forestsByCar} forestDocs={data.forestDocs} today={today} canWrite={canWrite} busy={busy} onSave={saveOrder} onCard={setCard} onError={setError} />}
-              {step === 2 && <BalanceStep order={order} forestsByCar={forestsByCar} canWrite={canWrite} busy={busy} onSave={saveOrder} />}
-              {step === 3 && <ExportStep order={order} canWrite={canWrite} busy={busy} onSave={saveOrder} />}
-              {step === 4 && <PackageStep order={order} forestsByCar={forestsByCar} today={today} canWrite={canWrite} busy={busy} onSave={saveOrder} />}
-            </div>
-          )}
+          {order && <div className="eu-main"><OrderSteps key={order.id} eudr={eudr} order={order} /></div>}
         </div>
       )}
 
-      {data && view === "florestas" && <ForestList data={data} canWrite={canWrite} onCard={setCard} onReload={() => api<Snapshot>("/api/eudr").then(setData)} onError={setError} />}
-
-      {data && card && forestsByCar.get(card) && (
-        <ForestCard forest={forestsByCar.get(card)!} docs={data.forestDocs[forestsByCar.get(card)!.eudr.originType]} checks={data.forestChecks} today={today} canWrite={canWrite} busy={busy}
-          onClose={() => setCard(null)} onSave={(eudr) => post({ action: "save-forest", carCode: card, eudr })} onIbama={() => post({ action: "check-ibama", carCode: card })} onError={setError} />
-      )}
+      {data && view === "florestas" && <ForestList data={data} canWrite={eudr.canWrite} onCard={eudr.setCard} onReload={eudr.reload} onError={eudr.setError} />}
+      <ForestCardHost eudr={eudr} />
     </main>
   );
 }

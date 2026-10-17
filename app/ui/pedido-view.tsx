@@ -9,6 +9,7 @@ import { type LogisticsDraft, costsFromDraft, logisticsByCurrency, logisticsDraf
 import { LogisticsCostsEditor, LogisticsCostsSummary } from "./logistics-costs-editor";
 import { ShipmentAdviceCard } from "./shipment-advice-card";
 import { CollaboratorsPanel } from "./collaborators-panel";
+import { EudrOrderPanel } from "./eudr-view";
 import { amountsOf, estimateMargin } from "../../lib/margin";
 import { readOrderTerms } from "../../lib/order-terms";
 
@@ -178,7 +179,11 @@ export default function PedidoView({ operationId }: { operationId: number }) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [docs, setDocs] = useState<Doc[]>([]);
   const [error, setError] = useState("");
-  const [phase, setPhase] = useState<number | null>(null);
+  const [phase, setPhaseState] = useState<number | null>(null);
+  // Pedido para a UE: a EUDR abre como uma etapa da barra de fases (entre Produção e Embarque).
+  const [eudrOpen, setEudrOpen] = useState(false);
+  const [eudrReadiness, setEudrReadiness] = useState<number | null>(null);
+  const setPhase = useCallback((index: number | null) => { setPhaseState(index); setEudrOpen(false); }, []);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [toast, setToast] = useState("");
   const [target, setTarget] = useState<Target | null>(null);
@@ -221,6 +226,13 @@ export default function PedidoView({ operationId }: { operationId: number }) {
   }).catch(() => {}), [operationId, load]);
 
   useEffect(() => { load(); loadActivity(); }, [load, loadActivity]);
+  const eudrRequired = Boolean(data?.eudrBridge.required && !data?.viewer?.guest);
+  useEffect(() => {
+    if (!eudrRequired) return;
+    api<{ orders: Array<{ id: number; readiness: number }> }>("/api/eudr")
+      .then((snapshot) => setEudrReadiness(snapshot.orders.find((order) => order.id === operationId)?.readiness ?? null))
+      .catch(() => setEudrReadiness(null));
+  }, [eudrRequired, operationId]);
 
   // Presença: avisa quem está no pedido (e em qual documento está editando) e acompanha a equipe.
   useEffect(() => {
@@ -346,7 +358,9 @@ export default function PedidoView({ operationId }: { operationId: number }) {
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
               <h1 className="mono">{operation.reference}</h1>
               <span className={`pd-badge pd-badge--${phaseInfo[5].total && phaseInfo[5].done === phaseInfo[5].total ? "ok" : "warn"}`}>{ORDER_PHASES[current].name} · {current + 1}/6</span>
-              {data.eudrBridge.required && <span className={`pd-badge pd-badge--${data.eudrBridge.readiness >= 100 ? "ok" : "todo"}`}>EUDR {data.eudrBridge.readiness}%</span>}
+              {data.eudrBridge.required && (eudrRequired
+                ? <button className={`pd-badge pd-badge--${(eudrReadiness ?? data.eudrBridge.readiness) >= 100 ? "ok" : "todo"}`} style={{ border: 0, cursor: "pointer", font: "inherit" }} onClick={() => setEudrOpen(true)} title="Abrir a EUDR deste pedido">EUDR {eudrReadiness ?? data.eudrBridge.readiness}%</button>
+                : <span className={`pd-badge pd-badge--${data.eudrBridge.readiness >= 100 ? "ok" : "todo"}`}>EUDR {data.eudrBridge.readiness}%</span>)}
             </div>
             <div className="sub">{[operation.product, form.customerName || operation.euImporter, [operation.portOfLoading, operation.portOfDischarge || operation.destinationCountry].filter(Boolean).join(" → ")].filter(Boolean).join(" · ")}</div>
           </div>
@@ -375,25 +389,40 @@ export default function PedidoView({ operationId }: { operationId: number }) {
       </section>
 
       <section className="pd-card pd-phases" aria-label="Fases do pedido">
-        <ol>
+        <ol style={eudrRequired ? { gridTemplateColumns: "repeat(7, minmax(0, 1fr))" } : undefined}>
           {phaseInfo.map((item, index) => {
             const state = index < current ? "past" : index === current ? "now" : "next";
-            return (
+            const node = (
               <li key={item.key}>
                 <div className={`line${index < current ? " line--done" : ""}`} aria-hidden="true" style={{ left: index === 0 ? "50%" : 0, right: index === 5 ? "50%" : 0 }} />
-                <button aria-pressed={index === selected} onClick={() => setPhase(index)}>
+                <button aria-pressed={!eudrOpen && index === selected} onClick={() => setPhase(index)}>
                   <span className={`dot dot--${state}`}>{state === "past" ? "✓" : index + 1}</span>
                   <span className="name">{item.name}</span>
                   <span className="sum">{item.done}/{item.total} · {item.files} arq.</span>
                 </button>
               </li>
             );
+            // Pedido para a UE: etapa EUDR entre Produção e Embarque (o embarque depende da EUDR).
+            if (!eudrRequired || index !== 1) return node;
+            const ready = (eudrReadiness ?? 0) >= 100;
+            return [node, (
+              <li key="eudr">
+                <div className={`line${current > 1 ? " line--done" : ""}`} aria-hidden="true" style={{ left: 0, right: 0 }} />
+                <button aria-pressed={eudrOpen} onClick={() => setEudrOpen(true)} title="Rastreabilidade EUDR deste pedido">
+                  <span className={`dot dot--eudr${ready ? " dot--eudr-ok" : ""}`}>{ready ? "✓" : "EU"}</span>
+                  <span className="name">EUDR</span>
+                  <span className="sum">{eudrReadiness === null ? "rastreabilidade" : `${eudrReadiness}% pronto`}</span>
+                </button>
+              </li>
+            )];
           })}
         </ol>
       </section>
 
       <div className="pd-cols">
         <div className="pd-main">
+          {eudrOpen && <EudrOrderPanel operationId={operationId} onReadiness={setEudrReadiness} />}
+          {!eudrOpen && <>
           {selected === 3 && !guest && (
             <ShipmentAdviceCard operationId={operationId} onChanged={refreshAll} onError={setError}
               onView={(id, fileName) => setPreview({ title: fileName, src: `/api/documents?documentId=${id}&inline=1`, download: `/api/documents?documentId=${id}` })} />
@@ -495,6 +524,7 @@ export default function PedidoView({ operationId }: { operationId: number }) {
               </details>
             )}
           </section>
+          </>}
 
           {!guest && (
           <details className="pd-card">

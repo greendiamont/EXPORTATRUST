@@ -582,3 +582,7 @@ a.db-tile:hover { text-decoration: none; background: #fafafa; }
 .eu-status--ok { border-color: #a7f3d0; background: #ecfdf5; color: #047857; font-weight: 600; }
 .eu-status--warn { border-color: #fde68a; background: #fffbeb; }
 .eu-status--bad { border-color: #fecaca; background: #fef2f2; }
+.eu-embedded { display: flex; flex-direction: column; gap: 18px; }
+.pd-phases .dot--eudr { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; font-size: 11px; letter-spacing: .3px; }
+.pd-phases .dot--eudr-ok { background: var(--et2-ok); color: #fff; border-color: var(--et2-ok); }
+@media (max-width: 700px) { .pd-phases ol[style] { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; } }
