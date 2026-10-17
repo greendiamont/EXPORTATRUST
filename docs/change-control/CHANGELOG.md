@@ -881,7 +881,7 @@
 - **Acesso:** só equipe (administrador e analista; auditor lê). Convidado bloqueado pela trava do servidor.
 - **Não muda nesta fase:** trava de embarque (continua como antes), tela antiga de EUDR, envio automático do pacote por e-mail.
 - **Testes:** tsc (92, sem erros novos), `tests/eudr.test.mjs` (6), testes completos, build Railway, Playwright local (vincular florestas, colheita e entrada, ficha com verificação e documento anexado, documentos da cadeia, rendimento, DDS, declaração e GeoJSON; celular sem rolagem lateral).
-- **Status:** em andamento
+- **Status:** aprovado por Ivam ("Ok pode produzir!") — em produção (PR #165)
 
 ## 2026-10-17 — Claude — EUDR dentro do pedido (etapa na barra de fases)
 
@@ -892,4 +892,4 @@
 - **Pedido de Ivam (conversa, 2026-10-17):** "Essa aba do EUDR, por exemplo, nós deveríamos fazer com que ela saia de dentro do pedido. [...] dentro do nosso fluxo, lá nas fases, quando for um pedido que tenha para a Europa, ele abre dentro dessa fase uma fase que é a EUDR. Então, ali dentro, quando eu clicar nesse ponto, vai abrir esse processo do EUDR."
 - **O que mudou:** na tela do pedido, quando o pedido é para a UE com produto de madeira (mesma regra do selo EUDR), a barra de fases ganha a etapa **EUDR** entre Produção e Embarque, com o percentual pronto. Clicar nela (ou no selo "EUDR x%" do topo) abre as 5 etapas da EUDR dentro do pedido (mesmo painel da aba EUDR, `EudrOrderPanel`). Clicar em outra fase volta ao conteúdo normal. Pedidos que não são para a UE e convidados não mudam. A aba EUDR do menu continua (todos os pedidos para a UE e o cadastro de florestas).
 - **Testes:** tsc (92, sem erros novos), testes completos, build Railway, Playwright local (etapa aparece só no pedido para a UE; abre o painel; pacote disponível; voltar para Embarque; pedido fora da UE com 6 fases). A rolagem lateral da tela do pedido no celular (596 px) já existia antes desta mudança.
-- **Status:** em andamento
+- **Status:** aprovado por Ivam ("Ok pode produzir!") — em produção (PR #165)
