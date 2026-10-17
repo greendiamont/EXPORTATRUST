@@ -312,3 +312,7 @@ Este documento é o registro canônico de alterações realizadas por assistente
 ### 2026-10-16 — Claude — Painel dashboard
 - **Branch:** `claude/painel-dashboard`; CHG-20261016-029; layout aprovado por Ivam ("alteração aprovada", quadro "1b").
 - **Para outros agentes:** as contas do Painel (exportado, câmbio, séries mês/ano, embarques por mês) ficam em `lib/dashboard.ts` — não duplicar. `/api/overview` ganhou `volume`, `exchangeRate`, `containers`, `completedAt`, `blockedStep`.
+
+### 2026-10-17 — Claude — Aba Financeiro
+- **Branch:** `claude/financeiro`; CHG-20261017-031.
+- **Para outros agentes:** o JSON do pedido (`supply_chain_notes`) ganhou a chave `finance` (quem paga, situação, documentos emitidos) — preserve-a ao gravar o JSON. Contas de comissão/margem por processo em `lib/finance.ts` (`processGain`). Nova tabela `finance_issuers` (migração 0033). `/api/finance` não é liberada a convidados.
